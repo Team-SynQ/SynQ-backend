@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: backend
+  # 로컬 실행 시 각자 application-local.yml 에 DB 접속 정보를 채워서 사용
+  profiles:
+    active: local
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+server:
+  port: 8080
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html      # 접속 주소: http://localhost:8080/swagger-ui.html
+  api-docs:
+    path: /v3/api-docs          # JSON 스펙: http://localhost:8080/v3/api-docs
