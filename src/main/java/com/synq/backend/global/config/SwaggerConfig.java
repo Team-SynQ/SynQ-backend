@@ -1,4 +1,4 @@
-package com.synq.backend.config;
+package com.synq.backend.global.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
