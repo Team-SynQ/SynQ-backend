@@ -1,6 +1,9 @@
 spring:
   application:
     name: backend
+  # 기본 활성 프로파일은 local(개발 편의). 운영 등 비-dev 환경은 SPRING_PROFILES_ACTIVE 를 명시적으로 지정한다.
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
   datasource:
     # 로컬 기본값은 docker-compose.yml 의 postgres 설정과 동일.
     # 운영 등에서는 환경변수(DB_URL/DB_USERNAME/DB_PASSWORD)로 주입한다. 비밀정보 커밋 금지.
@@ -9,15 +12,13 @@ spring:
     password: ${DB_PASSWORD:synq}
   jpa:
     hibernate:
-      # dev 편의용 update
-      ddl-auto: ${JPA_DDL_AUTO:update}
-    show-sql: true
+      # 안전한 기본값(스키마 미변경). 로컬은 아래 local 프로파일에서 update 로 덮어쓴다.
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    open-in-view: false
     properties:
       hibernate:
-        format_sql: true
         jdbc:
           time_zone: Asia/Seoul
-    open-in-view: false
 
 server:
   port: 8080
@@ -27,3 +28,17 @@ springdoc:
     path: /swagger-ui.html      # 접속 주소: http://localhost:8080/swagger-ui.html
   api-docs:
     path: /v3/api-docs          # JSON 스펙: http://localhost:8080/v3/api-docs
+
+---
+# local(dev) 전용 편의 설정
+spring:
+  config:
+    activate:
+      on-profile: local
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
