@@ -11,6 +11,7 @@ reviews:
     drafts: false          # Draft PR은 리뷰 제외
     base_branches:
       - "dev"
+      - "main"
   path_filters:
     - "!**/build/**"
     - "!**/generated/**"
