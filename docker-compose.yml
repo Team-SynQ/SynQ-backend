@@ -1,0 +1,29 @@
+# 로컬 개발용 PostgreSQL. 'docker compose up -d'로 기동.
+
+# 자주 쓰는 명령어:
+#   docker compose up -d      # DB 기동 (백그라운드)
+#   docker compose down       # DB 중지 (데이터는 유지)
+#   docker compose down -v    # DB 중지 + 데이터 완전 삭제(초기화)
+#   docker compose logs -f db # 로그 확인
+services:
+  db:
+    image: postgres:16
+    container_name: synq-postgres
+    # 로컬 개발용 기본값. application.yml 의 datasource 기본값과 반드시 일치해야 함.
+    environment:
+      POSTGRES_DB: synq
+      POSTGRES_USER: synq
+      POSTGRES_PASSWORD: synq
+    ports:
+      - "5432:5432"
+    volumes:
+      # 컨테이너를 껐다 켜도 데이터가 유지되도록 볼륨에 저장. 완전 초기화: docker compose down -v
+      - synq-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U synq -d synq"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  synq-postgres-data:
