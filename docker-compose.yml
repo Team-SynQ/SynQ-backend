@@ -7,7 +7,8 @@
 #   docker compose logs -f db # 로그 확인
 services:
   db:
-    image: postgres:16
+    # 순정 postgres 이미지에는 pgvector 확장 바이너리가 없어 CREATE EXTENSION vector 가 실패한다.
+    image: pgvector/pgvector:pg16
     container_name: synq-postgres
     # 로컬 개발용 기본값. application.yml 의 datasource 기본값과 반드시 일치해야 함.
     environment:

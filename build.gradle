@@ -22,10 +22,21 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
+
+	implementation 'org.flywaydb:flyway-core'
+	implementation 'org.flywaydb:flyway-database-postgresql'
+
+	// Hibernate 6.6 의 pgvector 지원
+	implementation "org.hibernate.orm:hibernate-vector:${dependencyManagement.managedVersions['org.hibernate.orm:hibernate-core']}"
+
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.testcontainers:junit-jupiter'
+	testImplementation 'org.testcontainers:postgresql'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
@@ -33,4 +44,7 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// Testcontainers 의 docker-java 는 기본적으로 낮은 Engine API 버전을 요청해서
+	// 최신 Docker(Engine API 최소 1.40)가 400 으로 거부한다. 명시적으로 맞춰준다.
+	systemProperty 'api.version', '1.44'
 }
