@@ -26,6 +26,9 @@ dependencies {
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 
+	// .env 를 Spring 프로퍼티 소스로 등록
+	implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+
 	// Hibernate 6.6 의 pgvector 지원
 	implementation "org.hibernate.orm:hibernate-vector:${dependencyManagement.managedVersions['org.hibernate.orm:hibernate-core']}"
 
