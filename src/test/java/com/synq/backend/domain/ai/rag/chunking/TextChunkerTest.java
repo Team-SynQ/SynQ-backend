@@ -112,4 +112,24 @@ class TextChunkerTest {
 		assertThatThrownBy(() -> new TextChunker(800, 800))
 				.isInstanceOf(IllegalArgumentException.class);
 	}
+
+	@Test
+	void 오버랩이_목표_크기보다_1_작으면_생성에_실패한다() {
+		// maxAtomSize 가 0 이 되어 hardSplit 이 무한 루프에 빠진다.
+		assertThatThrownBy(() -> new TextChunker(800, 799))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void 오버랩이_음수면_생성에_실패한다() {
+		// tailOf 의 substring(length - overlap) 이 길이를 넘어 예외가 난다.
+		assertThatThrownBy(() -> new TextChunker(800, -1))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void 목표_크기가_양수가_아니면_생성에_실패한다() {
+		assertThatThrownBy(() -> new TextChunker(0, 0))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
 }

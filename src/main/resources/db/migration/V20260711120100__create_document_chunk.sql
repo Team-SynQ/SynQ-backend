@@ -18,9 +18,6 @@ CREATE TABLE document_chunk (
     UNIQUE (reference_material_id, chunk_index)
 );
 
-CREATE INDEX idx_document_chunk_material
-    ON document_chunk (reference_material_id);
-
 -- 코사인 유사도 검색용. 검색 기능은 아직 없음.
 CREATE INDEX idx_document_chunk_embedding
     ON document_chunk USING hnsw (embedding vector_cosine_ops);

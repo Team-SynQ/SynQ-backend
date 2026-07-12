@@ -23,8 +23,18 @@ public class TextChunker {
 
 	public TextChunker(@Value("${rag.chunking.target-size:800}") int targetSize,
 					   @Value("${rag.chunking.overlap:100}") int overlap) {
-		if (overlap >= targetSize) {
-			throw new IllegalArgumentException("오버랩은 목표 크기보다 작아야 합니다.");
+		if (targetSize <= 0) {
+			throw new IllegalArgumentException("목표 크기는 양수여야 합니다: " + targetSize);
+		}
+		if (overlap < 0) {
+			// tailOf 의 substring(length - overlap) 이 길이를 넘어 예외가 난다.
+			throw new IllegalArgumentException("오버랩은 음수일 수 없습니다: " + overlap);
+		}
+		// maxAtomSize 가 0 이면 hardSplit 의 start += maxAtomSize 가 무한 루프에 빠진다.
+		if (targetSize - overlap - 1 < 1) {
+			throw new IllegalArgumentException(
+					"오버랩(%d)이 너무 큽니다. targetSize(%d) - overlap - 1 >= 1 이어야 합니다."
+							.formatted(overlap, targetSize));
 		}
 		this.targetSize = targetSize;
 		this.overlap = overlap;

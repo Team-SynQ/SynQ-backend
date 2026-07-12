@@ -43,6 +43,7 @@ application-local.yml
 
 ### 시크릿 (API 키 등 - 커밋 금지) ###
 .env
+.env.*
 !.env.example
 
 ### AI 산출물

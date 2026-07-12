@@ -49,5 +49,6 @@ tasks.named('test') {
 	useJUnitPlatform()
 	// Testcontainers 의 docker-java 는 기본적으로 낮은 Engine API 버전을 요청해서
 	// 최신 Docker(Engine API 최소 1.40)가 400 으로 거부한다. 명시적으로 맞춰준다.
-	systemProperty 'api.version', '1.44'
+	// 최소 1.44 (Docker 25+). 더 낮은 Docker 를 쓰면 DOCKER_API_VERSION 으로 덮어쓴다.
+	systemProperty 'api.version', System.getenv('DOCKER_API_VERSION') ?: '1.44'
 }

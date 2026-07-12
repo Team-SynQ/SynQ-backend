@@ -3,8 +3,10 @@ package com.synq.backend.domain.ai.client;
 import com.synq.backend.domain.ai.client.dto.GeminiEmbeddingRequest;
 import com.synq.backend.domain.ai.client.dto.GeminiEmbeddingResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.util.ArrayList;
@@ -49,7 +51,8 @@ public class GeminiEmbeddingClient implements EmbeddingClient {
 	}
 
 	/**
-	 * 일시적 실패(네트워크, 429, 5xx)는 지수 백오프로 재시도한다.
+	 * 일시적 실패(네트워크, 429, 5xx)만 지수 백오프로 재시도한다.
+	 * 4xx(401, 400 등)는 다시 호출해도 결과가 같으므로 즉시 실패시킨다.
 	 * spring-retry 의 @Retryable 은 같은 클래스 내부 호출에서 프록시를 안 거쳐 조용히 무시되므로 직접 구현한다.
 	 */
 	private List<float[]> embedBatchWithRetry(List<String> batch) {
@@ -60,18 +63,30 @@ public class GeminiEmbeddingClient implements EmbeddingClient {
 		for (int attempt = 1; attempt <= maxAttempts; attempt++) {
 			try {
 				return embedBatch(batch);
+			} catch (HttpClientErrorException e) {
+				if (e.getStatusCode().value() != HttpStatus.TOO_MANY_REQUESTS.value()) {
+					throw new EmbeddingException(
+							"임베딩 호출이 클라이언트 오류로 실패했습니다: %s".formatted(e.getStatusCode()), e);
+				}
+				lastFailure = e;
+				logRetry(attempt, maxAttempts, e);
 			} catch (RuntimeException e) {
 				lastFailure = e;
-				log.warn("임베딩 호출 실패 (시도 {}/{}): {}", attempt, maxAttempts, e.toString());
-				if (attempt == maxAttempts) {
-					break;
-				}
-				sleep(backoff);
-				backoff *= properties.embedding().backoffMultiplier();
+				logRetry(attempt, maxAttempts, e);
 			}
+
+			if (attempt == maxAttempts) {
+				break;
+			}
+			sleep(backoff);
+			backoff *= properties.embedding().backoffMultiplier();
 		}
 		throw new EmbeddingException(
 				"임베딩 호출이 %d회 재시도 후에도 실패했습니다.".formatted(maxAttempts), lastFailure);
+	}
+
+	private void logRetry(int attempt, int maxAttempts, RuntimeException e) {
+		log.warn("임베딩 호출 실패 (시도 {}/{}): {}", attempt, maxAttempts, e.toString());
 	}
 
 	private List<float[]> embedBatch(List<String> batch) {
@@ -108,6 +123,12 @@ public class GeminiEmbeddingClient implements EmbeddingClient {
 	 * gemini-embedding-001 은 3072차원이 기본이고, 768 같은 축소 차원에서는 벡터가 정규화되어 있지 않다.
 	 */
 	private float[] normalize(List<Float> values) {
+		int expected = properties.embedding().dimensions();
+		if (values.size() != expected) {
+			throw new EmbeddingException(
+					"임베딩 차원(%d)이 기대값(%d)과 다릅니다.".formatted(values.size(), expected));
+		}
+
 		double sumOfSquares = 0;
 		for (float value : values) {
 			sumOfSquares += (double) value * value;

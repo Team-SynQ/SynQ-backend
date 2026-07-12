@@ -3,6 +3,7 @@ package com.synq.backend.domain.ai.client;
 import org.assertj.core.data.Offset;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -20,7 +21,9 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest;
 
 class GeminiEmbeddingClientTest {
 
@@ -129,6 +132,46 @@ class GeminiEmbeddingClientTest {
 		List<float[]> vectors = client.embedDocuments(List.of("텍스트"));
 
 		assertThat(vectors).hasSize(1);
+		server.verify();
+	}
+
+	@Test
+	void 인증_오류는_재시도하지_않고_즉시_실패한다() {
+		// 401 은 다시 호출해도 결과가 같다. 재시도하면 21초를 버리고 진짜 원인이 로그에 묻힌다.
+		server.expect(times(1), requestTo(URL))
+				.andRespond(withUnauthorizedRequest());
+
+		assertThatThrownBy(() -> client.embedDocuments(List.of("텍스트")))
+				.isInstanceOf(EmbeddingException.class)
+				.hasMessageContaining("클라이언트 오류");
+
+		server.verify();  // 호출이 1번뿐이었는지 확인
+	}
+
+	@Test
+	void 요청_과다_429_는_재시도한다() {
+		// 429 는 4xx 지만 잠시 뒤 다시 하면 성공할 수 있다.
+		server.expect(requestTo(URL))
+				.andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+		server.expect(requestTo(URL))
+				.andRespond(withSuccess(responseWith(1), MediaType.APPLICATION_JSON));
+
+		List<float[]> vectors = client.embedDocuments(List.of("텍스트"));
+
+		assertThat(vectors).hasSize(1);
+		server.verify();
+	}
+
+	@Test
+	void 응답_벡터의_차원이_다르면_실패한다() {
+		// 768 이 아닌 벡터가 오면 pgvector 컬럼에 넣는 시점이 아니라 여기서 걸러야 한다.
+		String wrongDimension = "{\"embeddings\":[{\"values\":[1.0,2.0,3.0]}]}";
+		server.expect(times(3), requestTo(URL))
+				.andRespond(withSuccess(wrongDimension, MediaType.APPLICATION_JSON));
+
+		assertThatThrownBy(() -> client.embedDocuments(List.of("텍스트")))
+				.isInstanceOf(EmbeddingException.class);
+
 		server.verify();
 	}
 
