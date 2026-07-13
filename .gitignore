@@ -40,3 +40,14 @@ out/
 application-local.yml
 **/application-local.yml
 !application-local.yml.example
+
+### 시크릿 (API 키 등 - 커밋 금지) ###
+.env
+.env.*
+!.env.example
+
+### AI 산출물
+.claude/
+CLAUDE.md
+AGENTS.md
+docs/superpowers/
