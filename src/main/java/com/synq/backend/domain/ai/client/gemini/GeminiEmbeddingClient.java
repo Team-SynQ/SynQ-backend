@@ -1,7 +1,9 @@
-package com.synq.backend.domain.ai.client;
+package com.synq.backend.domain.ai.client.gemini;
 
-import com.synq.backend.domain.ai.client.dto.GeminiEmbeddingRequest;
-import com.synq.backend.domain.ai.client.dto.GeminiEmbeddingResponse;
+import com.synq.backend.domain.ai.client.EmbeddingClient;
+import com.synq.backend.domain.ai.client.EmbeddingException;
+import com.synq.backend.domain.ai.client.gemini.dto.GeminiEmbeddingRequest;
+import com.synq.backend.domain.ai.client.gemini.dto.GeminiEmbeddingResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
