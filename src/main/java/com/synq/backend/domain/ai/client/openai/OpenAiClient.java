@@ -63,7 +63,10 @@ public class OpenAiClient {
 		if (!StringUtils.hasText(properties.apiKey())) {
 			throw new OpenAiException(OpenAiErrorCode.API_KEY_MISSING);
 		}
-		if (!StringUtils.hasText(input) || !StringUtils.hasText(model)) {
+		if (!StringUtils.hasText(model)) {
+			throw new OpenAiException(OpenAiErrorCode.MODEL_MISSING);
+		}
+		if (!StringUtils.hasText(input)) {
 			throw new OpenAiException(OpenAiErrorCode.EMPTY_INPUT);
 		}
 	}
