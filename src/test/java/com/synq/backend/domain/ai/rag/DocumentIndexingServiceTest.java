@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DocumentIndexingServiceTest extends PostgresTestContainer {
 
@@ -61,7 +62,9 @@ class DocumentIndexingServiceTest extends PostgresTestContainer {
 	void 임베딩이_실패하면_청크를_남기지_않고_FAILED_로_전이한다() {
 		embeddingClient.failNext();
 
-		service.index(MATERIAL_ID, longText());
+		// 동기 호출자는 실패를 예외로 전달받는다. 그 와중에도 청크 정리와 FAILED 전이는 이뤄진다.
+		assertThatThrownBy(() -> service.index(MATERIAL_ID, longText()))
+				.isInstanceOf(RuntimeException.class);
 
 		assertThat(repository.findByReferenceMaterialIdOrderByChunkIndexAsc(MATERIAL_ID)).isEmpty();
 		assertThat(port.statusOf(MATERIAL_ID)).isEqualTo("FAILED");
@@ -83,7 +86,8 @@ class DocumentIndexingServiceTest extends PostgresTestContainer {
 
 	@Test
 	void 텍스트가_비어_있으면_FAILED_로_전이한다() {
-		service.index(MATERIAL_ID, "   ");
+		assertThatThrownBy(() -> service.index(MATERIAL_ID, "   "))
+				.isInstanceOf(RuntimeException.class);
 
 		assertThat(repository.findByReferenceMaterialIdOrderByChunkIndexAsc(MATERIAL_ID)).isEmpty();
 		assertThat(port.statusOf(MATERIAL_ID)).isEqualTo("FAILED");

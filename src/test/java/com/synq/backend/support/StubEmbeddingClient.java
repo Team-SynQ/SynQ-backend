@@ -18,6 +18,7 @@ public class StubEmbeddingClient implements EmbeddingClient {
 	@Override
 	public List<float[]> embedDocuments(List<String> texts) {
 		if (shouldFail) {
+			shouldFail = false;
 			throw new EmbeddingException("스텁이 강제로 실패시킴");
 		}
 		List<float[]> vectors = new ArrayList<>(texts.size());

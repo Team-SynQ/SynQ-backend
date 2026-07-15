@@ -25,12 +25,17 @@ public class DocumentIndexingService implements DocumentIndexer {
 	@Override
 	@Async("indexingExecutor")
 	public void indexAsync(Long referenceMaterialId, String extractedText) {
-		index(referenceMaterialId, extractedText);
+		try {
+			index(referenceMaterialId, extractedText);
+		} catch (RuntimeException e) {
+			log.error("비동기 인덱싱 실패. referenceMaterialId={}", referenceMaterialId, e);
+		}
 	}
 
 	/**
 	 * 청킹 → 임베딩 → 저장. all-or-nothing 이다.
-	 * 실패하면 청크를 하나도 남기지 않고 FAILED 로 표시한다. 몇 번을 돌려도 결과가 같다(멱등).
+	 * 실패하면 청크를 하나도 남기지 않고 FAILED 로 표시한 뒤 예외를 다시 던진다
+	 * 몇 번을 돌려도 결과가 같다(멱등).
 	 */
 	public void index(Long referenceMaterialId, String extractedText) {
 		referenceMaterialPort.markProcessing(referenceMaterialId);
@@ -62,8 +67,20 @@ public class DocumentIndexingService implements DocumentIndexer {
 
 		} catch (RuntimeException e) {
 			log.error("문서 인덱싱 실패. referenceMaterialId={}", referenceMaterialId, e);
-			chunkWriter.deleteAll(referenceMaterialId);
+			// 정리와 상태 전이를 분리한다. 정리가 실패해도 markFailed 는 반드시 실행돼야
+			// 문서가 PROCESSING 에 영원히 갇히지 않는다.
+			cleanupQuietly(referenceMaterialId);
 			referenceMaterialPort.markFailed(referenceMaterialId, e.getMessage());
+			throw e;
+		}
+	}
+
+	/** 실패 후 잔여 청크 정리. 이 정리가 실패해도 원래 인덱싱 예외를 가리지 않도록 삼킨다. */
+	private void cleanupQuietly(Long referenceMaterialId) {
+		try {
+			chunkWriter.deleteAll(referenceMaterialId);
+		} catch (RuntimeException cleanupError) {
+			log.error("실패 후 청크 정리 실패. referenceMaterialId={}", referenceMaterialId, cleanupError);
 		}
 	}
 }

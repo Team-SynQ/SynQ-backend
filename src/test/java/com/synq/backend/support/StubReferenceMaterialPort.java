@@ -2,16 +2,17 @@ package com.synq.backend.support;
 
 import com.synq.backend.domain.ai.rag.port.ReferenceMaterialPort;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** reference 도메인 구현 없이 파이프라인을 검증하기 위한 인메모리 대역. */
 public class StubReferenceMaterialPort implements ReferenceMaterialPort {
 
-	private final Map<Long, String> texts = new HashMap<>();
-	private final Map<Long, String> statuses = new HashMap<>();
-	private final Map<Long, String> failureReasons = new HashMap<>();
+	// @Async 인덱싱과 공유 빈으로 쓰일 때 동시 접근이 가능하므로 스레드 안전한 맵을 쓴다.
+	private final Map<Long, String> texts = new ConcurrentHashMap<>();
+	private final Map<Long, String> statuses = new ConcurrentHashMap<>();
+	private final Map<Long, String> failureReasons = new ConcurrentHashMap<>();
 
 	public void register(Long id, String extractedText) {
 		texts.put(id, extractedText);
