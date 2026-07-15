@@ -28,6 +28,12 @@ spring:
         jdbc:
           time_zone: Asia/Seoul
 
+jwt:
+  # 로컬 기본값 제공(개발 편의). 운영에서는 JWT_SECRET 환경변수로 반드시 덮어쓴다.
+  secret: ${JWT_SECRET:local-dev-only-secret-please-override-in-production-env}
+  access-token-expiration-minutes: 30
+  refresh-token-expiration-days: 14
+
 gemini:
   api-key: ${GEMINI_API_KEY}
   base-url: https://generativelanguage.googleapis.com/v1beta
