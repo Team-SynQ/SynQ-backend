@@ -8,7 +8,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.Executor;
 
 @Configuration
-@EnableAsync
+// proxyTargetClass=true: @Async 빈을 CGLIB(클래스) 프록시로 감싼다.
+@EnableAsync(proxyTargetClass = true)
 public class AsyncConfig {
 
 	/**
