@@ -16,11 +16,12 @@ class OpenAiClientSmokeTest {
 
 	@Test
 	void callsOpenAiResponsesApi() {
-		Map<String, String> localEnv = loadDotEnv();
-		String apiKey = valueOf("OPENAI_API_KEY", localEnv);
-
+		Map<String, String> localEnv = loadDotEnv(false);
 		assumeTrue("true".equalsIgnoreCase(valueOf("RUN_OPENAI_SMOKE_TEST", localEnv)),
 				"RUN_OPENAI_SMOKE_TEST=true 일 때만 실제 OpenAI API를 호출합니다.");
+
+		localEnv = loadDotEnv(true);
+		String apiKey = valueOf("OPENAI_API_KEY", localEnv);
 		assumeTrue(apiKey != null && !apiKey.isBlank(),
 				"OPENAI_API_KEY가 설정되어 있어야 실제 OpenAI API를 호출합니다.");
 
@@ -50,7 +51,7 @@ class OpenAiClientSmokeTest {
 		return value == null || value.isBlank() ? localEnv.get(name) : value;
 	}
 
-	private Map<String, String> loadDotEnv() {
+	private Map<String, String> loadDotEnv(boolean failOnError) {
 		Path path = Path.of(".env");
 		if (!Files.exists(path)) {
 			return Map.of();
@@ -69,6 +70,9 @@ class OpenAiClientSmokeTest {
 			}
 			return values;
 		} catch (IOException e) {
+			if (!failOnError) {
+				return Map.of();
+			}
 			throw new IllegalStateException(".env 파일을 읽지 못했습니다.", e);
 		}
 	}

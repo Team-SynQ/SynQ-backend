@@ -28,7 +28,8 @@ public abstract class PostgresTestContainer {
 		registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
 		registry.add("spring.datasource.username", POSTGRES::getUsername);
 		registry.add("spring.datasource.password", POSTGRES::getPassword);
-		// 테스트는 실제 Gemini 를 호출하지 않는다. 키가 없으면 컨텍스트 로딩이 실패하므로 더미를 넣는다.
+		// 테스트는 실제 외부 AI API를 호출하지 않는다. 키 검증을 통과할 더미 값을 넣는다.
 		registry.add("gemini.api-key", () -> "test-key");
+		registry.add("openai.api-key", () -> "test-key");
 	}
 }

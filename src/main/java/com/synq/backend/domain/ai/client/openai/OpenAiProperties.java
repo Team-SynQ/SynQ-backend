@@ -10,7 +10,7 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "openai")
 @Validated
 public record OpenAiProperties(
-		String apiKey,
+		@NotBlank String apiKey,
 		@NotBlank String baseUrl,
 		@NotBlank String model,
 		@NotNull Duration timeout
