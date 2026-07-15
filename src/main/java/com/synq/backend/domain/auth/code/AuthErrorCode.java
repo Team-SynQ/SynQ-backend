@@ -13,7 +13,16 @@ public enum AuthErrorCode implements BaseCode {
 			"이미 가입된 이메일입니다."),
 	INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED,
 			"AUTH401_2",
-			"이메일 또는 비밀번호가 올바르지 않습니다.");
+			"이메일 또는 비밀번호가 올바르지 않습니다."),
+	INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED,
+			"AUTH401_3",
+			"유효하지 않은 refresh token 입니다."),
+	REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED,
+			"AUTH401_4",
+			"만료된 refresh token 입니다."),
+	INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED,
+			"AUTH401_5",
+			"유효하지 않은 access token 입니다.");
 
 	private final HttpStatus status;
 	private final String code;
