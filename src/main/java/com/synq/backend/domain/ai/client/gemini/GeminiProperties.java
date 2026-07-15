@@ -1,4 +1,4 @@
-package com.synq.backend.domain.ai.client;
+package com.synq.backend.domain.ai.client.gemini;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;

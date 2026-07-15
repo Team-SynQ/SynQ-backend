@@ -1,4 +1,4 @@
-package com.synq.backend.domain.ai.client.dto;
+package com.synq.backend.domain.ai.client.gemini.dto;
 
 import java.util.List;
 
