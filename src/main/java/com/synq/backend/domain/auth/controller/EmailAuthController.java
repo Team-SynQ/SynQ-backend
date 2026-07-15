@@ -8,6 +8,7 @@ import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,12 +26,14 @@ public class EmailAuthController {
 	}
 
 	@PostMapping("/signup")
-	public ApiResponse<TokenResponse> signup(@Valid @RequestBody SignupRequest request) {
-		return ApiResponse.onSuccess(GeneralSuccessCode.CREATED, emailAuthService.signup(request));
+	public ResponseEntity<ApiResponse<TokenResponse>> signup(@Valid @RequestBody SignupRequest request) {
+		return ResponseEntity.status(GeneralSuccessCode.CREATED.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.CREATED, emailAuthService.signup(request)));
 	}
 
 	@PostMapping("/login")
-	public ApiResponse<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
-		return ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, emailAuthService.login(request));
+	public ResponseEntity<ApiResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest request) {
+		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, emailAuthService.login(request)));
 	}
 }

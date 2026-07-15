@@ -26,8 +26,8 @@ public class RefreshToken {
 	@Column(name = "user_id", nullable = false)
 	private Long userId;
 
-	@Column(nullable = false, length = 500)
-	private String token;
+	@Column(name = "token_hash", nullable = false, length = 500)
+	private String tokenHash;
 
 	@Column(name = "expires_at", nullable = false)
 	private OffsetDateTime expiresAt;
@@ -35,14 +35,14 @@ public class RefreshToken {
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private OffsetDateTime createdAt;
 
-	private RefreshToken(Long userId, String token, OffsetDateTime expiresAt) {
+	private RefreshToken(Long userId, String tokenHash, OffsetDateTime expiresAt) {
 		this.userId = userId;
-		this.token = token;
+		this.tokenHash = tokenHash;
 		this.expiresAt = expiresAt;
 	}
 
-	public static RefreshToken of(Long userId, String token, OffsetDateTime expiresAt) {
-		return new RefreshToken(userId, token, expiresAt);
+	public static RefreshToken of(Long userId, String tokenHash, OffsetDateTime expiresAt) {
+		return new RefreshToken(userId, tokenHash, expiresAt);
 	}
 
 	public boolean isExpired(OffsetDateTime now) {

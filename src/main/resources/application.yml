@@ -29,8 +29,7 @@ spring:
           time_zone: Asia/Seoul
 
 jwt:
-  # 로컬 기본값 제공(개발 편의). 운영에서는 JWT_SECRET 환경변수로 반드시 덮어쓴다.
-  secret: ${JWT_SECRET:local-dev-only-secret-please-override-in-production-env}
+  secret: ${JWT_SECRET}
   access-token-expiration-minutes: 30
   refresh-token-expiration-days: 14
 
@@ -72,3 +71,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-please-override-in-production-env}

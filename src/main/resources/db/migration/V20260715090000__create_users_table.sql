@@ -9,8 +9,9 @@ CREATE TABLE users (
     password_hash            VARCHAR(255),
     provider                 VARCHAR(20) NOT NULL
         CHECK (provider IN ('LOCAL', 'GOOGLE', 'KAKAO', 'NAVER')),
-    -- LOCAL 은 provider_id 가 없다.
-    provider_id              VARCHAR(255),
+    -- LOCAL 은 provider_id 가 없다. 그 외 provider는 반드시 있어야 한다(AUTH-03 계정 식별 기준).
+    provider_id              VARCHAR(255)
+        CHECK (provider = 'LOCAL' OR provider_id IS NOT NULL),
     role                     VARCHAR(30)
         CHECK (role IS NULL OR role IN (
             'PLANNING_OPERATION', 'DESIGN_CONTENT', 'DEV_TECH', 'MARKETING_BRANDING',
