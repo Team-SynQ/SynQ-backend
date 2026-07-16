@@ -3,9 +3,11 @@ package com.synq.backend.domain.ai.summary.mock;
 import com.synq.backend.domain.ai.summary.domain.TranscriptSegment;
 import com.synq.backend.domain.ai.summary.domain.TranscriptReader;
 import java.util.List;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile({"local", "test"})
 public class MockTranscriptReader implements TranscriptReader {
 
 	@Override

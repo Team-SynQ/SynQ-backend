@@ -26,7 +26,11 @@ public class MeetingSummaryService {
 		this.processor = processor;
 	}
 
-	public SummaryJob request(Long meetingId) {
+	public synchronized SummaryJob request(Long meetingId) {
+		jobStore.findActiveByMeetingId(meetingId).ifPresent(job -> {
+			throw new GeneralException(GeneralErrorCode.CONFLICT);
+		});
+
 		SummaryJob job = jobStore.save(SummaryJob.queued(meetingId));
 		// 요청은 접수만 하고, 실제 생성은 비동기 Processor가 이어서 수행한다.
 		processor.processAsync(job.id());

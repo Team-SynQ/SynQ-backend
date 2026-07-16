@@ -55,12 +55,6 @@ openai:
   model: ${OPENAI_MODEL:gpt-5.4-nano}
   timeout: ${OPENAI_TIMEOUT:30s}
 
-ai:
-  summary:
-    # #23에서는 외부 키 없이도 전체 흐름을 검증할 수 있도록 fake가 기본값이다.
-    # 실제 OpenAI 호출 확인 시 AI_SUMMARY_CLIENT=openai 로 변경한다.
-    client: ${AI_SUMMARY_CLIENT:fake}
-
 ---
 # local(dev) 전용 편의 설정
 spring:
@@ -72,3 +66,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+ai:
+  summary:
+    # Mock 구현체는 local/test에서만 활성화된다. 실제 OpenAI 호출 확인 시 openai로 변경한다.
+    client: ${AI_SUMMARY_CLIENT:fake}

@@ -5,9 +5,11 @@ import com.synq.backend.domain.ai.summary.domain.SummaryContext;
 import com.synq.backend.domain.ai.summary.domain.SummaryAiClient;
 import java.util.List;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile({"local", "test"})
 @ConditionalOnProperty(prefix = "ai.summary", name = "client", havingValue = "fake", matchIfMissing = true)
 public class FakeSummaryAiClient implements SummaryAiClient {
 
