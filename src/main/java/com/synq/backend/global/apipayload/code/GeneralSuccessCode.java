@@ -13,6 +13,9 @@ public enum GeneralSuccessCode implements BaseCode {
 	CREATED(HttpStatus.CREATED,
 			"COMMON201",
 			"성공적으로 응답이 생성되었습니다."),
+	ACCEPTED(HttpStatus.ACCEPTED,
+			"COMMON202",
+			"요청을 접수했습니다."),
 	FOUND(HttpStatus.FOUND,
 			"FOUND200",
 			"조회에 성공했습니다.")

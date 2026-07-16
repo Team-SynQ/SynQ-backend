@@ -50,10 +50,16 @@ springdoc:
 
 openai:
   # 실제 키는 OPENAI_API_KEY 환경변수로 주입한다.
-  api-key: ${OPENAI_API_KEY}
+  api-key: ${OPENAI_API_KEY:}
   base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
   model: ${OPENAI_MODEL:gpt-5.4-nano}
   timeout: ${OPENAI_TIMEOUT:30s}
+
+ai:
+  summary:
+    # #23에서는 외부 키 없이도 전체 흐름을 검증할 수 있도록 fake가 기본값이다.
+    # 실제 OpenAI 호출 확인 시 AI_SUMMARY_CLIENT=openai 로 변경한다.
+    client: ${AI_SUMMARY_CLIENT:fake}
 
 ---
 # local(dev) 전용 편의 설정
