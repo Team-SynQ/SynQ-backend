@@ -1,6 +1,7 @@
 package com.synq.backend.support;
 
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -11,6 +12,7 @@ import org.testcontainers.utility.DockerImageName;
  * DB 가 필요한 테스트는 이 클래스를 상속한다.
  */
 @SpringBootTest
+@Import(TestPortConfig.class)
 public abstract class PostgresTestContainer {
 
 	// static 이라 테스트 클래스마다 새로 뜨지 않는다.
