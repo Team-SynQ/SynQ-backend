@@ -4,7 +4,7 @@
 CREATE TABLE users (
     user_id                  BIGSERIAL PRIMARY KEY,
     name                     VARCHAR(20) NOT NULL,
-    email                    VARCHAR(255) NOT NULL,
+    email                    VARCHAR(255),
     -- LOCAL(dev 전용 이메일 로그인)에서만 사용. 소셜 로그인 유저는 NULL.
     password_hash            VARCHAR(255),
     provider                 VARCHAR(20) NOT NULL

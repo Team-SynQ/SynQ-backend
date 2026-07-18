@@ -29,7 +29,7 @@ public class User {
 	@Column(nullable = false, length = 20)
 	private String name;
 
-	@Column(nullable = false)
+	// 소셜 로그인 유저는 null일 수 있다.
 	private String email;
 
 	// LOCAL(dev 전용 이메일 로그인)에서만 사용. 소셜 로그인 유저는 null.
