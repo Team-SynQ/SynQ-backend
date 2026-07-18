@@ -34,7 +34,7 @@ public class SummaryContextBuilder {
 		}
 
 		String transcript = segments.stream()
-				.map(segment -> "%s: %s".formatted(segment.speakerName(), segment.content()))
+				.map(TranscriptSegment::content)
 				.collect(Collectors.joining("\n"));
 		String rollingSummary = meetingContextReader.findRollingSummary(meetingId).orElse("없음");
 		// 전사 전체를 검색어로 사용해 회의 내용과 관련된 참고자료만 가져오도록 한다.

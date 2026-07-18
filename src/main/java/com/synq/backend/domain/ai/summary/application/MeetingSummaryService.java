@@ -7,6 +7,7 @@ import com.synq.backend.domain.ai.summary.domain.SummaryJobStore;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import java.util.UUID;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -33,7 +34,12 @@ public class MeetingSummaryService {
 
 		SummaryJob job = jobStore.save(SummaryJob.queued(meetingId));
 		// 요청은 접수만 하고, 실제 생성은 비동기 Processor가 이어서 수행한다.
-		processor.processAsync(job.id());
+		try {
+			processor.processAsync(job.id());
+		} catch (TaskRejectedException e) {
+			jobStore.save(job.fail("요약 작업 대기열이 가득 찼습니다."));
+			throw new GeneralException(GeneralErrorCode.SERVICE_UNAVAILABLE);
+		}
 		return job;
 	}
 

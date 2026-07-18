@@ -27,7 +27,7 @@ class SummaryJobProcessorTest {
 
 		assertThat(jobStore.findById(job.id()).orElseThrow().status()).isEqualTo(SummaryJobStatus.COMPLETED);
 		assertThat(summaryStore.findLatestByMeetingId(1L).orElseThrow().content().actionItems())
-				.contains("민규: API 명세 초안을 작성한다.");
+				.contains("API 명세 초안을 작성한다.");
 	}
 
 	@Test

@@ -29,16 +29,18 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 @SpringJUnitConfig(SummaryJobAsyncTest.AsyncTestConfig.class)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class SummaryJobAsyncTest {
 
 	@jakarta.annotation.Resource
 	private MeetingSummaryService meetingSummaryService;
 
 	@jakarta.annotation.Resource
-	private SummaryJobStore jobStore;
+	private RecordingSummaryJobStore jobStore;
 
 	@jakarta.annotation.Resource
 	private MeetingSummaryStore summaryStore;
@@ -63,6 +65,25 @@ class SummaryJobAsyncTest {
 		assertThat(summaryStore.findLatestByMeetingId(1L)).isPresent();
 	}
 
+	@Test
+	void 요약_실행_대기열이_가득차면_Job을_실패로_남기고_503을_반환한다() throws Exception {
+		SummaryJob runningJob = meetingSummaryService.request(1L);
+		assertThat(summaryAiClient.awaitStarted()).isTrue();
+
+		assertThatThrownBy(() -> meetingSummaryService.request(2L))
+				.isInstanceOf(GeneralException.class)
+				.extracting("code")
+				.isEqualTo(GeneralErrorCode.SERVICE_UNAVAILABLE);
+
+		SummaryJob rejectedJob = jobStore.lastSavedJob();
+		assertThat(rejectedJob.meetingId()).isEqualTo(2L);
+		assertThat(rejectedJob.status()).isEqualTo(SummaryJobStatus.FAILED);
+		assertThat(rejectedJob.errorMessage()).contains("대기열이 가득");
+
+		summaryAiClient.release();
+		assertThat(waitForStatus(runningJob.id())).isEqualTo(SummaryJobStatus.COMPLETED);
+	}
+
 	private SummaryJobStatus waitForStatus(java.util.UUID jobId) throws InterruptedException {
 		for (int attempt = 0; attempt < 100; attempt++) {
 			SummaryJobStatus status = jobStore.findById(jobId).orElseThrow().status();
@@ -83,13 +104,14 @@ class SummaryJobAsyncTest {
 			ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 			executor.setCorePoolSize(1);
 			executor.setMaxPoolSize(1);
+			executor.setQueueCapacity(0);
 			executor.initialize();
 			return executor;
 		}
 
 		@Bean
-		SummaryJobStore summaryJobStore() {
-			return new InMemorySummaryJobStore();
+		RecordingSummaryJobStore summaryJobStore() {
+			return new RecordingSummaryJobStore();
 		}
 
 		@Bean
@@ -148,6 +170,21 @@ class SummaryJobAsyncTest {
 				SummaryJobProcessor processor
 		) {
 			return new MeetingSummaryService(jobStore, summaryStore, processor);
+		}
+	}
+
+	static class RecordingSummaryJobStore extends InMemorySummaryJobStore {
+
+		private SummaryJob lastSavedJob;
+
+		@Override
+		public SummaryJob save(SummaryJob job) {
+			lastSavedJob = super.save(job);
+			return lastSavedJob;
+		}
+
+		SummaryJob lastSavedJob() {
+			return lastSavedJob;
 		}
 	}
 

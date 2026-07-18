@@ -51,7 +51,7 @@ class AiSummaryControllerTest {
 		mockMvc.perform(get("/meetings/{meetingId}/summary", 1L))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.result.overallSummary").isNotEmpty())
-				.andExpect(jsonPath("$.result.actionItems[0]").value("민규: API 명세 초안을 작성한다."));
+				.andExpect(jsonPath("$.result.actionItems[0]").value("API 명세 초안을 작성한다."));
 	}
 
 	private String waitForCompletion(String jobId) throws Exception {

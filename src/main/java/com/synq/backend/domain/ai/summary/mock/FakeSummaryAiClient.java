@@ -20,7 +20,7 @@ public class FakeSummaryAiClient implements SummaryAiClient {
 				"회의 후 AI 요약 API를 우선 구현하고, 전사와 참고자료를 함께 활용하기로 했습니다.",
 				List.of("회의 후 AI 요약", "전사와 참고자료 활용", "SSE 적용 시점"),
 				List.of("이번 스프린트에서 회의 후 AI 요약 API 기본 흐름을 구현한다."),
-				List.of("민규: API 명세 초안을 작성한다."),
+				List.of("API 명세 초안을 작성한다."),
 				List.of("SSE 적용 시점을 다음 회의에서 결정한다.")
 		);
 	}
