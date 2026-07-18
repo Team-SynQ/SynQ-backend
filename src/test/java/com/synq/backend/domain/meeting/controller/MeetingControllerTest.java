@@ -49,11 +49,12 @@ class MeetingControllerTest extends PostgresTestContainer {
 	}
 
 	@Test
-	void 동의하지_않으면_400을_반환한다() throws Exception {
+	void 동의하지_않으면_400과_도메인_에러코드를_반환한다() throws Exception {
 		mockMvc.perform(post("/projects/{projectId}/meetings", 1L)
 						.header("X-User-Id", 10L)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"consentAgreed\": false}"))
-				.andExpect(status().isBadRequest());
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("MEETING400_1"));
 	}
 }

@@ -1,12 +1,12 @@
-package com.synq.backend.domain.meeting;
+package com.synq.backend.domain.meeting.service;
 
+import com.synq.backend.domain.meeting.code.MeetingErrorCode;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
 import com.synq.backend.domain.meeting.port.ProjectMembershipChecker;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
-import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,10 +28,10 @@ public class MeetingService {
 	@Transactional
 	public Meeting create(Long projectId, Long userId, Boolean consentAgreed) {
 		if (consentAgreed == null || !consentAgreed) {
-			throw new GeneralException(GeneralErrorCode.BAD_REQUEST);
+			throw new GeneralException(MeetingErrorCode.CONSENT_REQUIRED);
 		}
 		if (!projectMembershipChecker.isMember(projectId, userId)) {
-			throw new GeneralException(GeneralErrorCode.FORBIDDEN);
+			throw new GeneralException(MeetingErrorCode.NOT_PROJECT_MEMBER);
 		}
 
 		Meeting meeting = meetingRepository.save(Meeting.of(projectId, temporaryTitle()));

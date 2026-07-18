@@ -1,9 +1,9 @@
 package com.synq.backend.domain.meeting.controller;
 
-import com.synq.backend.domain.meeting.MeetingService;
 import com.synq.backend.domain.meeting.dto.MeetingCreateRequest;
 import com.synq.backend.domain.meeting.dto.MeetingCreateResponse;
 import com.synq.backend.domain.meeting.entity.Meeting;
+import com.synq.backend.domain.meeting.service.MeetingService;
 import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
 import lombok.RequiredArgsConstructor;
