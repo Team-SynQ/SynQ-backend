@@ -44,14 +44,28 @@ public class AuthTokenService {
 
 	@Transactional
 	public TokenResponse refresh(String rawRefreshToken) {
-		RefreshToken stored = refreshTokenRepository.findByTokenHash(sha256Hex(rawRefreshToken))
+		String oldTokenHash = sha256Hex(rawRefreshToken);
+		RefreshToken stored = refreshTokenRepository.findByTokenHash(oldTokenHash)
 				.orElseThrow(() -> new GeneralException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 
 		if (stored.isExpired(OffsetDateTime.now())) {
 			throw new GeneralException(AuthErrorCode.REFRESH_TOKEN_EXPIRED);
 		}
 
-		return issue(stored.getUserId(), false);
+		String newRefreshToken = UUID.randomUUID().toString();
+		OffsetDateTime expiresAt = OffsetDateTime.now().plusDays(jwtProperties.refreshTokenExpirationDays());
+
+		// compare-and-swap: 위에서 조회한 oldTokenHash가 그대로 남아있을 때만 회전 성공.
+		// 동시에 들어온 다른 refresh 요청이 먼저 회전시켰거나, logout(revoke)으로 이미 삭제됐으면
+		// 0행 갱신되어 여기서 걸러진다 - 로그아웃 후 세션이 되살아나는 것을 막는다.
+		int rotated = refreshTokenRepository.rotate(stored.getUserId(), oldTokenHash,
+				sha256Hex(newRefreshToken), expiresAt);
+		if (rotated == 0) {
+			throw new GeneralException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+		}
+
+		String accessToken = jwtProvider.createAccessToken(stored.getUserId());
+		return new TokenResponse(accessToken, newRefreshToken, false);
 	}
 
 	@Transactional
