@@ -6,6 +6,7 @@ import com.synq.backend.domain.ai.summary.domain.MeetingContextReader;
 import com.synq.backend.domain.ai.summary.domain.RagContextReader;
 import com.synq.backend.domain.ai.summary.domain.TranscriptReader;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -34,8 +35,7 @@ public class SummaryContextBuilder {
 
 		String transcript = segments.stream()
 				.map(segment -> "%s: %s".formatted(segment.speakerName(), segment.content()))
-				.reduce((left, right) -> left + "\n" + right)
-				.orElseThrow();
+				.collect(Collectors.joining("\n"));
 		String rollingSummary = meetingContextReader.findRollingSummary(meetingId).orElse("없음");
 		// 전사 전체를 검색어로 사용해 회의 내용과 관련된 참고자료만 가져오도록 한다.
 		List<String> referenceContexts = ragContextReader.findRelevantContexts(meetingId, transcript);

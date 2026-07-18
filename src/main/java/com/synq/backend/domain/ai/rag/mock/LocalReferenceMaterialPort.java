@@ -1,9 +1,7 @@
 package com.synq.backend.domain.ai.rag.mock;
 
 import com.synq.backend.domain.ai.rag.port.ReferenceMaterialPort;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
@@ -15,12 +13,9 @@ import org.springframework.stereotype.Component;
 @Profile("local")
 public class LocalReferenceMaterialPort implements ReferenceMaterialPort {
 
-	// 실제 reference 도메인이 준비되기 전까지 조회 요청은 빈 결과로 처리한다.
-	private final Map<Long, String> extractedTexts = new ConcurrentHashMap<>();
-
 	@Override
 	public Optional<String> findExtractedText(Long referenceMaterialId) {
-		return Optional.ofNullable(extractedTexts.get(referenceMaterialId));
+		return Optional.empty();
 	}
 
 	@Override

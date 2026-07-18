@@ -29,4 +29,23 @@ class SummaryJobProcessorTest {
 		assertThat(summaryStore.findLatestByMeetingId(1L).orElseThrow().content().actionItems())
 				.contains("민규: API 명세 초안을 작성한다.");
 	}
+
+	@Test
+	void 예외_메시지가_없어도_실패_상태와_원인을_저장한다() {
+		var jobStore = new InMemorySummaryJobStore();
+		var summaryStore = new InMemoryMeetingSummaryStore();
+		var contextBuilder = new SummaryContextBuilder(
+				new MockTranscriptReader(), new MockMeetingContextReader(), new MockRagContextReader());
+		var processor = new SummaryJobProcessor(
+				jobStore, summaryStore, contextBuilder, context -> {
+					throw new IllegalStateException();
+				});
+		SummaryJob job = jobStore.save(SummaryJob.queued(1L));
+
+		processor.process(job.id());
+
+		SummaryJob failedJob = jobStore.findById(job.id()).orElseThrow();
+		assertThat(failedJob.status()).isEqualTo(SummaryJobStatus.FAILED);
+		assertThat(failedJob.errorMessage()).isEqualTo("IllegalStateException");
+	}
 }

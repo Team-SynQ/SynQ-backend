@@ -11,9 +11,13 @@ public record GeneratedSummary(
 ) {
 	public GeneratedSummary {
 		// API 응답과 저장 결과가 외부 리스트 변경의 영향을 받지 않게 한다.
-		keyTopics = List.copyOf(keyTopics);
-		decisions = List.copyOf(decisions);
-		actionItems = List.copyOf(actionItems);
-		openQuestions = List.copyOf(openQuestions);
+		keyTopics = immutableListOrEmpty(keyTopics);
+		decisions = immutableListOrEmpty(decisions);
+		actionItems = immutableListOrEmpty(actionItems);
+		openQuestions = immutableListOrEmpty(openQuestions);
+	}
+
+	private static <T> List<T> immutableListOrEmpty(List<T> values) {
+		return values == null ? List.of() : List.copyOf(values);
 	}
 }

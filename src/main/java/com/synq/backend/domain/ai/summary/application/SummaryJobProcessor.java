@@ -38,17 +38,18 @@ public class SummaryJobProcessor {
 	public void process(UUID jobId) {
 		SummaryJob job = jobStore.findById(jobId)
 				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 요약 작업입니다."));
-		jobStore.save(job.start());
+		SummaryJob startedJob = jobStore.save(job.start());
 
 		try {
 			// Context 조합과 AI 호출을 분리해, 나중에 Reader나 AI 제공자를 독립적으로 교체할 수 있다.
-			var context = contextBuilder.build(job.meetingId());
+			var context = contextBuilder.build(startedJob.meetingId());
 			var generated = summaryAiClient.generate(context);
-			summaryStore.save(MeetingSummary.from(job.meetingId(), generated));
-			jobStore.save(jobStore.findById(jobId).orElseThrow().complete());
-		} catch (RuntimeException e) {
+			summaryStore.save(MeetingSummary.from(startedJob.meetingId(), generated));
+			jobStore.save(startedJob.complete());
+		} catch (Exception e) {
 			// 비동기 예외가 호출자에게 전파되지 않으므로 실패 상태와 원인을 Job에 남긴다.
-			jobStore.save(jobStore.findById(jobId).orElseThrow().fail(e.getMessage()));
+			String errorMessage = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+			jobStore.save(startedJob.fail(errorMessage));
 		}
 	}
 }
