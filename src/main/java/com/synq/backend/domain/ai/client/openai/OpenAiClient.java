@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -15,6 +16,7 @@ import org.springframework.web.client.RestClientException;
  * OpenAI Responses API 호출을 담당하는 클라이언트.
  */
 @Component
+@ConditionalOnProperty(prefix = "ai.summary", name = "client", havingValue = "openai")
 public class OpenAiClient {
 
 	private final RestClient openAiRestClient;
@@ -38,11 +40,46 @@ public class OpenAiClient {
 	public String createText(String input, String model) {
 		validateRequest(input, model);
 
-		Map<String, String> requestBody = Map.of(
+		Map<String, Object> requestBody = Map.of(
 				"model", model,
 				"input", input
 		);
+		return request(requestBody);
+	}
 
+	/**
+	 * JSON Schema를 만족하는 응답을 생성한다. 요약처럼 서버가 바로 역직렬화해야 하는 결과에 사용한다.
+	 */
+	public String createStructuredText(String input, String schemaName, Map<String, Object> schema) {
+		validateRequest(input, properties.model());
+		if (!StringUtils.hasText(schemaName) || schema == null || schema.isEmpty()) {
+			throw new OpenAiException(OpenAiErrorCode.INVALID_RESPONSE);
+		}
+
+		return request(structuredRequestBody(input, properties.model(), schemaName, schema));
+	}
+
+	static Map<String, Object> structuredRequestBody(
+			String input,
+			String model,
+			String schemaName,
+			Map<String, Object> schema
+	) {
+		return Map.of(
+				"model", model,
+				"input", input,
+				"text", Map.of(
+						"format", Map.of(
+								"type", "json_schema",
+								"name", schemaName,
+								"strict", true,
+								"schema", schema
+						)
+				)
+		);
+	}
+
+	private String request(Map<String, Object> requestBody) {
 		try {
 			JsonNode response = openAiRestClient.post()
 					.uri("/responses")
