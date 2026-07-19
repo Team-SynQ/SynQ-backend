@@ -1,0 +1,12 @@
+package com.synq.backend.domain.user.entity;
+
+public enum Role {
+	PLANNING_OPERATION,
+	DESIGN_CONTENT,
+	DEV_TECH,
+	MARKETING_BRANDING,
+	SALES_CUSTOMER,
+	DATA_RESEARCH,
+	STRATEGY_MANAGEMENT,
+	ETC
+}

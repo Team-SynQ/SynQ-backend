@@ -28,6 +28,11 @@ spring:
         jdbc:
           time_zone: Asia/Seoul
 
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration-minutes: 30
+  refresh-token-expiration-days: 14
+
 gemini:
   api-key: ${GEMINI_API_KEY}
   base-url: https://generativelanguage.googleapis.com/v1beta
@@ -66,6 +71,9 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+jwt:
+  secret: ${JWT_SECRET:local-dev-only-secret-please-override-in-production-env}
 
 ai:
   summary:
