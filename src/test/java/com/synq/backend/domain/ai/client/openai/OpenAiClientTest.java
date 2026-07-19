@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
@@ -51,6 +52,28 @@ class OpenAiClientTest {
 		String result = OpenAiClient.extractOutputText(response);
 
 		assertThat(result).isEqualTo("첫 번째 문장\n두 번째 문장");
+	}
+
+	@Test
+	void createsStrictJsonSchemaRequestBody() {
+		Map<String, Object> schema = Map.of("type", "object");
+
+		Map<String, Object> request = OpenAiClient.structuredRequestBody(
+				"회의를 정리해줘.", "gpt-5.4-nano", "meeting_summary", schema);
+
+		assertThat(request)
+				.containsEntry("model", "gpt-5.4-nano")
+				.containsEntry("input", "회의를 정리해줘.");
+		assertThat(request)
+				.extractingByKey("text")
+				.isEqualTo(Map.of(
+						"format", Map.of(
+								"type", "json_schema",
+								"name", "meeting_summary",
+								"strict", true,
+								"schema", schema
+						)
+				));
 	}
 
 	@Test
