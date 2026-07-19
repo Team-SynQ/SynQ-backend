@@ -1,6 +1,7 @@
 package com.synq.backend.domain.auth.jwt;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -40,6 +41,15 @@ public class JwtProvider {
 				.parseSignedClaims(accessToken)
 				.getPayload();
 		return Long.valueOf(claims.getSubject());
+	}
+
+
+	public Long parseUserIdIgnoringExpiration(String accessToken) {
+		try {
+			return parseUserId(accessToken);
+		} catch (ExpiredJwtException e) {
+			return Long.valueOf(e.getClaims().getSubject());
+		}
 	}
 
 	public boolean isValid(String accessToken) {

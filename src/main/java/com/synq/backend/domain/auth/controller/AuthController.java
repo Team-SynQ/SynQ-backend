@@ -55,7 +55,7 @@ public class AuthController {
 			throw new GeneralException(AuthErrorCode.INVALID_ACCESS_TOKEN);
 		}
 		try {
-			return jwtProvider.parseUserId(authorizationHeader.substring(BEARER_PREFIX.length()));
+			return jwtProvider.parseUserIdIgnoringExpiration(authorizationHeader.substring(BEARER_PREFIX.length()));
 		} catch (JwtException | IllegalArgumentException e) {
 			throw new GeneralException(AuthErrorCode.INVALID_ACCESS_TOKEN);
 		}
