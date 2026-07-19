@@ -6,8 +6,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * 참고자료 도메인의 실제 구현 전까지, local 프로필에서 앱이 뜨도록 하는 임시 대역이다.
- * 실제 ReferenceMaterialPort 구현체(또는 PR #24 병합)가 들어오면 이 파일은 삭제한다.
+ * 참고자료 도메인 구현 전까지 local 환경에서만 RAG 인덱싱 빈을 기동시키는 대역이다.
+ * 실제 ReferenceMaterialPort 구현체가 준비되면 이 대역은 제거한다.
  */
 @Component
 @Profile("local")
@@ -20,13 +20,16 @@ public class LocalReferenceMaterialPort implements ReferenceMaterialPort {
 
 	@Override
 	public void markProcessing(Long referenceMaterialId) {
+		// 실제 참고자료 상태 저장은 reference 도메인 구현체가 담당한다.
 	}
 
 	@Override
 	public void markCompleted(Long referenceMaterialId) {
+		// 실제 참고자료 상태 저장은 reference 도메인 구현체가 담당한다.
 	}
 
 	@Override
 	public void markFailed(Long referenceMaterialId, String reason) {
+		// 실제 참고자료 상태 저장은 reference 도메인 구현체가 담당한다.
 	}
 }
