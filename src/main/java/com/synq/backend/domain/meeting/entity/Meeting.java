@@ -42,13 +42,15 @@ public class Meeting extends BaseEntity {
 	@Column(name = "ended_at")
 	private LocalDateTime endedAt;
 
-	private Meeting(Long projectId, String title, MeetingStatus status) {
+	private Meeting(Long projectId, String title, MeetingStatus status, LocalDateTime startedAt) {
 		this.projectId = projectId;
 		this.title = title;
 		this.status = status;
+		this.startedAt = startedAt;
 	}
 
+	// 별도 "녹음 시작" API 없이 생성과 동시에 녹음이 시작된다.
 	public static Meeting of(Long projectId, String title) {
-		return new Meeting(projectId, title, MeetingStatus.IN_PROGRESS);
+		return new Meeting(projectId, title, MeetingStatus.IN_PROGRESS, LocalDateTime.now());
 	}
 }
