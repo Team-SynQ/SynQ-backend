@@ -55,7 +55,7 @@ springdoc:
 
 openai:
   # 실제 키는 OPENAI_API_KEY 환경변수로 주입한다.
-  api-key: ${OPENAI_API_KEY}
+  api-key: ${OPENAI_API_KEY:}
   base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
   model: ${OPENAI_MODEL:gpt-5.4-nano}
   timeout: ${OPENAI_TIMEOUT:30s}
@@ -74,3 +74,8 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:local-dev-only-secret-please-override-in-production-env}
+
+ai:
+  summary:
+    # Mock 구현체는 local/test에서만 활성화된다. 실제 OpenAI 호출 확인 시 openai로 변경한다.
+    client: ${AI_SUMMARY_CLIENT:fake}

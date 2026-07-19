@@ -1,6 +1,7 @@
 package com.synq.backend.domain.ai.client.openai;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -10,6 +11,7 @@ import org.springframework.web.client.RestClient;
 
 @Configuration
 @EnableConfigurationProperties(OpenAiProperties.class)
+@ConditionalOnProperty(prefix = "ai.summary", name = "client", havingValue = "openai")
 public class OpenAiClientConfig {
 
 	@Bean
