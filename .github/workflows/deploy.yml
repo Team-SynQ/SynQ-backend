@@ -67,7 +67,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "scripts/deploy.sh"
+          source: "scripts/deploy.sh,scripts/docker-compose.prod.yml"
           target: "/home/ubuntu/synq"
           strip_components: 0
 

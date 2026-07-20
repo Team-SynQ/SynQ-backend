@@ -1,0 +1,115 @@
+services:
+  # --- 1. Nginx ---
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: synq-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/log:/var/log/nginx
+    restart: always
+    networks:
+      - synq-network
+
+  # --- 2. DB ---
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: synq-postgres
+    environment:
+      POSTGRES_DB: ${PROD_DB_NAME}
+      POSTGRES_USER: ${PROD_DB_USER}
+      POSTGRES_PASSWORD: ${PROD_DB_PASSWORD}
+    volumes:
+      - synq-postgres-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $PROD_DB_USER -d $PROD_DB_NAME" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1500M
+        reservations:
+          memory: 750M
+    networks:
+      - synq-network
+
+  # --- 3. Redis ---
+  redis:
+    image: redis:7.2-alpine
+    container_name: synq-redis
+    command: redis-server --requirepass ${PROD_REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:6379:6379"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    networks:
+      - synq-network
+
+  # --- 4-1. Spring Boot (Blue) ---
+  springboot-blue:
+    image: ${DOCKERHUB_USERNAME}/synq-backend:latest
+    container_name: synq-backend-blue
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${PROD_DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${PROD_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${PROD_DB_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${PROD_REDIS_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1200M
+        reservations:
+          memory: 600M
+    networks:
+      - synq-network
+
+  # --- 4-2. Spring Boot (Green) ---
+  springboot-green:
+    image: ${DOCKERHUB_USERNAME}/synq-backend:latest
+    container_name: synq-backend-green
+    ports:
+      - "8082:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${PROD_DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${PROD_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${PROD_DB_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${PROD_REDIS_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1200M
+        reservations:
+          memory: 600M
+    networks:
+      - synq-network
+
+volumes:
+  synq-postgres-data:
+
+networks:
+  synq-network:
+    driver: bridge
