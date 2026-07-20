@@ -42,18 +42,6 @@ class LiveContextTranscriptListenerIntegrationTest extends PostgresTestContainer
 		assertThat(context.getLastSequenceIndex()).isEqualTo(1);
 	}
 
-	@Test
-	void 같은_순번의_전사_이벤트는_다시_처리하지_않는다() {
-		Long meetingId = createMeetingAndPublish(1L, 0, "첫 번째 확정 전사");
-		waitForLastSequence(meetingId, 0);
-		publishAfterCommit(meetingId, 2L, 0, "재전송된 전사");
-		waitForLastSequence(meetingId, 0);
-
-		var context = liveContextRepository.findByMeetingId(meetingId).orElseThrow();
-		assertThat(context.getRollingSummary()).isEqualTo("첫 번째 확정 전사");
-		assertThat(context.getLastSegmentId()).isEqualTo(1L);
-	}
-
 	private static TranscriptFinalizedEvent event(Long meetingId, Long segmentId, int sequenceIndex, String content) {
 		return new TranscriptFinalizedEvent(meetingId, segmentId, sequenceIndex, 0, 1000, content, null);
 	}

@@ -66,6 +66,13 @@ public class OpenAiLiveContextClient implements LiveContextAiClient {
 	}
 
 	private String createPrompt(LiveContextSnapshot previousContext, TranscriptFinalizedEvent event) {
+		String rollingSummary = previousContext.rollingSummary().isBlank()
+				? "없음"
+				: previousContext.rollingSummary();
+		String currentTopic = previousContext.currentTopic() == null || previousContext.currentTopic().isBlank()
+				? "없음"
+				: previousContext.currentTopic();
+
 		return """
 				당신은 실시간 회의 맥락 관리 도우미입니다. 기존 회의 맥락과 새로 확정된 발화를 반영해 최신 상태를 한국어로 갱신하세요.
 				이전에 결정된 사항은 유지하되, 새 발화가 이를 명시적으로 변경한 경우에만 수정하세요.
@@ -89,8 +96,8 @@ public class OpenAiLiveContextClient implements LiveContextAiClient {
 				[새 확정 발화]
 				%s
 				""".formatted(
-				previousContext.rollingSummary(),
-				previousContext.currentTopic(),
+				rollingSummary,
+				currentTopic,
 				String.join("\n", previousContext.decisions()),
 				String.join("\n", previousContext.actionItems()),
 				String.join("\n", previousContext.openQuestions()),

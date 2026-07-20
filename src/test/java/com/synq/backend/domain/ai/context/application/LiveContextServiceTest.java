@@ -1,6 +1,7 @@
 package com.synq.backend.domain.ai.context.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 @ExtendWith(MockitoExtension.class)
 class LiveContextServiceTest {
@@ -54,6 +56,21 @@ class LiveContextServiceTest {
 
 		assertThat(refreshed).isEmpty();
 		verifyNoInteractions(aiClient);
+	}
+
+	@Test
+	void 재시도_횟수를_초과하면_마지막_저장_실패_원인을_보존한다() {
+		TranscriptFinalizedEvent event = event(1L, 10L, 0, "회의 맥락 갱신");
+		ObjectOptimisticLockingFailureException cause =
+				new ObjectOptimisticLockingFailureException(LiveContext.class, 1L);
+		given(repository.findByMeetingId(1L)).willReturn(Optional.empty());
+		given(aiClient.refresh(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(event)))
+				.willReturn(result("회의 맥락"));
+		given(repository.saveAndFlush(org.mockito.ArgumentMatchers.any(LiveContext.class))).willThrow(cause);
+
+		assertThatThrownBy(() -> new LiveContextService(repository, aiClient).refresh(event))
+				.isInstanceOf(IllegalStateException.class)
+				.hasCause(cause);
 	}
 
 	private static TranscriptFinalizedEvent event(

@@ -34,6 +34,8 @@ public class LiveContextService {
 	}
 
 	public Optional<LiveContext> refresh(TranscriptFinalizedEvent event) {
+		RuntimeException lastException = null;
+
 		for (int attempt = 0; attempt < MAX_SAVE_ATTEMPTS; attempt++) {
 			Optional<LiveContext> existing = liveContextRepository.findByMeetingId(event.meetingId());
 
@@ -58,10 +60,11 @@ public class LiveContextService {
 				return Optional.of(liveContextRepository.saveAndFlush(created));
 			} catch (ObjectOptimisticLockingFailureException | DataIntegrityViolationException e) {
 				// 다른 확정 전사가 먼저 저장된 경우 최신 맥락을 다시 읽고 한 번만 재계산한다.
+				lastException = e;
 			}
 		}
 
-		throw new IllegalStateException("회의 맥락을 동시에 갱신하지 못했습니다.");
+		throw new IllegalStateException("회의 맥락을 동시에 갱신하지 못했습니다.", lastException);
 	}
 
 	@Transactional(readOnly = true)
