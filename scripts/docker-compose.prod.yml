@@ -62,13 +62,19 @@ services:
     ports:
       - "8081:8080"
     environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${PROD_DB_NAME}
-      SPRING_DATASOURCE_USERNAME: ${PROD_DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${PROD_DB_PASSWORD}
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD: ${PROD_REDIS_PASSWORD}
+      - SPRING_PROFILES_ACTIVE=prod
+      # DB
+      - DB_URL=jdbc:postgresql://db:5432/${PROD_DB_NAME}
+      - DB_USERNAME=${PROD_DB_USER}
+      - DB_PASSWORD=${PROD_DB_PASSWORD}
+      # Redis
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - SPRING_DATA_REDIS_PASSWORD=${PROD_REDIS_PASSWORD}
+      # Etc
+      - JWT_SECRET=${PROD_JWT_SECRET}
+      - GEMINI_API_KEY=${PROD_GEMINI_API_KEY}
+      - OPENAI_API_KEY=${PROD_OPENAI_API_KEY}
     depends_on:
       db:
         condition: service_healthy
@@ -88,13 +94,19 @@ services:
     ports:
       - "8082:8080"
     environment:
-      SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${PROD_DB_NAME}
-      SPRING_DATASOURCE_USERNAME: ${PROD_DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${PROD_DB_PASSWORD}
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD: ${PROD_REDIS_PASSWORD}
+      - SPRING_PROFILES_ACTIVE=prod
+      # DB
+      - DB_URL=jdbc:postgresql://db:5432/${PROD_DB_NAME}
+      - DB_USERNAME=${PROD_DB_USER}
+      - DB_PASSWORD=${PROD_DB_PASSWORD}
+      # Redis
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - SPRING_DATA_REDIS_PASSWORD=${PROD_REDIS_PASSWORD}
+      # Etc
+      - JWT_SECRET=${PROD_JWT_SECRET}
+      - GEMINI_API_KEY=${PROD_GEMINI_API_KEY}
+      - OPENAI_API_KEY=${PROD_OPENAI_API_KEY}
     depends_on:
       db:
         condition: service_healthy
