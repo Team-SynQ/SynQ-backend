@@ -26,6 +26,9 @@ dependencies {
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 
+	// Health Check
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
 	// .env 를 Spring 프로퍼티 소스로 등록
 	implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 

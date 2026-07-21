@@ -69,6 +69,15 @@ gemini:
 server:
   port: 8080
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html      # 접속 주소: http://localhost:8080/swagger-ui.html
