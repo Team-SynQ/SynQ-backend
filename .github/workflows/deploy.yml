@@ -60,14 +60,14 @@ jobs:
     needs: continuous-integration
 
     steps:
-      # 8. 배포 스크립트 서버로 전송
-      - name: Copy Deploy Script to EC2
+      # 8. 인프라 파일 서버로 전송
+      - name: Copy Infrastructure Files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "scripts/deploy.sh,scripts/docker-compose.prod.yml"
+          source: "infra/"
           target: "/home/ubuntu/synq"
           strip_components: 0
 
@@ -80,5 +80,5 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/ubuntu/synq
-            chmod +x scripts/deploy.sh
-            ./scripts/deploy.sh
+            chmod +x infra/deploy.sh
+            ./infra/deploy.sh
