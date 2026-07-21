@@ -6,6 +6,7 @@ import com.synq.backend.domain.ai.rag.repository.DocumentChunkRepository;
 import com.synq.backend.support.PostgresTestContainer;
 import com.synq.backend.support.StubEmbeddingClient;
 import com.synq.backend.support.StubReferenceMaterialPort;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class DocumentIndexingServiceTest extends PostgresTestContainer {
 
 	private static final Long MATERIAL_ID = 1L;
+	private static final Long PROJECT_ID = 100L;
 
 	@Autowired
 	private DocumentChunkRepository repository;
@@ -39,6 +41,13 @@ class DocumentIndexingServiceTest extends PostgresTestContainer {
 				new TextChunker(800, 100), embeddingClient, chunkWriter, port);
 	}
 
+	// 이 클래스는 @Transactional 이 아니라 롤백되지 않는다. 남은 청크는 컨테이너를 공유하는
+	// 다음 테스트 클래스의 UNIQUE(reference_material_id, chunk_index) 를 깨뜨린다.
+	@AfterEach
+	void tearDown() {
+		repository.deleteAll();
+	}
+
 	/** 800자를 넘겨 청크가 여러 개 나오도록 하는 텍스트. */
 	private static String longText() {
 		return ("가".repeat(500) + "\n\n" + "나".repeat(500) + "\n\n" + "다".repeat(500));
@@ -46,7 +55,7 @@ class DocumentIndexingServiceTest extends PostgresTestContainer {
 
 	@Test
 	void 청크를_저장하고_COMPLETED_로_전이한다() {
-		service.index(MATERIAL_ID, longText());
+		service.index(MATERIAL_ID, PROJECT_ID, longText());
 
 		List<DocumentChunk> chunks = repository.findByReferenceMaterialIdOrderByChunkIndexAsc(MATERIAL_ID);
 
@@ -63,7 +72,7 @@ class DocumentIndexingServiceTest extends PostgresTestContainer {
 		embeddingClient.failNext();
 
 		// 동기 호출자는 실패를 예외로 전달받는다. 그 와중에도 청크 정리와 FAILED 전이는 이뤄진다.
-		assertThatThrownBy(() -> service.index(MATERIAL_ID, longText()))
+		assertThatThrownBy(() -> service.index(MATERIAL_ID, PROJECT_ID, longText()))
 				.isInstanceOf(RuntimeException.class);
 
 		assertThat(repository.findByReferenceMaterialIdOrderByChunkIndexAsc(MATERIAL_ID)).isEmpty();
@@ -73,10 +82,10 @@ class DocumentIndexingServiceTest extends PostgresTestContainer {
 
 	@Test
 	void 재처리는_기존_청크를_지우고_다시_만든다() {
-		service.index(MATERIAL_ID, longText());
+		service.index(MATERIAL_ID, PROJECT_ID, longText());
 		int firstCount = repository.findByReferenceMaterialIdOrderByChunkIndexAsc(MATERIAL_ID).size();
 
-		service.index(MATERIAL_ID, longText());
+		service.index(MATERIAL_ID, PROJECT_ID, longText());
 		List<DocumentChunk> chunks = repository.findByReferenceMaterialIdOrderByChunkIndexAsc(MATERIAL_ID);
 
 		// 멱등: 두 번 돌려도 청크 수가 같고 중복이 없다 (UNIQUE 제약 위반도 나지 않는다)
@@ -86,10 +95,21 @@ class DocumentIndexingServiceTest extends PostgresTestContainer {
 
 	@Test
 	void 텍스트가_비어_있으면_FAILED_로_전이한다() {
-		assertThatThrownBy(() -> service.index(MATERIAL_ID, "   "))
+		assertThatThrownBy(() -> service.index(MATERIAL_ID, PROJECT_ID, "   "))
 				.isInstanceOf(RuntimeException.class);
 
 		assertThat(repository.findByReferenceMaterialIdOrderByChunkIndexAsc(MATERIAL_ID)).isEmpty();
 		assertThat(port.statusOf(MATERIAL_ID)).isEqualTo("FAILED");
+	}
+
+	@Test
+	void 저장된_청크에_검색_스코프인_프로젝트_ID가_들어간다() {
+		service.index(MATERIAL_ID, PROJECT_ID, longText());
+
+		List<DocumentChunk> chunks = repository.findByReferenceMaterialIdOrderByChunkIndexAsc(MATERIAL_ID);
+
+		assertThat(chunks).isNotEmpty();
+		assertThat(chunks).allSatisfy(chunk ->
+				assertThat(chunk.getProjectId()).isEqualTo(PROJECT_ID));
 	}
 }
