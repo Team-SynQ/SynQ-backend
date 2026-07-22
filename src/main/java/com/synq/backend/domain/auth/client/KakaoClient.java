@@ -11,6 +11,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -47,7 +50,7 @@ public class KakaoClient {
 				.retrieve()
 				.body(KakaoTokenResponse.class));
 
-		if (response == null || response.accessToken() == null) {
+		if (response == null || !StringUtils.hasText(response.accessToken())) {
 			throw new GeneralException(AuthErrorCode.INVALID_KAKAO_LOGIN);
 		}
 		return response.accessToken();
@@ -69,7 +72,11 @@ public class KakaoClient {
 	private <T> T call(Supplier<T> request) {
 		try {
 			return request.get();
-		} catch (RestClientException | HttpMessageNotReadableException e) {
+		} catch (HttpClientErrorException e) {
+			throw new GeneralException(AuthErrorCode.INVALID_KAKAO_LOGIN, e);
+		} catch (HttpServerErrorException | ResourceAccessException | HttpMessageNotReadableException e) {
+			throw new GeneralException(AuthErrorCode.KAKAO_SERVICE_UNAVAILABLE, e);
+		} catch (RestClientException e) {
 			throw new GeneralException(AuthErrorCode.INVALID_KAKAO_LOGIN, e);
 		}
 	}
