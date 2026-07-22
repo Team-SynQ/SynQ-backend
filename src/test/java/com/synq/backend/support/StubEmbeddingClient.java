@@ -31,6 +31,17 @@ public class StubEmbeddingClient implements EmbeddingClient {
 	}
 
 	@Override
+	public float[] embedQuery(String text) {
+		if (shouldFail) {
+			shouldFail = false;
+			throw new EmbeddingException("스텁이 강제로 실패시킴");
+		}
+		float[] vector = new float[768];
+		vector[0] = 1.0f;  // 정규화된 단위 벡터
+		return vector;
+	}
+
+	@Override
 	public String modelName() {
 		return "stub-embedding-model";
 	}
