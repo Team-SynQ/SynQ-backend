@@ -5,8 +5,11 @@ import com.synq.backend.domain.ai.rag.repository.DocumentChunkRepository;
 import com.synq.backend.support.PostgresTestContainer;
 import com.synq.backend.support.StubEmbeddingClient;
 import org.assertj.core.data.Offset;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -36,6 +39,13 @@ class DocumentChunkSearcherTest extends PostgresTestContainer {
 	void setUp() {
 		repository.deleteAll();
 		searcher = new DocumentChunkSearcher(new StubEmbeddingClient(), repository);
+	}
+
+	// 이 클래스는 @Transactional 이 아니라 롤백되지 않는다. 남은 청크는 컨테이너를 공유하는
+	// 다음 테스트 클래스의 UNIQUE(reference_material_id, chunk_index) 를 깨뜨린다.
+	@AfterEach
+	void tearDown() {
+		repository.deleteAll();
 	}
 
 	@Test
@@ -92,5 +102,14 @@ class DocumentChunkSearcherTest extends PostgresTestContainer {
 	void topK가_0_이하이면_거부한다() {
 		assertThatThrownBy(() -> new ChunkSearchQuery(PROJECT_ID, "질의", 0, -1.0))
 				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@ParameterizedTest
+	@ValueSource(doubles = {1.5, -3.0, Double.NaN, Double.POSITIVE_INFINITY})
+	void 코사인_유사도_범위_밖_임계값은_거부한다(double invalid) {
+		// 범위 밖 값은 에러 없이 결과를 0건으로 만들거나 필터를 무의미하게 한다.
+		assertThatThrownBy(() -> new ChunkSearchQuery(PROJECT_ID, "질의", 5, invalid))
+				.isInstanceOf(InvalidChunkSearchQueryException.class)
+				.hasMessageContaining("minSimilarity");
 	}
 }

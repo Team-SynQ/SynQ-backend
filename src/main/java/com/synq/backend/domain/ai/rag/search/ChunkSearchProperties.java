@@ -16,4 +16,11 @@ public record ChunkSearchProperties(
 		@Positive int topK,
 		double minSimilarity
 ) {
+
+	public ChunkSearchProperties {
+		// 오타 하나(예: 5)로 전체 검색이 항상 0건이 되는데 서버는 멀쩡히 뜬다. 기동 시점에 막는다.
+		if (!SimilarityThreshold.isValid(minSimilarity)) {
+			throw new IllegalArgumentException(SimilarityThreshold.describe(minSimilarity));
+		}
+	}
 }

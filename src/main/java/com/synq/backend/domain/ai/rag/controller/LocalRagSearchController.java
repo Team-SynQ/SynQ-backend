@@ -4,6 +4,7 @@ import com.synq.backend.domain.ai.rag.search.ChunkMatch;
 import com.synq.backend.domain.ai.rag.search.ChunkSearchProperties;
 import com.synq.backend.domain.ai.rag.search.ChunkSearchQuery;
 import com.synq.backend.domain.ai.rag.search.ChunkSearcher;
+import com.synq.backend.domain.ai.rag.search.InvalidChunkSearchQueryException;
 import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
@@ -22,7 +23,7 @@ import java.util.List;
 /**
  * 검색 품질 확인용 개발자 도구다. 프론트가 호출하는 API 가 아니다.
  *
- * <p>3-hint / AI Chat 등 실제 호출자가 아직 없어서, 임계값과 topK 를 실제 문서로
+ * 3-hint / AI Chat 등 실제 호출자가 아직 없어서, 임계값과 topK 를 실제 문서로
  * 돌려볼 방법이 달리 없다. 프로젝트 문서 내용이 나가므로 local 프로파일에서만
  * 빈이 생성되게 한다.
  */
@@ -54,11 +55,13 @@ public class LocalRagSearchController {
 	}
 
 	/**
-	 * ChunkSearchQuery 의 입력 검증 실패는 이 엔드포인트에서만 클라이언트 잘못이다.
-	 * 전역 핸들러에 두면 다른 도메인의 진짜 버그까지 400 으로 둔갑해 묻힌다.
+	 * 질의 입력 검증 실패만 400 으로 바꾼다.
+	 *
+	 * IllegalArgumentException 전체를 잡으면 검색 수행 중 터진 서버 잘못까지
+	 * 400 으로 둔갑해 묻힌다. 전역 핸들러에 두지 않는 이유도 같다.
 	 */
-	@ExceptionHandler(IllegalArgumentException.class)
-	public ResponseEntity<ApiResponse<Void>> handleInvalidQuery(IllegalArgumentException e) {
+	@ExceptionHandler(InvalidChunkSearchQueryException.class)
+	public ResponseEntity<ApiResponse<Void>> handleInvalidQuery(InvalidChunkSearchQueryException e) {
 		return ResponseEntity.status(GeneralErrorCode.BAD_REQUEST.getStatus())
 				.body(new ApiResponse<>(false, GeneralErrorCode.BAD_REQUEST.getCode(), e.getMessage(), null));
 	}

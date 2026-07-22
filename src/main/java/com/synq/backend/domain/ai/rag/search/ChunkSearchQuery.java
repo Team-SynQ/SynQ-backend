@@ -17,13 +17,16 @@ public record ChunkSearchQuery(
 
 	public ChunkSearchQuery {
 		if (projectId == null) {
-			throw new IllegalArgumentException("검색 스코프인 projectId 는 필수입니다.");
+			throw new InvalidChunkSearchQueryException("검색 스코프인 projectId 는 필수입니다.");
 		}
 		if (query == null || query.isBlank()) {
-			throw new IllegalArgumentException("검색 질의가 비어 있습니다.");
+			throw new InvalidChunkSearchQueryException("검색 질의가 비어 있습니다.");
 		}
 		if (topK <= 0) {
-			throw new IllegalArgumentException("topK 는 1 이상이어야 합니다: " + topK);
+			throw new InvalidChunkSearchQueryException("topK 는 1 이상이어야 합니다: " + topK);
+		}
+		if (!SimilarityThreshold.isValid(minSimilarity)) {
+			throw new InvalidChunkSearchQueryException(SimilarityThreshold.describe(minSimilarity));
 		}
 	}
 }

@@ -18,10 +18,10 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, Lo
 	/**
 	 * 프로젝트 안에서 질의 벡터와 가까운 청크를 유사도 내림차순으로 찾는다.
 	 *
-	 * <p>ORDER BY 를 유사도(1 - 거리)가 아니라 거리 오름차순으로 두는 이유는,
+	 * ORDER BY 를 유사도(1 - 거리)가 아니라 거리 오름차순으로 두는 이유는,
 	 * HNSW 인덱스가 {@code <=>} 표현식 기준이라 유사도로 정렬하면 인덱스를 타지 못하기 때문이다.
 	 *
-	 * <p>별칭에 큰따옴표를 씌우는 이유는, Postgres 가 따옴표 없는 식별자를 소문자로 접기 때문이다.
+	 * 별칭에 큰따옴표를 씌우는 이유는, Postgres 가 따옴표 없는 식별자를 소문자로 접기 때문이다.
 	 * 접히면 projection 게터 이름과 어긋난다.
 	 *
 	 * @param embedding {@link com.synq.backend.domain.ai.rag.search.VectorLiteral} 로 만든 문자열

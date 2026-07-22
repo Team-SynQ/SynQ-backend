@@ -3,6 +3,7 @@ package com.synq.backend.domain.ai.rag.controller;
 import com.synq.backend.domain.ai.rag.entity.DocumentChunk;
 import com.synq.backend.domain.ai.rag.repository.DocumentChunkRepository;
 import com.synq.backend.support.PostgresTestContainer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,13 @@ class LocalRagSearchControllerTest extends PostgresTestContainer {
 
 	@BeforeEach
 	void setUp() {
+		repository.deleteAll();
+	}
+
+	// 이 클래스는 @Transactional 이 아니라 롤백되지 않는다. 남은 청크는 컨테이너를 공유하는
+	// 다음 테스트 클래스의 UNIQUE(reference_material_id, chunk_index) 를 깨뜨린다.
+	@AfterEach
+	void tearDown() {
 		repository.deleteAll();
 	}
 
