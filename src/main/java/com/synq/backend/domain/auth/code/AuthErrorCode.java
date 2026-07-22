@@ -22,7 +22,10 @@ public enum AuthErrorCode implements BaseCode {
 			"만료된 refresh token입니다."),
 	INVALID_ACCESS_TOKEN(HttpStatus.UNAUTHORIZED,
 			"AUTH401_5",
-			"유효하지 않은 access token입니다.");
+			"유효하지 않은 access token입니다."),
+	INVALID_KAKAO_LOGIN(HttpStatus.UNAUTHORIZED,
+			"AUTH401_6",
+			"카카오 로그인에 실패했습니다.");
 
 	private final HttpStatus status;
 	private final String code;
