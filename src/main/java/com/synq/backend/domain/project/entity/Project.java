@@ -11,6 +11,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "project")
 @Getter
@@ -30,6 +32,12 @@ public class Project extends BaseEntity {
 	@Column(length = 500)
 	private String description;
 
+	@Column(name = "invite_token", length = 36, unique = true)
+	private String inviteToken;
+
+	@Column(name = "invite_token_expires_at")
+	private LocalDateTime inviteTokenExpiresAt;
+
 	private Project(Long ownerId, String title, String description) {
 		this.ownerId = ownerId;
 		this.title = title;
@@ -38,5 +46,10 @@ public class Project extends BaseEntity {
 
 	public static Project of(Long ownerId, String title, String description) {
 		return new Project(ownerId, title, description);
+	}
+
+	public void updateInvitation(String inviteToken, LocalDateTime expiresAt) {
+		this.inviteToken = inviteToken;
+		this.inviteTokenExpiresAt = expiresAt;
 	}
 }
