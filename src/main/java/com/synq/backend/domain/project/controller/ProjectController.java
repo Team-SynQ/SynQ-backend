@@ -2,6 +2,7 @@ package com.synq.backend.domain.project.controller;
 
 import com.synq.backend.domain.project.dto.ProjectCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectCreateResponse;
+import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.service.ProjectService;
@@ -34,5 +35,12 @@ public class ProjectController implements ProjectControllerDocs {
 				: GeneralSuccessCode.REQUEST_OK;
 		return ResponseEntity.status(successCode.getStatus())
 				.body(ApiResponse.onSuccess(successCode, response));
+	}
+
+	@Override
+	public ResponseEntity<ApiResponse<ProjectInvitationResponse>> createInvitation(Long projectId, Long userId) {
+		ProjectInvitationResponse response = projectService.createInvitation(projectId, userId);
+		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
 	}
 }
