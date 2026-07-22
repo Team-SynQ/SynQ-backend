@@ -33,4 +33,4 @@ COPY --from=build /home/gradle/project/app.jar app.jar
 EXPOSE 8080
 
 # 컨테이너 실행 커맨드
-ENTRYPOINT ["java", "-jar", "-Duser.timezone=Asia/Seoul", "app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Seoul", "-jar", "app.jar"]

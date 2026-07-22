@@ -9,7 +9,7 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./nginx/log:/var/log/nginx
-    restart: always
+    restart: unless-stopped
     networks:
       - synq-network
 
@@ -36,6 +36,7 @@ services:
           memory: 1500M
         reservations:
           memory: 750M
+    restart: unless-stopped
     networks:
       - synq-network
 
@@ -52,6 +53,7 @@ services:
           memory: 512M
         reservations:
           memory: 256M
+    restart: unless-stopped
     networks:
       - synq-network
 
@@ -84,6 +86,7 @@ services:
           memory: 1200M
         reservations:
           memory: 600M
+    restart: unless-stopped
     networks:
       - synq-network
 
@@ -116,6 +119,7 @@ services:
           memory: 1200M
         reservations:
           memory: 600M
+    restart: unless-stopped
     networks:
       - synq-network
 
