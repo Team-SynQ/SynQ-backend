@@ -33,6 +33,11 @@ jwt:
   access-token-expiration-minutes: 30
   refresh-token-expiration-days: 14
 
+project:
+  invitation:
+    frontend-base-url: ${FRONTEND_BASE_URL:https://synq.app}
+    expiration-days: 7
+
 gemini:
   api-key: ${GEMINI_API_KEY}
   base-url: https://generativelanguage.googleapis.com/v1beta
