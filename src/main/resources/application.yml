@@ -1,6 +1,6 @@
 spring:
   application:
-    name: backend
+    name: synq-backend
   # 기본 활성 프로파일은 local(개발 편의). 운영 등 비-dev 환경은 SPRING_PROFILES_ACTIVE 를 명시적으로 지정한다.
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
