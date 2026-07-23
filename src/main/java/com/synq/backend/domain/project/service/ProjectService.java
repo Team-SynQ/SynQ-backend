@@ -1,11 +1,14 @@
 package com.synq.backend.domain.project.service;
 
+import com.synq.backend.domain.meeting.entity.Meeting;
+import com.synq.backend.domain.meeting.repository.MeetingRepository;
 import com.synq.backend.domain.project.code.ProjectErrorCode;
 import com.synq.backend.domain.project.config.ProjectInvitationProperties;
 import com.synq.backend.domain.project.dto.ProjectCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
+import com.synq.backend.domain.project.dto.ProjectListResponse;
 import com.synq.backend.domain.project.entity.Project;
 import com.synq.backend.domain.project.entity.ProjectMember;
 import com.synq.backend.domain.project.entity.ProjectMemberRole;
@@ -19,6 +22,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -30,6 +37,7 @@ public class ProjectService {
 
 	private final ProjectRepository projectRepository;
 	private final ProjectMemberRepository projectMemberRepository;
+	private final MeetingRepository meetingRepository;
 	private final UserRepository userRepository;
 	private final ProjectInvitationProperties projectInvitationProperties;
 
@@ -41,6 +49,43 @@ public class ProjectService {
 		Project project = projectRepository.save(Project.of(userId, request.title(), request.description()));
 		projectMemberRepository.save(ProjectMember.of(project.getId(), userId, ProjectMemberRole.OWNER));
 		return ProjectCreateResponse.from(project);
+	}
+
+	@Transactional(readOnly = true)
+	public List<ProjectListResponse> findAll(Long userId) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		validateUser(userId);
+
+		List<Long> projectIds = projectMemberRepository.findAllByUserId(userId).stream()
+				.map(ProjectMember::getProjectId)
+				.toList();
+		if (projectIds.isEmpty()) {
+			return List.of();
+		}
+
+		Map<Long, Meeting> recentMeetingByProjectId = new HashMap<>();
+		meetingRepository.findRecentMeetingsByProjectIds(projectIds)
+				.forEach(meeting -> recentMeetingByProjectId.merge(
+						meeting.getProjectId(),
+						meeting,
+						(first, second) -> first.getId() > second.getId() ? first : second
+				));
+		return projectRepository.findAllById(projectIds).stream()
+				.map(project -> {
+					Meeting recentMeeting = recentMeetingByProjectId.get(project.getId());
+					LocalDateTime updatedAt = recentMeeting == null
+							? project.getUpdatedAt()
+							: latest(project.getUpdatedAt(), recentMeeting.getUpdatedAt());
+					return ProjectListResponse.from(
+							project,
+							recentMeeting == null ? null : recentMeeting.getTitle(),
+							updatedAt
+					);
+				})
+				.sorted(Comparator.comparing(ProjectListResponse::updatedAt).reversed())
+				.toList();
 	}
 
 	@Transactional
@@ -118,5 +163,9 @@ public class ProjectService {
 	private String buildInviteUrl(String inviteToken) {
 		String frontendBaseUrl = projectInvitationProperties.frontendBaseUrl().replaceAll("/+$", "");
 		return "%s/invite/%s".formatted(frontendBaseUrl, inviteToken);
+	}
+
+	private LocalDateTime latest(LocalDateTime first, LocalDateTime second) {
+		return first.isAfter(second) ? first : second;
 	}
 }
