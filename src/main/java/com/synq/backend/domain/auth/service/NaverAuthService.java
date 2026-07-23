@@ -51,11 +51,10 @@ public class NaverAuthService {
 	}
 
 
+	// 실명(회원이름) 동의항목은 요청하지 않는다 - 닉네임만 쓴다.
 	private String resolveName(NaverUserResponse naverUser) {
-		NaverUserResponse.Response response = naverUser.response();
-		String name = StringUtils.hasText(response.name()) ? response.name()
-				: StringUtils.hasText(response.nickname()) ? response.nickname()
-				: DEFAULT_NAME;
+		String nickname = naverUser.response().nickname();
+		String name = StringUtils.hasText(nickname) ? nickname : DEFAULT_NAME;
 		return name.length() > MAX_NAME_LENGTH ? name.substring(0, MAX_NAME_LENGTH) : name;
 	}
 

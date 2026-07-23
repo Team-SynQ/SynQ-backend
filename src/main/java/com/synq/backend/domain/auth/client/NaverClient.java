@@ -60,7 +60,10 @@ public class NaverClient {
 				.body(NaverUserResponse.class),
 				AuthErrorCode.INVALID_NAVER_LOGIN, AuthErrorCode.NAVER_SERVICE_UNAVAILABLE);
 
-		if (response == null || response.response() == null || response.response().id() == null) {
+		// 이메일은 우리 앱의 필수 동의항목이라, 정상 응답이면 항상 있어야 한다.
+		if (response == null || response.response() == null
+				|| !StringUtils.hasText(response.response().id())
+				|| !StringUtils.hasText(response.response().email())) {
 			throw new GeneralException(AuthErrorCode.INVALID_NAVER_LOGIN);
 		}
 		return response;
