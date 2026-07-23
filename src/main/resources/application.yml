@@ -38,6 +38,11 @@ kakao:
   redirect-uri: ${KAKAO_REDIRECT_URI}
   client-secret: ${KAKAO_CLIENT_SECRET:}
 
+naver:
+  client-id: ${NAVER_CLIENT_ID}
+  redirect-uri: ${NAVER_REDIRECT_URI}
+  client-secret: ${NAVER_CLIENT_SECRET}
+
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS}
 
@@ -91,6 +96,11 @@ jwt:
 kakao:
   client-id: ${KAKAO_CLIENT_ID:local-dev-placeholder-kakao-client-id}
   redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:3000/login/callback}
+
+naver:
+  client-id: ${NAVER_CLIENT_ID:local-dev-placeholder-naver-client-id}
+  redirect-uri: ${NAVER_REDIRECT_URI:http://localhost:3000/login/callback}
+  client-secret: ${NAVER_CLIENT_SECRET:local-dev-placeholder-naver-client-secret}
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
