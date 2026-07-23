@@ -18,20 +18,26 @@ set -a
 source "$BASE_DIR/.env"
 set +a
 
-# 필수 환경 변수 누락 시 배포 중단
-if [ -z "${DOCKERHUB_USERNAME:-}" ] || [ -z "${PROD_DB_NAME:-}" ] || [ -z "${JWT_SECRET:-}" ] || [ -z "${GEMINI_API_KEY:-}" ] || [ -z "${OPENAI_API_KEY:-}" ]; then
-    echo "[ERROR] 필수 환경 변수가 누락되었습니다. 배포를 중단합니다."
-    exit 1
-fi
+# 필수 환경 변수 검증
+required_vars=(
+    DOCKERHUB_USERNAME PROD_DB_NAME PROD_DB_USER PROD_DB_PASSWORD
+    PROD_REDIS_PASSWORD PROD_JWT_SECRET PROD_GEMINI_API_KEY PROD_OPENAI_API_KEY
+)
+for var_name in "${required_vars[@]}"; do
+    if [ -z "${!var_name:-}" ]; then
+        echo "[ERROR] 필수 환경 변수 누락: $var_name"
+        exit 1
+    fi
+done
 
 COMPOSE_FILE="infra/docker-compose.prod.yml"
 NGINX_CONF="infra/nginx/conf.d/default.conf"
 
-# 인프라 서비스(DB, Redis, Nginx) 가동 확인
+# 인프라 서비스(DB, Redis) 가동 확인
 echo "=========================================="
-echo "[1/5] 인프라 가동 (DB, Redis, Nginx)"
+echo "[1/5] DB, Redis 가동"
 echo "=========================================="
-docker compose -f $COMPOSE_FILE up -d db redis nginx
+docker compose -f $COMPOSE_FILE up -d db redis
 
 # 활성 컨테이너 식별 (Nginx 설정 파일 기준)
 echo "=========================================="
@@ -101,11 +107,25 @@ echo "=========================================="
 cp "$NGINX_CONF" "${NGINX_CONF}.bak"
 sed -i "s/server springboot-${CURRENT_COLOR}:8080/server springboot-${TARGET_COLOR}:8080/g" "$NGINX_CONF"
 
-# Nginx 롤백 보장
-if docker exec synq-nginx nginx -t; then
-    docker exec synq-nginx nginx -s reload
-    echo "라우팅 스위칭 완료."
-    rm "${NGINX_CONF}.bak"
+# Nginx 최초 기동 보장
+docker compose -f $COMPOSE_FILE up -d nginx
+
+if docker exec synq-nginx nginx -t && docker exec synq-nginx nginx -s reload; then
+
+    # Nginx Smoke Test 추가
+    echo "Nginx Smoke Test 진행 중..."
+    SMOKE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost/actuator/health" || true)
+
+    if [ "$SMOKE_STATUS" -eq 200 ]; then
+        echo "라우팅 스위칭 및 Smoke Test 완료."
+        rm "${NGINX_CONF}.bak"
+    else
+        echo "[ERROR] Smoke Test 실패 (HTTP $SMOKE_STATUS). Nginx 라우팅 오류가 의심되어 Rollback 합니다."
+        mv "${NGINX_CONF}.bak" "$NGINX_CONF"
+        docker exec synq-nginx nginx -s reload
+        docker compose -f $COMPOSE_FILE stop springboot-$TARGET_COLOR
+        exit 1
+    fi
 else
     echo "[ERROR] 라우팅 스위칭 실패. 원본으로 Rollback 합니다."
     mv "${NGINX_CONF}.bak" "$NGINX_CONF"
