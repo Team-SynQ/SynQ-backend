@@ -2,11 +2,13 @@ package com.synq.backend.domain.ai.summary.mock;
 
 import com.synq.backend.domain.ai.summary.domain.MeetingContextReader;
 import java.util.Optional;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
 @Profile({"local", "test"})
+@ConditionalOnProperty(prefix = "ai.summary", name = "context-source", havingValue = "mock", matchIfMissing = true)
 public class MockMeetingContextReader implements MeetingContextReader {
 
 	@Override

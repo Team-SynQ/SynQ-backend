@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -16,7 +16,7 @@ import org.springframework.web.client.RestClientException;
  * OpenAI Responses API 호출을 담당하는 클라이언트.
  */
 @Component
-@ConditionalOnProperty(prefix = "ai.summary", name = "client", havingValue = "openai")
+@ConditionalOnExpression("'${ai.summary.client:fake}' == 'openai' or '${ai.live-context.client:fake}' == 'openai'")
 public class OpenAiClient {
 
 	private final RestClient openAiRestClient;
