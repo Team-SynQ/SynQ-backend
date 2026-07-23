@@ -20,7 +20,7 @@ class SummaryJobProcessorTest {
 		var summaryStore = new InMemoryMeetingSummaryStore();
 		var contextBuilder = new SummaryContextBuilder(
 				new MockTranscriptReader(), new MockMeetingContextReader(), new MockRagContextReader());
-		var processor = new SummaryJobProcessor(jobStore, summaryStore, contextBuilder, new FakeSummaryAiClient());
+		var processor = new SummaryJobProcessor(jobStore, summaryStore, contextBuilder, new FakeSummaryAiClient(), event -> {});
 		SummaryJob job = jobStore.save(SummaryJob.queued(1L));
 
 		processor.process(job.id());
@@ -39,7 +39,7 @@ class SummaryJobProcessorTest {
 		var processor = new SummaryJobProcessor(
 				jobStore, summaryStore, contextBuilder, context -> {
 					throw new IllegalStateException();
-				});
+				}, event -> {});
 		SummaryJob job = jobStore.save(SummaryJob.queued(1L));
 
 		processor.process(job.id());

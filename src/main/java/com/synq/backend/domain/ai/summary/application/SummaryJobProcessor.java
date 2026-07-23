@@ -1,11 +1,14 @@
 package com.synq.backend.domain.ai.summary.application;
 
+import com.synq.backend.domain.ai.event.SummaryCompletedEvent;
+import com.synq.backend.domain.ai.event.SummaryFailedEvent;
 import com.synq.backend.domain.ai.summary.domain.MeetingSummary;
 import com.synq.backend.domain.ai.summary.domain.SummaryJob;
 import com.synq.backend.domain.ai.summary.domain.MeetingSummaryStore;
 import com.synq.backend.domain.ai.summary.domain.SummaryAiClient;
 import com.synq.backend.domain.ai.summary.domain.SummaryJobStore;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -16,17 +19,20 @@ public class SummaryJobProcessor {
 	private final MeetingSummaryStore summaryStore;
 	private final SummaryContextBuilder contextBuilder;
 	private final SummaryAiClient summaryAiClient;
+	private final ApplicationEventPublisher eventPublisher;
 
 	public SummaryJobProcessor(
 			SummaryJobStore jobStore,
 			MeetingSummaryStore summaryStore,
 			SummaryContextBuilder contextBuilder,
-			SummaryAiClient summaryAiClient
+			SummaryAiClient summaryAiClient,
+			ApplicationEventPublisher eventPublisher
 	) {
 		this.jobStore = jobStore;
 		this.summaryStore = summaryStore;
 		this.contextBuilder = contextBuilder;
 		this.summaryAiClient = summaryAiClient;
+		this.eventPublisher = eventPublisher;
 	}
 
 	@Async("summaryExecutor")
@@ -46,10 +52,13 @@ public class SummaryJobProcessor {
 			var generated = summaryAiClient.generate(context);
 			summaryStore.save(MeetingSummary.from(startedJob.meetingId(), generated));
 			jobStore.save(startedJob.complete());
+			// 회의 상태(SUMMARIZED)를 확정하도록 meeting 도메인에 결과를 알린다.
+			eventPublisher.publishEvent(new SummaryCompletedEvent(startedJob.meetingId()));
 		} catch (Exception e) {
 			// 비동기 예외가 호출자에게 전파되지 않으므로 실패 상태와 원인을 Job에 남긴다.
 			String errorMessage = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
 			jobStore.save(startedJob.fail(errorMessage));
+			eventPublisher.publishEvent(new SummaryFailedEvent(startedJob.meetingId(), errorMessage));
 		}
 	}
 }
