@@ -37,6 +37,11 @@ jwt:
   access-token-expiration-minutes: 30
   refresh-token-expiration-days: 14
 
+project:
+  invitation:
+    frontend-base-url: ${FRONTEND_BASE_URL:https://synq.app}
+    expiration-days: 7
+
 kakao:
   client-id: ${KAKAO_CLIENT_ID}
   redirect-uri: ${KAKAO_REDIRECT_URI}
