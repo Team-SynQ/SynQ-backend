@@ -79,3 +79,8 @@ ai:
   summary:
     # Mock 구현체는 local/test에서만 활성화된다. 실제 OpenAI 호출 확인 시 openai로 변경한다.
     client: ${AI_SUMMARY_CLIENT:fake}
+    # Live Context까지 생성된 뒤 회의 후 요약 입력으로 사용할 때 live-context로 변경한다.
+    context-source: ${AI_SUMMARY_CONTEXT_SOURCE:mock}
+  live-context:
+    # local/test에서는 Fake 구현체로 전사 이벤트와 영속 흐름을 검증한다.
+    client: ${AI_LIVE_CONTEXT_CLIENT:fake}
