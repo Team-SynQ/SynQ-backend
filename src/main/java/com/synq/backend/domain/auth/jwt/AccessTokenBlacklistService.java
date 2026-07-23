@@ -23,12 +23,16 @@ public class AccessTokenBlacklistService {
 	public AccessTokenBlacklistService(StringRedisTemplate redisTemplate) {
 		this.redisTemplate = redisTemplate;
 	}
-
+    
 	public void blacklist(String accessToken, Duration remainingValidity) {
 		if (remainingValidity.isZero() || remainingValidity.isNegative()) {
 			return;
 		}
-		redisTemplate.opsForValue().set(KEY_PREFIX + sha256Hex(accessToken), "1", remainingValidity);
+		try {
+			redisTemplate.opsForValue().set(KEY_PREFIX + sha256Hex(accessToken), "1", remainingValidity);
+		} catch (DataAccessException e) {
+			log.warn("레디스 장애(연결 실패 또는 타임아웃)로 access token 블랙리스트 등록을 건너뜁니다.", e);
+		}
 	}
 
 	public boolean isBlacklisted(String accessToken) {
