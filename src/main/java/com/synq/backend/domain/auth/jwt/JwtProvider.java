@@ -37,14 +37,13 @@ public class JwtProvider {
 	}
 
 	public Long parseUserId(String accessToken) {
+		Long userId = parseSubject(accessToken);
 		if (blacklistService.isBlacklisted(accessToken)) {
 			throw new JwtException("로그아웃 처리된 access token입니다.");
 		}
-		return parseSubject(accessToken);
+		return userId;
 	}
 
-	// 로그아웃 전용: 이미 블랙리스트에 등록된(=이미 로그아웃된) 토큰으로 로그아웃을 재시도해도
-	// 블랙리스트 체크에서 막히지 않고 누구인지 식별해서 멱등하게 재처리되도록, 블랙리스트 검사를 건너뛴다.
 	public Long parseUserIdIgnoringExpiration(String accessToken) {
 		try {
 			return parseSubject(accessToken);
