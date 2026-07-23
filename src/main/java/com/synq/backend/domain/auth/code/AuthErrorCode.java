@@ -28,7 +28,13 @@ public enum AuthErrorCode implements BaseCode {
 			"카카오 로그인에 실패했습니다."),
 	KAKAO_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE,
 			"AUTH503_1",
-			"카카오 서버 응답이 원활하지 않습니다. 잠시 후 다시 시도해주세요.");
+			"카카오 서버 응답이 원활하지 않습니다. 잠시 후 다시 시도해주세요."),
+	INVALID_GOOGLE_LOGIN(HttpStatus.UNAUTHORIZED,
+			"AUTH401_7",
+			"구글 로그인에 실패했습니다."),
+	GOOGLE_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE,
+			"AUTH503_2",
+			"구글 서버 응답이 원활하지 않습니다. 잠시 후 다시 시도해주세요.");
 
 	private final HttpStatus status;
 	private final String code;
