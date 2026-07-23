@@ -2,6 +2,8 @@ package com.synq.backend.domain.project.controller;
 
 import com.synq.backend.domain.project.dto.ProjectCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectCreateResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequest;
+import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.service.ProjectService;
 import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
@@ -22,5 +24,15 @@ public class ProjectController implements ProjectControllerDocs {
 		ProjectCreateResponse response = projectService.create(userId, request);
 		return ResponseEntity.status(GeneralSuccessCode.CREATED.getStatus())
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.CREATED, response));
+	}
+
+	@Override
+	public ResponseEntity<ApiResponse<ProjectJoinResponse>> join(Long userId, ProjectJoinRequest request) {
+		ProjectJoinResponse response = projectService.join(userId, request.inviteToken());
+		GeneralSuccessCode successCode = response.newlyJoined()
+				? GeneralSuccessCode.CREATED
+				: GeneralSuccessCode.REQUEST_OK;
+		return ResponseEntity.status(successCode.getStatus())
+				.body(ApiResponse.onSuccess(successCode, response));
 	}
 }

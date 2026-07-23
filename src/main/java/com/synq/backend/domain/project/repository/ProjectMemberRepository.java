@@ -9,5 +9,7 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
 
 	Optional<ProjectMember> findByProjectIdAndUserId(Long projectId, Long userId);
 
+	long countByProjectId(Long projectId);
+
 	long countByUserId(Long userId);
 }
