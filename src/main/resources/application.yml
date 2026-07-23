@@ -31,6 +31,13 @@ spring:
       hibernate:
         jdbc:
           time_zone: Asia/Seoul
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+  lifecycle:
+    timeout-per-shutdown-phase: 90s
 
 jwt:
   secret: ${JWT_SECRET}
@@ -63,6 +70,16 @@ gemini:
 
 server:
   port: 8080
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
 
 springdoc:
   swagger-ui:
