@@ -14,7 +14,7 @@ public enum MeetingErrorCode implements BaseCode {
 	NOT_PROJECT_MEMBER(HttpStatus.FORBIDDEN,
 			"MEETING403_1",
 			"프로젝트 멤버만 회의를 생성할 수 있습니다."),
-	NOT_PROJECT_OWNER(HttpStatus.FORBIDDEN,
+	NOT_HOST(HttpStatus.FORBIDDEN,
 			"MEETING403_2",
 			"회의를 종료할 권한이 없습니다."),
 	MEETING_NOT_FOUND(HttpStatus.NOT_FOUND,

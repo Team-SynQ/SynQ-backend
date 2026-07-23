@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 public interface MeetingEndControllerDocs {
 
 	@Operation(summary = "회의 종료", description = """
-			진행자(프로젝트 소유자)만 회의를 종료할 수 있다. 종료 즉시 상태가 SUMMARIZING 으로 전환되고,
+			진행자(회의 HOST)만 회의를 종료할 수 있다. 종료 즉시 상태가 SUMMARIZING 으로 전환되고,
 			이후 AI 정리(개인별/전체)가 비동기로 생성된다. 정리 실패 시 SUMMARY_FAILED 로 전이된다.""")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "회의 종료 성공"),

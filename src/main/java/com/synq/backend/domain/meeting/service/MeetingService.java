@@ -7,7 +7,6 @@ import com.synq.backend.domain.meeting.entity.MeetingStatus;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
 import com.synq.backend.domain.meeting.event.MeetingEndedEvent;
 import com.synq.backend.domain.meeting.port.ProjectMembershipChecker;
-import com.synq.backend.domain.meeting.port.ProjectOwnerChecker;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
 import com.synq.backend.global.apipayload.exception.GeneralException;
@@ -28,7 +27,6 @@ public class MeetingService {
 	private final MeetingRepository meetingRepository;
 	private final MeetingParticipantRepository meetingParticipantRepository;
 	private final ProjectMembershipChecker projectMembershipChecker;
-	private final ProjectOwnerChecker projectOwnerChecker;
 	private final ApplicationEventPublisher eventPublisher;
 
 	@Transactional
@@ -45,14 +43,14 @@ public class MeetingService {
 		return meeting;
 	}
 
-	// 진행자(프로젝트 소유자)만 회의를 종료할 수 있다. 종료 즉시 SUMMARIZING 으로 전환하고
+	// 진행자(회의 HOST)만 회의를 종료할 수 있다. 종료 즉시 SUMMARIZING 으로 전환하고
 	// MeetingEndedEvent 를 발행하면, ai.summary 도메인이 이를 수신해 AI 정리를 비동기로 시작한다.
 	@Transactional
 	public Meeting end(Long meetingId, Long userId) {
 		Meeting meeting = meetingRepository.findById(meetingId)
 				.orElseThrow(() -> new GeneralException(MeetingErrorCode.MEETING_NOT_FOUND));
-		if (!projectOwnerChecker.isOwner(meeting.getProjectId(), userId)) {
-			throw new GeneralException(MeetingErrorCode.NOT_PROJECT_OWNER);
+		if (!isHost(meetingId, userId)) {
+			throw new GeneralException(MeetingErrorCode.NOT_HOST);
 		}
 		if (meeting.getStatus() != MeetingStatus.IN_PROGRESS) {
 			throw new GeneralException(MeetingErrorCode.MEETING_ALREADY_ENDED);
@@ -62,6 +60,12 @@ public class MeetingService {
 		// 커밋 이후 리스너가 요약을 시작하도록, 상태 저장이 확정된 뒤에 이벤트가 처리된다.
 		eventPublisher.publishEvent(new MeetingEndedEvent(meeting.getId()));
 		return meeting;
+	}
+
+	// 회의 진행자(HOST) 판별. 회의 시작 시 생성자를 role=HOST 로 저장해두므로 그 참여자인지 확인한다.
+	private boolean isHost(Long meetingId, Long userId) {
+		return meetingParticipantRepository.findByMeetingIdAndUserId(meetingId, userId).stream()
+				.anyMatch(participant -> participant.getRole() == ParticipantRole.HOST);
 	}
 
 	// AI 정리 완료/실패 이벤트를 받아 회의 상태를 확정하는 진입점.
