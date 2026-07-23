@@ -1,5 +1,6 @@
 package com.synq.backend.support;
 
+import com.synq.backend.domain.ai.client.EmbeddingClient;
 import com.synq.backend.domain.ai.rag.port.ReferenceMaterialPort;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -16,5 +17,15 @@ public class TestPortConfig {
 	@Primary
 	public ReferenceMaterialPort referenceMaterialPort() {
 		return new StubReferenceMaterialPort();
+	}
+
+	/**
+	 * 통합 테스트가 실제 Gemini 를 호출하지 않도록 막는다.
+	 * PostgresTestContainer 는 더미 API 키만 넣을 뿐이라 이게 없으면 HTTP 요청이 실제로 나간다.
+	 */
+	@Bean
+	@Primary
+	public EmbeddingClient embeddingClient() {
+		return new StubEmbeddingClient();
 	}
 }

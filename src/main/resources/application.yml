@@ -1,6 +1,6 @@
 spring:
   application:
-    name: backend
+    name: synq-backend
   # 기본 활성 프로파일은 local(개발 편의). 운영 등 비-dev 환경은 SPRING_PROFILES_ACTIVE 를 명시적으로 지정한다.
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
@@ -10,6 +10,10 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/synq}
     username: ${DB_USERNAME:synq}
     password: ${DB_PASSWORD:synq}
+    hikari:
+      # HNSW 는 후보를 먼저 뽑고 WHERE 를 나중에 적용한다. 청크 검색은 항상 project_id 로
+      # 거르므로, 켜두지 않으면 결과가 topK 보다 적게 나올 수 있다.
+      connection-init-sql: SET hnsw.iterative_scan = strict_order
   http:
     client:
       # 연결 자체가 안되는 상황을 빨리 감지.
@@ -67,6 +71,14 @@ openai:
   base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
   model: ${OPENAI_MODEL:gpt-5.4-nano}
   timeout: ${OPENAI_TIMEOUT:30s}
+
+# 모든 환경에서 필요한 값이라 프로파일 밖에 둔다.
+# 기본값은 임의로 잡은 출발점이고, local 전용 /local/rag/search 로 튜닝한다.
+ai:
+  rag:
+    search:
+      top-k: ${AI_RAG_SEARCH_TOP_K:5}
+      min-similarity: ${AI_RAG_SEARCH_MIN_SIMILARITY:0.5}
 
 ---
 # local(dev) 전용 편의 설정

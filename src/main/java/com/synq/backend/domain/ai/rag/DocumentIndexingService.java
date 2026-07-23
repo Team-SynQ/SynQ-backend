@@ -24,9 +24,9 @@ public class DocumentIndexingService implements DocumentIndexer {
 
 	@Override
 	@Async("indexingExecutor")
-	public void indexAsync(Long referenceMaterialId, String extractedText) {
+	public void indexAsync(Long referenceMaterialId, Long projectId, String extractedText) {
 		try {
-			index(referenceMaterialId, extractedText);
+			index(referenceMaterialId, projectId, extractedText);
 		} catch (RuntimeException e) {
 			log.error("비동기 인덱싱 실패. referenceMaterialId={}", referenceMaterialId, e);
 		}
@@ -37,7 +37,7 @@ public class DocumentIndexingService implements DocumentIndexer {
 	 * 실패하면 청크를 하나도 남기지 않고 FAILED 로 표시한 뒤 예외를 다시 던진다
 	 * 몇 번을 돌려도 결과가 같다(멱등).
 	 */
-	public void index(Long referenceMaterialId, String extractedText) {
+	public void index(Long referenceMaterialId, Long projectId, String extractedText) {
 		referenceMaterialPort.markProcessing(referenceMaterialId);
 		try {
 			List<String> contents = chunker.chunk(extractedText);
@@ -56,7 +56,8 @@ public class DocumentIndexingService implements DocumentIndexer {
 			String model = embeddingClient.modelName();
 			List<DocumentChunk> chunks = new ArrayList<>(contents.size());
 			for (int i = 0; i < contents.size(); i++) {
-				chunks.add(DocumentChunk.of(referenceMaterialId, i, contents.get(i), embeddings.get(i), model));
+				chunks.add(DocumentChunk.of(
+						referenceMaterialId, projectId, i, contents.get(i), embeddings.get(i), model));
 			}
 
 			// 재처리일 수 있으므로 기존 청크를 지우고 교체한다.

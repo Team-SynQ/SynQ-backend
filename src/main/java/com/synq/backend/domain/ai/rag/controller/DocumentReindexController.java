@@ -28,8 +28,12 @@ public class DocumentReindexController {
 	public ApiResponse<Void> reindex(@PathVariable Long id) {
 		String extractedText = referenceMaterialPort.findExtractedText(id)
 				.orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
+		// 검색 스코프. 실패로 청크가 지워진 상태에서도 복구할 수 있어야 하므로
+		// 기존 청크에서 읽지 않고 참고자료 도메인에 묻는다.
+		Long projectId = referenceMaterialPort.findProjectId(id)
+				.orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
 
-		indexingService.index(id, extractedText);
+		indexingService.index(id, projectId, extractedText);
 		return ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, null);
 	}
 }
