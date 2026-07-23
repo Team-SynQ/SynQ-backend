@@ -15,7 +15,7 @@ import java.util.Optional;
 @Service
 public class NaverAuthService {
 
-	private static final String DEFAULT_NAME = "네이버사용자";
+	private static final String DEFAULT_NAME = "사용자";
 	private static final int MAX_NAME_LENGTH = 20;
 
 	private final NaverClient naverClient;
