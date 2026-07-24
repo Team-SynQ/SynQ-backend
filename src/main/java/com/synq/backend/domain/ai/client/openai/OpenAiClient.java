@@ -16,7 +16,7 @@ import org.springframework.web.client.RestClientException;
  * OpenAI Responses API 호출을 담당하는 클라이언트.
  */
 @Component
-@ConditionalOnExpression("'${ai.summary.client:fake}' == 'openai' or '${ai.live-context.client:fake}' == 'openai'")
+@ConditionalOnExpression("'${ai.summary.client:fake}' == 'openai' or '${ai.live-context.client:fake}' == 'openai' or '${ai.assistant.client:fake}' == 'openai'")
 public class OpenAiClient {
 
 	private final RestClient openAiRestClient;
