@@ -2,6 +2,7 @@ package com.synq.backend.domain.auth.client;
 
 import com.synq.backend.domain.auth.code.AuthErrorCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -18,6 +19,9 @@ public class SocialApiCallExecutor {
 		try {
 			return request.get();
 		} catch (HttpClientErrorException e) {
+			if (e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
+				throw new GeneralException(unavailableCode, e);
+			}
 			throw new GeneralException(invalidCode, e);
 		} catch (HttpServerErrorException | ResourceAccessException | HttpMessageNotReadableException e) {
 			throw new GeneralException(unavailableCode, e);

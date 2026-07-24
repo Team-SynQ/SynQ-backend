@@ -4,7 +4,7 @@ final class SocialNameTruncator {
 
 	private SocialNameTruncator() {
 	}
-    
+
 	static String truncate(String value, int maxCodePoints) {
 		if (value.codePointCount(0, value.length()) <= maxCodePoints) {
 			return value;
