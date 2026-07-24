@@ -12,6 +12,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.HexFormat;
 
+// 레디스 장애 시 가용성을 우선해 fail-open한다 (블랙리스트 미확인/미등록 상태로 통과).
 @Service
 public class AccessTokenBlacklistService {
 
