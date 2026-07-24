@@ -5,6 +5,7 @@ import com.synq.backend.domain.project.dto.ProjectCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
+import com.synq.backend.domain.project.dto.ProjectListResponse;
 import com.synq.backend.domain.project.service.ProjectService;
 import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
@@ -13,12 +14,21 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/projects")
 @RequiredArgsConstructor
 public class ProjectController implements ProjectControllerDocs {
 
 	private final ProjectService projectService;
+
+	@Override
+	public ResponseEntity<ApiResponse<List<ProjectListResponse>>> findAll(Long userId) {
+		List<ProjectListResponse> response = projectService.findAll(userId);
+		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
+	}
 
 	@Override
 	public ResponseEntity<ApiResponse<ProjectCreateResponse>> create(Long userId, ProjectCreateRequest request) {
