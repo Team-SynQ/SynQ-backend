@@ -6,6 +6,9 @@ import com.synq.backend.domain.auth.jwt.JwtProperties;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
 import com.synq.backend.domain.auth.repository.RefreshTokenRedisRepository;
 import com.synq.backend.global.apipayload.exception.GeneralException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -17,6 +20,8 @@ import java.util.UUID;
 
 @Service
 public class AuthTokenService {
+
+	private static final Logger log = LoggerFactory.getLogger(AuthTokenService.class);
 
 	private final JwtProvider jwtProvider;
 	private final RefreshTokenRedisRepository refreshTokenRepository;
@@ -53,7 +58,11 @@ public class AuthTokenService {
 	}
 
 	public void revoke(Long userId) {
-		refreshTokenRepository.revoke(userId);
+		try {
+			refreshTokenRepository.revoke(userId);
+		} catch (DataAccessException e) {
+			log.warn("레디스 장애(연결 실패 또는 타임아웃)로 refresh token 폐기를 건너뜁니다.", e);
+		}
 	}
 
 	private Duration refreshTokenTtl() {
