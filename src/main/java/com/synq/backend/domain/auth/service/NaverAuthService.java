@@ -2,10 +2,12 @@ package com.synq.backend.domain.auth.service;
 
 import com.synq.backend.domain.auth.client.NaverClient;
 import com.synq.backend.domain.auth.client.dto.NaverUserResponse;
+import com.synq.backend.domain.auth.code.AuthErrorCode;
 import com.synq.backend.domain.auth.dto.TokenResponse;
 import com.synq.backend.domain.user.entity.Provider;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
+import com.synq.backend.global.apipayload.exception.GeneralException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -21,15 +23,20 @@ public class NaverAuthService {
 	private final NaverClient naverClient;
 	private final UserRepository userRepository;
 	private final AuthTokenService authTokenService;
+	private final NaverOAuthStateService naverOAuthStateService;
 
 	public NaverAuthService(NaverClient naverClient, UserRepository userRepository,
-							AuthTokenService authTokenService) {
+							AuthTokenService authTokenService, NaverOAuthStateService naverOAuthStateService) {
 		this.naverClient = naverClient;
 		this.userRepository = userRepository;
 		this.authTokenService = authTokenService;
+		this.naverOAuthStateService = naverOAuthStateService;
 	}
 
 	public TokenResponse login(String code, String state) {
+		if (!naverOAuthStateService.validateAndConsume(state)) {
+			throw new GeneralException(AuthErrorCode.INVALID_OAUTH_STATE);
+		}
 		String naverAccessToken = naverClient.exchangeCodeForAccessToken(code, state);
 		NaverUserResponse naverUser = naverClient.fetchUser(naverAccessToken);
 		String providerId = naverUser.response().id();
@@ -51,7 +58,6 @@ public class NaverAuthService {
 	}
 
 
-	// 실명(회원이름) 동의항목은 요청하지 않는다 - 닉네임만 쓴다.
 	private String resolveName(NaverUserResponse naverUser) {
 		String nickname = naverUser.response().nickname();
 		String name = StringUtils.hasText(nickname) ? nickname : DEFAULT_NAME;
