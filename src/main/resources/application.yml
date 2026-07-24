@@ -55,6 +55,11 @@ kakao:
   redirect-uri: ${KAKAO_REDIRECT_URI}
   client-secret: ${KAKAO_CLIENT_SECRET:}
 
+google:
+  client-id: ${GOOGLE_CLIENT_ID}
+  redirect-uri: ${GOOGLE_REDIRECT_URI}
+  client-secret: ${GOOGLE_CLIENT_SECRET}
+
 naver:
   client-id: ${NAVER_CLIENT_ID}
   redirect-uri: ${NAVER_REDIRECT_URI}
@@ -139,6 +144,11 @@ jwt:
 kakao:
   client-id: ${KAKAO_CLIENT_ID:local-dev-placeholder-kakao-client-id}
   redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:3000/login/callback}
+
+google:
+  client-id: ${GOOGLE_CLIENT_ID:local-dev-placeholder-google-client-id}
+  redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:3000/login/callback}
+  client-secret: ${GOOGLE_CLIENT_SECRET:local-dev-placeholder-google-client-secret}
 
 naver:
   client-id: ${NAVER_CLIENT_ID:local-dev-placeholder-naver-client-id}

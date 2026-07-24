@@ -37,7 +37,13 @@ public enum AuthErrorCode implements BaseCode {
 			"네이버 서버 응답이 원활하지 않습니다. 잠시 후 다시 시도해주세요."),
 	INVALID_OAUTH_STATE(HttpStatus.UNAUTHORIZED,
 			"AUTH401_8",
-			"유효하지 않거나 만료된 state입니다.");
+			"유효하지 않거나 만료된 state입니다."),
+	INVALID_GOOGLE_LOGIN(HttpStatus.UNAUTHORIZED,
+			"AUTH401_9",
+			"구글 로그인에 실패했습니다."),
+	GOOGLE_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE,
+			"AUTH503_3",
+			"구글 서버 응답이 원활하지 않습니다. 잠시 후 다시 시도해주세요.");
 
 	private final HttpStatus status;
 	private final String code;
