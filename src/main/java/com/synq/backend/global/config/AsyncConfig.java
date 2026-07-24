@@ -37,4 +37,16 @@ public class AsyncConfig {
 		executor.initialize();
 		return executor;
 	}
+
+	@Bean(name = "liveContextExecutor")
+	public Executor liveContextExecutor() {
+		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+		executor.setCorePoolSize(1);
+		// 확정 전사 순서대로 기존 맥락을 이어야 하므로 병렬 처리하지 않는다.
+		executor.setMaxPoolSize(1);
+		executor.setQueueCapacity(50);
+		executor.setThreadNamePrefix("live-context-");
+		executor.initialize();
+		return executor;
+	}
 }

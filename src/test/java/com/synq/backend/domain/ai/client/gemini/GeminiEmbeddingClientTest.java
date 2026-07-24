@@ -196,4 +196,41 @@ class GeminiEmbeddingClientTest {
 	void 모델명을_반환한다() {
 		assertThat(client.modelName()).isEqualTo("gemini-embedding-001");
 	}
+
+	@Test
+	void 쿼리는_RETRIEVAL_QUERY_로_임베딩한다() {
+		// 문서와 쿼리를 같은 taskType 으로 임베딩하면 비대칭 모델에서 검색 정확도가 떨어진다.
+		server.expect(requestTo(URL))
+				.andExpect(method(POST))
+				.andExpect(jsonPath("$.requests[0].taskType").value("RETRIEVAL_QUERY"))
+				.andExpect(jsonPath("$.requests[0].content.parts[0].text").value("인증 방식"))
+				.andRespond(withSuccess(responseWith(1), MediaType.APPLICATION_JSON));
+
+		float[] vector = client.embedQuery("인증 방식");
+
+		assertThat(vector).hasSize(768);
+		server.verify();
+	}
+
+	@Test
+	void 쿼리_임베딩도_L2_정규화한다() {
+		server.expect(requestTo(URL))
+				.andRespond(withSuccess(responseWith(1), MediaType.APPLICATION_JSON));
+
+		float[] vector = client.embedQuery("텍스트");
+
+		double norm = 0;
+		for (float v : vector) {
+			norm += v * v;
+		}
+		assertThat(Math.sqrt(norm)).isCloseTo(1.0, Offset.offset(0.0001));
+	}
+
+	@Test
+	void 빈_질의는_API를_호출하지_않고_실패한다() {
+		assertThatThrownBy(() -> client.embedQuery("   "))
+				.isInstanceOf(EmbeddingException.class);
+
+		server.verify();
+	}
 }
