@@ -29,6 +29,11 @@ public class DocumentChunk {
 	@Column(name = "reference_material_id", nullable = false)
 	private Long referenceMaterialId;
 
+	// 검색 스코프. reference_material 을 거치면 알 수 있지만 조인 필터링이 HNSW 인덱스 사용을
+	// 방해하므로 의도적으로 비정규화했다. 여기서도 연관관계를 맺지 않는다.
+	@Column(name = "project_id", nullable = false)
+	private Long projectId;
+
 	@Column(name = "chunk_index", nullable = false)
 	private int chunkIndex;
 
@@ -47,17 +52,18 @@ public class DocumentChunk {
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private OffsetDateTime createdAt;
 
-	private DocumentChunk(Long referenceMaterialId, int chunkIndex, String content,
+	private DocumentChunk(Long referenceMaterialId, Long projectId, int chunkIndex, String content,
 						  float[] embedding, String embeddingModel) {
 		this.referenceMaterialId = referenceMaterialId;
+		this.projectId = projectId;
 		this.chunkIndex = chunkIndex;
 		this.content = content;
 		this.embedding = embedding;
 		this.embeddingModel = embeddingModel;
 	}
 
-	public static DocumentChunk of(Long referenceMaterialId, int chunkIndex, String content,
+	public static DocumentChunk of(Long referenceMaterialId, Long projectId, int chunkIndex, String content,
 								   float[] embedding, String embeddingModel) {
-		return new DocumentChunk(referenceMaterialId, chunkIndex, content, embedding, embeddingModel);
+		return new DocumentChunk(referenceMaterialId, projectId, chunkIndex, content, embedding, embeddingModel);
 	}
 }

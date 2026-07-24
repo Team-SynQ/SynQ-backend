@@ -15,6 +15,15 @@ public interface EmbeddingClient {
 	 */
 	List<float[]> embedDocuments(List<String> texts);
 
+	/**
+	 * 검색 질의용 임베딩.
+	 * gemini-embedding-001 은 비대칭 모델이라 문서와 질의의 taskType 이 달라야
+	 * 두 벡터가 같은 검색 공간에서 비교된다.
+	 *
+	 * @throws EmbeddingException 질의가 비어 있거나 재시도를 모두 소진했을 때
+	 */
+	float[] embedQuery(String text);
+
 	/** document_chunk.embedding_model 에 기록할 모델명. */
 	String modelName();
 }

@@ -19,6 +19,11 @@ public class LocalReferenceMaterialPort implements ReferenceMaterialPort {
 	}
 
 	@Override
+	public Optional<Long> findProjectId(Long referenceMaterialId) {
+		return Optional.empty();
+	}
+
+	@Override
 	public void markProcessing(Long referenceMaterialId) {
 		// 실제 참고자료 상태 저장은 reference 도메인 구현체가 담당한다.
 	}

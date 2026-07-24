@@ -19,6 +19,7 @@ import java.util.List;
 public class GeminiEmbeddingClient implements EmbeddingClient {
 
 	private static final String TASK_TYPE_DOCUMENT = "RETRIEVAL_DOCUMENT";
+	private static final String TASK_TYPE_QUERY = "RETRIEVAL_QUERY";
 
 	private final RestClient restClient;
 	private final GeminiProperties properties;
@@ -47,9 +48,18 @@ public class GeminiEmbeddingClient implements EmbeddingClient {
 		// 하나씩 호출하면 왕복이 청크 수만큼 늘고 rate limit 에 걸리기 쉽다.
 		for (int start = 0; start < texts.size(); start += batchSize) {
 			List<String> batch = texts.subList(start, Math.min(start + batchSize, texts.size()));
-			vectors.addAll(embedBatchWithRetry(batch));
+			vectors.addAll(embedBatchWithRetry(batch, TASK_TYPE_DOCUMENT));
 		}
 		return vectors;
+	}
+
+	@Override
+	public float[] embedQuery(String text) {
+		if (text == null || text.isBlank()) {
+			throw new EmbeddingException("검색 질의가 비어 있습니다.");
+		}
+		// 단건이지만 배치 경로를 그대로 쓴다. 재시도·백오프·차원 검증·정규화가 전부 거기 있다.
+		return embedBatchWithRetry(List.of(text), TASK_TYPE_QUERY).get(0);
 	}
 
 	/**
@@ -57,14 +67,14 @@ public class GeminiEmbeddingClient implements EmbeddingClient {
 	 * 4xx(401, 400 등)는 다시 호출해도 결과가 같으므로 즉시 실패시킨다.
 	 * spring-retry 의 @Retryable 은 같은 클래스 내부 호출에서 프록시를 안 거쳐 조용히 무시되므로 직접 구현한다.
 	 */
-	private List<float[]> embedBatchWithRetry(List<String> batch) {
+	private List<float[]> embedBatchWithRetry(List<String> batch, String taskType) {
 		int maxAttempts = properties.embedding().maxAttempts();
 		long backoff = properties.embedding().initialBackoffMillis();
 		RuntimeException lastFailure = null;
 
 		for (int attempt = 1; attempt <= maxAttempts; attempt++) {
 			try {
-				return embedBatch(batch);
+				return embedBatch(batch, taskType);
 			} catch (HttpClientErrorException e) {
 				if (e.getStatusCode().value() != HttpStatus.TOO_MANY_REQUESTS.value()) {
 					throw new EmbeddingException(
@@ -91,11 +101,11 @@ public class GeminiEmbeddingClient implements EmbeddingClient {
 		log.warn("임베딩 호출 실패 (시도 {}/{}): {}", attempt, maxAttempts, e.toString());
 	}
 
-	private List<float[]> embedBatch(List<String> batch) {
+	private List<float[]> embedBatch(List<String> batch, String taskType) {
 		GeminiEmbeddingRequest request = GeminiEmbeddingRequest.of(
 				batch,
 				properties.embedding().model(),
-				TASK_TYPE_DOCUMENT,
+				taskType,
 				properties.embedding().dimensions());
 
 		GeminiEmbeddingResponse response = restClient.post()
