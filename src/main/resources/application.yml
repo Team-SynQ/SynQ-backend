@@ -19,6 +19,12 @@ spring:
       # 연결 자체가 안되는 상황을 빨리 감지.
       connect-timeout: 5s
       read-timeout: 60s
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      timeout: 2s
   flyway:
     enabled: true
     out-of-order: true
@@ -31,6 +37,8 @@ spring:
       hibernate:
         jdbc:
           time_zone: Asia/Seoul
+  lifecycle:
+    timeout-per-shutdown-phase: 90s
 
 jwt:
   secret: ${JWT_SECRET}
@@ -52,6 +60,11 @@ google:
   redirect-uri: ${GOOGLE_REDIRECT_URI}
   client-secret: ${GOOGLE_CLIENT_SECRET}
 
+naver:
+  client-id: ${NAVER_CLIENT_ID}
+  redirect-uri: ${NAVER_REDIRECT_URI}
+  client-secret: ${NAVER_CLIENT_SECRET}
+
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS}
 
@@ -68,6 +81,16 @@ gemini:
 
 server:
   port: 8080
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
 
 springdoc:
   swagger-ui:
@@ -101,6 +124,9 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  data:
+    redis:
+      port: ${SPRING_DATA_REDIS_PORT:6380}
 
 ai:
   summary:
@@ -123,6 +149,11 @@ google:
   client-id: ${GOOGLE_CLIENT_ID:local-dev-placeholder-google-client-id}
   redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:3000/login/callback}
   client-secret: ${GOOGLE_CLIENT_SECRET:local-dev-placeholder-google-client-secret}
+
+naver:
+  client-id: ${NAVER_CLIENT_ID:local-dev-placeholder-naver-client-id}
+  redirect-uri: ${NAVER_REDIRECT_URI:http://localhost:3000/login/callback}
+  client-secret: ${NAVER_CLIENT_SECRET:local-dev-placeholder-naver-client-secret}
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
