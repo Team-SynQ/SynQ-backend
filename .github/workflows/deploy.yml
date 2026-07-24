@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   # [1] PR 검증용 테스트 잡
   run-tests:
@@ -19,6 +22,8 @@ jobs:
       # 소스 코드 체크아웃
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # JDK 17 및 Gradle 환경 세팅
       - name: Set up JDK 17
@@ -46,6 +51,8 @@ jobs:
       # 소스 코드 체크아웃
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # Docker Buildx 설정
       - name: Set up Docker Buildx
@@ -83,6 +90,8 @@ jobs:
       # 소스 코드 체크아웃
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # 인프라 파일 서버로 전송
       - name: Copy Infrastructure Files to EC2
