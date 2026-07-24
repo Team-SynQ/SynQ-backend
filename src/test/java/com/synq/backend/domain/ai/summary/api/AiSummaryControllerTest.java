@@ -32,8 +32,9 @@ class AiSummaryControllerTest {
 		var summaryStore = new InMemoryMeetingSummaryStore();
 		var contextBuilder = new SummaryContextBuilder(
 				new MockTranscriptReader(), new MockMeetingContextReader(), new MockRagContextReader());
-		var processor = new SummaryJobProcessor(jobStore, summaryStore, contextBuilder, new FakeSummaryAiClient());
-		var service = new MeetingSummaryService(jobStore, summaryStore, processor);
+		var processor = new SummaryJobProcessor(jobStore, summaryStore, contextBuilder, new FakeSummaryAiClient(), event -> {});
+		// 이 테스트는 요약 파이프라인 자체를 검증하므로 회의는 항상 종료된 것으로 간주한다.
+		var service = new MeetingSummaryService(jobStore, summaryStore, processor, meetingId -> true);
 		mockMvc = MockMvcBuilders.standaloneSetup(new AiSummaryController(service)).build();
 	}
 
