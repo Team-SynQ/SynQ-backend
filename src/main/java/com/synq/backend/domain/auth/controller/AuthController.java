@@ -3,6 +3,7 @@ package com.synq.backend.domain.auth.controller;
 import com.synq.backend.domain.auth.code.AuthErrorCode;
 import com.synq.backend.domain.auth.dto.RefreshRequest;
 import com.synq.backend.domain.auth.dto.TokenResponse;
+import com.synq.backend.domain.auth.jwt.AccessTokenBlacklistService;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
 import com.synq.backend.domain.auth.service.AuthTokenService;
 import com.synq.backend.global.apipayload.ApiResponse;
@@ -28,10 +29,13 @@ public class AuthController {
 
 	private final AuthTokenService authTokenService;
 	private final JwtProvider jwtProvider;
+	private final AccessTokenBlacklistService blacklistService;
 
-	public AuthController(AuthTokenService authTokenService, JwtProvider jwtProvider) {
+	public AuthController(AuthTokenService authTokenService, JwtProvider jwtProvider,
+						AccessTokenBlacklistService blacklistService) {
 		this.authTokenService = authTokenService;
 		this.jwtProvider = jwtProvider;
+		this.blacklistService = blacklistService;
 	}
 
 	@PostMapping("/refresh")
@@ -44,18 +48,26 @@ public class AuthController {
 	@SecurityRequirement(name = "bearerAuth")
 	@PostMapping("/logout")
 	public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
-		Long userId = parseUserId(request.getHeader("Authorization"));
+		String rawAccessToken = extractBearerToken(request.getHeader("Authorization"));
+		Long userId = parseUserId(rawAccessToken);
+
+		blacklistService.blacklist(rawAccessToken, jwtProvider.getRemainingValidity(rawAccessToken));
 		authTokenService.revoke(userId);
+
 		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, null));
 	}
 
-	private Long parseUserId(String authorizationHeader) {
+	private String extractBearerToken(String authorizationHeader) {
 		if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
 			throw new GeneralException(AuthErrorCode.INVALID_ACCESS_TOKEN);
 		}
+		return authorizationHeader.substring(BEARER_PREFIX.length());
+	}
+
+	private Long parseUserId(String rawAccessToken) {
 		try {
-			return jwtProvider.parseUserIdIgnoringExpiration(authorizationHeader.substring(BEARER_PREFIX.length()));
+			return jwtProvider.parseUserIdIgnoringExpiration(rawAccessToken);
 		} catch (JwtException | IllegalArgumentException e) {
 			throw new GeneralException(AuthErrorCode.INVALID_ACCESS_TOKEN);
 		}
