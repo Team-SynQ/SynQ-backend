@@ -19,6 +19,12 @@ spring:
       # 연결 자체가 안되는 상황을 빨리 감지.
       connect-timeout: 5s
       read-timeout: 60s
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      timeout: 2s
   flyway:
     enabled: true
     out-of-order: true
@@ -118,6 +124,9 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  data:
+    redis:
+      port: ${SPRING_DATA_REDIS_PORT:6380}
 
 ai:
   summary:
