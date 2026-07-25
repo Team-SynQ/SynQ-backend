@@ -5,9 +5,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
 import com.synq.backend.domain.ai.assistant.domain.HintInput;
-import com.synq.backend.domain.ai.assistant.mock.FakeMeetingProjectPort;
 import com.synq.backend.domain.ai.assistant.mock.FakeProjectMemberPerspectivePort;
 import com.synq.backend.domain.ai.assistant.mock.FakeTranscriptSegmentPort;
+import com.synq.backend.domain.ai.assistant.port.MeetingProjectPort;
 import com.synq.backend.domain.ai.assistant.port.ProjectMemberPerspectivePort;
 import com.synq.backend.domain.ai.context.repository.LiveContextRepository;
 import com.synq.backend.domain.ai.rag.search.ChunkSearchQuery;
@@ -31,10 +31,12 @@ class HintContextBuilderTest {
 
 	private final AssistantHintProperties properties = new AssistantHintProperties(2, 2, 3, 0.3);
 
+	private final MeetingProjectPort meetingProjectPort = meetingId -> Optional.of(1L);
+
 	private HintContextBuilder builder(ProjectMemberPerspectivePort perspectivePort) {
 		return new HintContextBuilder(
 				new FakeTranscriptSegmentPort(),
-				new FakeMeetingProjectPort(),
+				meetingProjectPort,
 				perspectivePort,
 				liveContextRepository,
 				chunkSearcher,
