@@ -5,11 +5,11 @@ import com.synq.backend.domain.ai.summary.domain.MeetingSummaryStore;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile({"local", "test"})
+@ConditionalOnProperty(prefix = "ai.summary", name = "client", havingValue = "fake")
 public class InMemoryMeetingSummaryStore implements MeetingSummaryStore {
 
 	// #23 Mock 단계의 임시 저장소다. 실제 구현에서는 meeting_summary 테이블 어댑터로 교체한다.
