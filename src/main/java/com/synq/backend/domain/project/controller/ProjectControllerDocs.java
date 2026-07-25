@@ -2,6 +2,7 @@ package com.synq.backend.domain.project.controller;
 
 import com.synq.backend.domain.project.dto.ProjectCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectCreateResponse;
+import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
@@ -11,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -48,6 +50,18 @@ public interface ProjectControllerDocs {
 	@PostMapping("/{projectId}/invitation")
 	ResponseEntity<ApiResponse<ProjectInvitationResponse>> createInvitation(
 			@PathVariable Long projectId,
+			@RequestHeader(value = "X-User-Id", required = false) Long userId
+	);
+
+	@Operation(summary = "프로젝트 초대 정보 조회", description = "초대 링크 접속 시 프로젝트 참여 전 확인에 필요한 정보를 조회한다.")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "프로젝트 초대 정보 조회 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "유효하지 않은 초대 링크"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "410", description = "초대 링크 만료")
+	})
+	@GetMapping("/invitations/{inviteToken}")
+	ResponseEntity<ApiResponse<ProjectInvitationInfoResponse>> findInvitationInfo(
+			@PathVariable String inviteToken,
 			@RequestHeader(value = "X-User-Id", required = false) Long userId
 	);
 }

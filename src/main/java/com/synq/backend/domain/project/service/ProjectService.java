@@ -4,6 +4,7 @@ import com.synq.backend.domain.project.code.ProjectErrorCode;
 import com.synq.backend.domain.project.config.ProjectInvitationProperties;
 import com.synq.backend.domain.project.dto.ProjectCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectCreateResponse;
+import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.entity.Project;
@@ -47,12 +48,7 @@ public class ProjectService {
 	public ProjectJoinResponse join(Long userId, String inviteToken) {
 		validateUser(userId);
 
-		Project project = projectRepository.findByInviteToken(inviteToken)
-				.orElseThrow(() -> new GeneralException(ProjectErrorCode.INVITATION_NOT_FOUND));
-		if (project.getInviteTokenExpiresAt() == null
-				|| !project.getInviteTokenExpiresAt().isAfter(LocalDateTime.now())) {
-			throw new GeneralException(ProjectErrorCode.INVITATION_EXPIRED);
-		}
+		Project project = findProjectByValidInviteToken(inviteToken);
 
 		return projectMemberRepository.findByProjectIdAndUserId(project.getId(), userId)
 				.map(member -> ProjectJoinResponse.from(project, member, false))
@@ -88,6 +84,21 @@ public class ProjectService {
 		);
 	}
 
+	@Transactional(readOnly = true)
+	public ProjectInvitationInfoResponse findInvitationInfo(String inviteToken, Long userId) {
+		Project project = findProjectByValidInviteToken(inviteToken);
+		int currentMemberCount = Math.toIntExact(projectMemberRepository.countByProjectId(project.getId()));
+		boolean alreadyJoined = userId != null
+				&& projectMemberRepository.findByProjectIdAndUserId(project.getId(), userId).isPresent();
+
+		return ProjectInvitationInfoResponse.from(
+				project,
+				currentMemberCount,
+				Math.toIntExact(MAX_PROJECT_MEMBERS),
+				alreadyJoined
+		);
+	}
+
 	private ProjectJoinResponse joinAsMember(Project project, Long userId) {
 		validateUserProjectLimit(userId);
 		if (projectMemberRepository.countByProjectId(project.getId()) >= MAX_PROJECT_MEMBERS) {
@@ -109,6 +120,16 @@ public class ProjectService {
 		if (projectMemberRepository.countByUserId(userId) >= MAX_PROJECTS_PER_USER) {
 			throw new GeneralException(ProjectErrorCode.USER_PROJECT_LIMIT_EXCEEDED);
 		}
+	}
+
+	private Project findProjectByValidInviteToken(String inviteToken) {
+		Project project = projectRepository.findByInviteToken(inviteToken)
+				.orElseThrow(() -> new GeneralException(ProjectErrorCode.INVITATION_NOT_FOUND));
+		if (project.getInviteTokenExpiresAt() == null
+				|| !project.getInviteTokenExpiresAt().isAfter(LocalDateTime.now())) {
+			throw new GeneralException(ProjectErrorCode.INVITATION_EXPIRED);
+		}
+		return project;
 	}
 
 	private String generateInviteToken() {
