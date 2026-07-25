@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 public interface HintControllerDocs {
 
 	@Operation(summary = "3-hint 생성", description = "클릭한 세그먼트에 대해 의미/내 영향/팀 질문 3종 힌트를 생성한다.")
-	@PostMapping("/api/meetings/{meetingId}/segments/{segmentId}/hints")
+	@PostMapping("/hints")
 	ResponseEntity<ApiResponse<HintResponse>> generate(
 			@PathVariable Long meetingId,
 			@PathVariable Long segmentId,

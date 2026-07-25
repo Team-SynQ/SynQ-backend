@@ -34,7 +34,7 @@ class HintControllerTest {
 		given(hintService.generate(eq(10L), eq(1L), eq(3L)))
 				.willReturn(new HintResult("의미다", "영향이다", "질문이다"));
 
-		mockMvc.perform(post("/api/meetings/1/segments/3/hints")
+		mockMvc.perform(post("/meetings/1/segments/3/hints")
 						.header("X-User-Id", "10"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.isSuccess").value(true))

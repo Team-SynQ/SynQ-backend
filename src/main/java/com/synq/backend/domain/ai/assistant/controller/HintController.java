@@ -7,9 +7,11 @@ import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/meetings/{meetingId}/segments/{segmentId}")
 @RequiredArgsConstructor
 public class HintController implements HintControllerDocs {
 
