@@ -4,6 +4,7 @@ import com.synq.backend.domain.auth.code.AuthErrorCode;
 import com.synq.backend.domain.auth.dto.RefreshRequest;
 import com.synq.backend.domain.auth.dto.TokenResponse;
 import com.synq.backend.domain.auth.jwt.AccessTokenBlacklistService;
+import com.synq.backend.domain.auth.jwt.BearerTokenExtractor;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
 import com.synq.backend.domain.auth.service.AuthTokenService;
 import com.synq.backend.global.apipayload.ApiResponse;
@@ -24,8 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
-
-	private static final String BEARER_PREFIX = "Bearer ";
 
 	private final AuthTokenService authTokenService;
 	private final JwtProvider jwtProvider;
@@ -59,10 +58,8 @@ public class AuthController {
 	}
 
 	private String extractBearerToken(String authorizationHeader) {
-		if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
-			throw new GeneralException(AuthErrorCode.INVALID_ACCESS_TOKEN);
-		}
-		return authorizationHeader.substring(BEARER_PREFIX.length());
+		return BearerTokenExtractor.extract(authorizationHeader)
+				.orElseThrow(() -> new GeneralException(AuthErrorCode.INVALID_ACCESS_TOKEN));
 	}
 
 	private Long parseUserId(String rawAccessToken) {
