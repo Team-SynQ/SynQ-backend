@@ -12,9 +12,12 @@ public final class BearerTokenExtractor {
 	}
 
 	public static Optional<String> extract(String authorizationHeader) {
-		if (!StringUtils.hasText(authorizationHeader) || !authorizationHeader.startsWith(BEARER_PREFIX)) {
+		if (!StringUtils.hasText(authorizationHeader)
+				|| authorizationHeader.length() <= BEARER_PREFIX.length()
+				|| !authorizationHeader.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
 			return Optional.empty();
 		}
-		return Optional.of(authorizationHeader.substring(BEARER_PREFIX.length()));
+		String token = authorizationHeader.substring(BEARER_PREFIX.length()).trim();
+		return StringUtils.hasText(token) ? Optional.of(token) : Optional.empty();
 	}
 }
