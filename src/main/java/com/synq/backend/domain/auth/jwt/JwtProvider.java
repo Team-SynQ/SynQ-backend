@@ -73,9 +73,13 @@ public class JwtProvider {
 	}
 
 	private Duration remaining(Claims claims) {
-		Instant expiration = claims.getExpiration().toInstant();
+		Date expiration = claims.getExpiration();
+		if (expiration == null) {
+			return Duration.ZERO;
+		}
+		Instant expirationInstant = expiration.toInstant();
 		Instant now = Instant.now();
-		return expiration.isAfter(now) ? Duration.between(now, expiration) : Duration.ZERO;
+		return expirationInstant.isAfter(now) ? Duration.between(now, expirationInstant) : Duration.ZERO;
 	}
 
 	public boolean isValid(String accessToken) {
