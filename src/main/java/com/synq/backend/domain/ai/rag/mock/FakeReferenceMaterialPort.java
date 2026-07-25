@@ -2,16 +2,17 @@ package com.synq.backend.domain.ai.rag.mock;
 
 import com.synq.backend.domain.ai.rag.port.ReferenceMaterialPort;
 import java.util.Optional;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * 참고자료 도메인 구현 전까지 local 환경에서만 RAG 인덱싱 빈을 기동시키는 대역이다.
- * 실제 ReferenceMaterialPort 구현체가 준비되면 이 대역은 제거한다.
+ * {@code ai.rag.reference-material.client=fake}일 때 사용하는 참고자료 포트 대역이다.
+ *
+ * <p>실제 참고자료 도메인 구현체가 준비되면 {@code client} 설정으로 교체한다.
  */
 @Component
-@Profile("local")
-public class LocalReferenceMaterialPort implements ReferenceMaterialPort {
+@ConditionalOnProperty(prefix = "ai.rag.reference-material", name = "client", havingValue = "fake")
+public class FakeReferenceMaterialPort implements ReferenceMaterialPort {
 
 	@Override
 	public Optional<String> findExtractedText(Long referenceMaterialId) {
