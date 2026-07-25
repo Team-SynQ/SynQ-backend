@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 
@@ -17,10 +18,12 @@ public class JwtProvider {
 
 	private final SecretKey key;
 	private final long accessTokenExpirationMillis;
+	private final AccessTokenBlacklistService blacklistService;
 
-	public JwtProvider(JwtProperties properties) {
+	public JwtProvider(JwtProperties properties, AccessTokenBlacklistService blacklistService) {
 		this.key = Keys.hmacShaKeyFor(properties.secret().getBytes(StandardCharsets.UTF_8));
 		this.accessTokenExpirationMillis = properties.accessTokenExpirationMinutes() * 60 * 1000;
+		this.blacklistService = blacklistService;
 	}
 
 	public String createAccessToken(Long userId) {
@@ -33,8 +36,24 @@ public class JwtProvider {
 				.compact();
 	}
 
-
 	public Long parseUserId(String accessToken) {
+		if (blacklistService.isBlacklisted(accessToken)) {
+			throw new JwtException("로그아웃 처리된 access token입니다.");
+		}
+		return parseSubject(accessToken);
+	}
+
+	// 로그아웃 전용: 이미 블랙리스트에 등록된(=이미 로그아웃된) 토큰으로 로그아웃을 재시도해도
+	// 블랙리스트 체크에서 막히지 않고 누구인지 식별해서 멱등하게 재처리되도록, 블랙리스트 검사를 건너뛴다.
+	public Long parseUserIdIgnoringExpiration(String accessToken) {
+		try {
+			return parseSubject(accessToken);
+		} catch (ExpiredJwtException e) {
+			return Long.valueOf(e.getClaims().getSubject());
+		}
+	}
+
+	private Long parseSubject(String accessToken) {
 		Claims claims = Jwts.parser()
 				.verifyWith(key)
 				.build()
@@ -43,13 +62,21 @@ public class JwtProvider {
 		return Long.valueOf(claims.getSubject());
 	}
 
-
-	public Long parseUserIdIgnoringExpiration(String accessToken) {
+	public Duration getRemainingValidity(String accessToken) {
 		try {
-			return parseUserId(accessToken);
+			Claims claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(accessToken).getPayload();
+			return remaining(claims);
 		} catch (ExpiredJwtException e) {
-			return Long.valueOf(e.getClaims().getSubject());
+			return remaining(e.getClaims());
+		} catch (JwtException | IllegalArgumentException e) {
+			return Duration.ZERO;
 		}
+	}
+
+	private Duration remaining(Claims claims) {
+		Instant expiration = claims.getExpiration().toInstant();
+		Instant now = Instant.now();
+		return expiration.isAfter(now) ? Duration.between(now, expiration) : Duration.ZERO;
 	}
 
 	public boolean isValid(String accessToken) {

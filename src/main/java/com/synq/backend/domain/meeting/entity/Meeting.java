@@ -53,4 +53,19 @@ public class Meeting extends BaseEntity {
 	public static Meeting of(Long projectId, String title) {
 		return new Meeting(projectId, title, MeetingStatus.IN_PROGRESS, LocalDateTime.now());
 	}
+
+	// 종료 호출 시 즉시 SUMMARIZING 으로 전환하고 종료 시각을 기록한다.
+	// 이후 AI 정리 결과에 따라 markSummarized/markSummaryFailed 로 상태가 확정된다.
+	public void end() {
+		this.status = MeetingStatus.SUMMARIZING;
+		this.endedAt = LocalDateTime.now();
+	}
+
+	public void markSummarized() {
+		this.status = MeetingStatus.SUMMARIZED;
+	}
+
+	public void markSummaryFailed() {
+		this.status = MeetingStatus.SUMMARY_FAILED;
+	}
 }

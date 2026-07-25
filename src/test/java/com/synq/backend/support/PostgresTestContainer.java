@@ -33,5 +33,9 @@ public abstract class PostgresTestContainer {
 		// 테스트는 실제 외부 AI API를 호출하지 않는다. 키 검증을 통과할 더미 값을 넣는다.
 		registry.add("gemini.api-key", () -> "test-key");
 		registry.add("openai.api-key", () -> "test-key");
+		// 개발 셸의 AI 환경변수가 테스트 빈 구성을 바꾸지 않도록 테스트용 구현체를 고정한다.
+		registry.add("ai.rag.reference-material.client", () -> "fake");
+		registry.add("ai.summary.client", () -> "fake");
+		registry.add("ai.summary.context-source", () -> "mock");
 	}
 }

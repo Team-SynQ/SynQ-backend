@@ -6,7 +6,7 @@ import com.synq.backend.domain.ai.assistant.port.TranscriptWindow;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  * segmentId 는 1-based(= sequenceIndex + 1)로 매핑한다.
  */
 @Component
-@Profile({"local", "test"})
+@ConditionalOnProperty(prefix = "ai.assistant", name = "client", havingValue = "fake")
 public class FakeTranscriptSegmentPort implements TranscriptSegmentPort {
 
 	private static final Long MEETING_ID = 1L;

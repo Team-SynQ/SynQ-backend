@@ -4,12 +4,10 @@ import com.synq.backend.domain.ai.assistant.domain.HintAiClient;
 import com.synq.backend.domain.ai.assistant.domain.HintInput;
 import com.synq.backend.domain.ai.assistant.domain.HintResult;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile({"local", "test"})
-@ConditionalOnProperty(prefix = "ai.assistant", name = "client", havingValue = "fake", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "ai.assistant", name = "client", havingValue = "fake")
 public class FakeHintAiClient implements HintAiClient {
 
 	@Override

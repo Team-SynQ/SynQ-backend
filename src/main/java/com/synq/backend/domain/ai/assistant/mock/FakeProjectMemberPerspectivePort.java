@@ -3,11 +3,11 @@ package com.synq.backend.domain.ai.assistant.mock;
 import com.synq.backend.domain.ai.assistant.port.MemberPerspective;
 import com.synq.backend.domain.ai.assistant.port.ProjectMemberPerspectivePort;
 import java.util.Optional;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile({"local", "test"})
+@ConditionalOnProperty(prefix = "ai.assistant", name = "client", havingValue = "fake")
 public class FakeProjectMemberPerspectivePort implements ProjectMemberPerspectivePort {
 
 	@Override

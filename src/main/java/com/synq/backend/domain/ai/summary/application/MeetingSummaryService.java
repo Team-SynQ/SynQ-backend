@@ -1,5 +1,7 @@
 package com.synq.backend.domain.ai.summary.application;
 
+import com.synq.backend.domain.ai.summary.code.SummaryErrorCode;
+import com.synq.backend.domain.ai.summary.domain.MeetingStatusReader;
 import com.synq.backend.domain.ai.summary.domain.MeetingSummary;
 import com.synq.backend.domain.ai.summary.domain.SummaryJob;
 import com.synq.backend.domain.ai.summary.domain.MeetingSummaryStore;
@@ -16,18 +18,25 @@ public class MeetingSummaryService {
 	private final SummaryJobStore jobStore;
 	private final MeetingSummaryStore summaryStore;
 	private final SummaryJobProcessor processor;
+	private final MeetingStatusReader meetingStatusReader;
 
 	public MeetingSummaryService(
 			SummaryJobStore jobStore,
 			MeetingSummaryStore summaryStore,
-			SummaryJobProcessor processor
+			SummaryJobProcessor processor,
+			MeetingStatusReader meetingStatusReader
 	) {
 		this.jobStore = jobStore;
 		this.summaryStore = summaryStore;
 		this.processor = processor;
+		this.meetingStatusReader = meetingStatusReader;
 	}
 
 	public synchronized SummaryJob request(Long meetingId) {
+		// 종료되지 않은(진행 중이거나 존재하지 않는) 회의는 요약을 시작할 수 없다.
+		if (!meetingStatusReader.isEnded(meetingId)) {
+			throw new GeneralException(SummaryErrorCode.MEETING_NOT_ENDED);
+		}
 		jobStore.findActiveByMeetingId(meetingId).ifPresent(job -> {
 			throw new GeneralException(GeneralErrorCode.CONFLICT);
 		});

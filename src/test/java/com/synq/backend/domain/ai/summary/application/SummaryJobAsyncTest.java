@@ -158,9 +158,10 @@ class SummaryJobAsyncTest {
 				SummaryJobStore jobStore,
 				MeetingSummaryStore summaryStore,
 				SummaryContextBuilder contextBuilder,
-				SummaryAiClient summaryAiClient
+				SummaryAiClient summaryAiClient,
+				org.springframework.context.ApplicationEventPublisher eventPublisher
 		) {
-			return new SummaryJobProcessor(jobStore, summaryStore, contextBuilder, summaryAiClient);
+			return new SummaryJobProcessor(jobStore, summaryStore, contextBuilder, summaryAiClient, eventPublisher);
 		}
 
 		@Bean
@@ -169,7 +170,8 @@ class SummaryJobAsyncTest {
 				MeetingSummaryStore summaryStore,
 				SummaryJobProcessor processor
 		) {
-			return new MeetingSummaryService(jobStore, summaryStore, processor);
+			// 이 테스트는 비동기/중복요청 동작을 검증하므로 회의는 항상 종료된 것으로 간주한다.
+			return new MeetingSummaryService(jobStore, summaryStore, processor, meetingId -> true);
 		}
 	}
 

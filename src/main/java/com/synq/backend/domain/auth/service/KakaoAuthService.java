@@ -55,7 +55,7 @@ public class KakaoAuthService {
 				.map(KakaoUserResponse.KakaoAccount::profile)
 				.map(KakaoUserResponse.Profile::nickname)
 				.orElse(DEFAULT_NAME);
-		return nickname.length() > MAX_NAME_LENGTH ? nickname.substring(0, MAX_NAME_LENGTH) : nickname;
+		return SocialNameTruncator.truncate(nickname, MAX_NAME_LENGTH);
 	}
 
 	private String resolveEmail(KakaoUserResponse kakaoUser) {

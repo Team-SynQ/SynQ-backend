@@ -3,11 +3,11 @@ package com.synq.backend.domain.ai.summary.mock;
 import com.synq.backend.domain.ai.summary.domain.TranscriptSegment;
 import com.synq.backend.domain.ai.summary.domain.TranscriptReader;
 import java.util.List;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile({"local", "test"})
+@ConditionalOnProperty(prefix = "ai.summary", name = "context-source", havingValue = "mock")
 public class MockTranscriptReader implements TranscriptReader {
 
 	@Override

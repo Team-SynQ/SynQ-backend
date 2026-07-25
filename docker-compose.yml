@@ -26,5 +26,19 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7.2-alpine
+    container_name: synq-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - synq-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   synq-postgres-data:
+  synq-redis-data:
