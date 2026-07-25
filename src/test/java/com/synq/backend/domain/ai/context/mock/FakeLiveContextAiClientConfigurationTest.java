@@ -2,6 +2,7 @@ package com.synq.backend.domain.ai.context.mock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.synq.backend.domain.ai.client.openai.OpenAiLiveContextClient;
 import com.synq.backend.domain.ai.context.domain.LiveContextAiClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -24,7 +25,7 @@ class FakeLiveContextAiClientConfigurationTest {
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	@Import(FakeLiveContextAiClient.class)
+	@Import({FakeLiveContextAiClient.class, OpenAiLiveContextClient.class})
 	static class FakeLiveContextAiClientConfiguration {
 	}
 }

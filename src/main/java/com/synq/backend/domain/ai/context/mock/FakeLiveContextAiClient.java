@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  * <p>API 키 없이 전사 이벤트부터 영속 상태 갱신까지 검증하거나, 실제 AI 연동 전 운영 환경을 기동할 때 사용한다.
  */
 @Component
-@ConditionalOnProperty(prefix = "ai.live-context", name = "client", havingValue = "fake", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "ai.live-context", name = "client", havingValue = "fake")
 public class FakeLiveContextAiClient implements LiveContextAiClient {
 
 	@Override
