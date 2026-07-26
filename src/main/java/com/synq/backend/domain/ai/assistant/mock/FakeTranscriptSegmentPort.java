@@ -6,15 +6,14 @@ import com.synq.backend.domain.ai.assistant.port.TranscriptWindow;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
  * Record 도메인 구현 전까지 쓰는 결정적 전사 대역. meetingId 는 항상 1L,
  * segmentId 는 1-based(= sequenceIndex + 1)로 매핑한다.
+ * AI 클라이언트(fake/openai) 토글과 무관하게, 실제 Record 어댑터가 나오기 전까지 상시 활성이다.
  */
 @Component
-@ConditionalOnProperty(prefix = "ai.assistant", name = "client", havingValue = "fake")
 public class FakeTranscriptSegmentPort implements TranscriptSegmentPort {
 
 	private static final Long MEETING_ID = 1L;
@@ -28,10 +27,11 @@ public class FakeTranscriptSegmentPort implements TranscriptSegmentPort {
 
 	@Override
 	public Optional<TranscriptWindow> findWindow(Long segmentId, int before, int after) {
-		int idx = (int) (segmentId - 1);
-		if (idx < 0 || idx >= CONTENTS.size()) {
+		long index = segmentId - 1;
+		if (index < 0 || index >= CONTENTS.size()) {
 			return Optional.empty();
 		}
+		int idx = (int) index;
 		List<TranscriptSegmentView> beforeList = new ArrayList<>();
 		for (int i = Math.max(0, idx - before); i < idx; i++) {
 			beforeList.add(view(i));

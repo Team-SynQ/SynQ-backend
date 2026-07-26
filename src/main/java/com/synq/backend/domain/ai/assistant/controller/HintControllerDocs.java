@@ -4,6 +4,7 @@ import com.synq.backend.domain.ai.assistant.dto.HintResponse;
 import com.synq.backend.global.apipayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,7 +18,6 @@ public interface HintControllerDocs {
 	ResponseEntity<ApiResponse<HintResponse>> generate(
 			@PathVariable Long meetingId,
 			@PathVariable Long segmentId,
-			// TODO: AUTH 도메인 완성되면 SecurityContext 기반 현재 유저 추출로 교체한다.
-			@RequestHeader("X-User-Id") Long userId
+			@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
 	);
 }

@@ -32,4 +32,10 @@ class FakeTranscriptSegmentPortTest {
 	void 범위를_벗어난_segmentId_는_빈값이다() {
 		assertThat(port.findWindow(99L, 2, 2)).isEqualTo(Optional.empty());
 	}
+
+	@Test
+	void int_로_wrap_되는_큰_segmentId_도_빈값이다() {
+		// (int)(4_294_967_297L - 1) 은 0 으로 wrap 되지만, long 범위검사로 걸러져야 한다.
+		assertThat(port.findWindow(4_294_967_297L, 2, 2)).isEqualTo(Optional.empty());
+	}
 }
