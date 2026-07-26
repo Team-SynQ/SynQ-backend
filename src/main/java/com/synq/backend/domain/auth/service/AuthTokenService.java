@@ -5,6 +5,7 @@ import com.synq.backend.domain.auth.dto.TokenResponse;
 import com.synq.backend.domain.auth.jwt.JwtProperties;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
 import com.synq.backend.domain.auth.repository.RefreshTokenRedisRepository;
+import com.synq.backend.domain.user.repository.RoleProfileRepository;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,19 +27,21 @@ public class AuthTokenService {
 	private final JwtProvider jwtProvider;
 	private final RefreshTokenRedisRepository refreshTokenRepository;
 	private final JwtProperties jwtProperties;
+	private final RoleProfileRepository roleProfileRepository;
 
 	public AuthTokenService(JwtProvider jwtProvider, RefreshTokenRedisRepository refreshTokenRepository,
-							JwtProperties jwtProperties) {
+							JwtProperties jwtProperties, RoleProfileRepository roleProfileRepository) {
 		this.jwtProvider = jwtProvider;
 		this.refreshTokenRepository = refreshTokenRepository;
 		this.jwtProperties = jwtProperties;
+		this.roleProfileRepository = roleProfileRepository;
 	}
 
 	public TokenResponse issue(Long userId, boolean isNewUser) {
 		String accessToken = jwtProvider.createAccessToken(userId);
 		String refreshToken = UUID.randomUUID().toString();
 		refreshTokenRepository.issue(userId, sha256Hex(refreshToken), refreshTokenTtl());
-		return new TokenResponse(accessToken, refreshToken, isNewUser);
+		return new TokenResponse(accessToken, refreshToken, isNewUser, isOnboardingCompleted(userId));
 	}
 
 	public TokenResponse refresh(String rawRefreshToken) {
@@ -54,7 +57,12 @@ public class AuthTokenService {
 		}
 
 		String accessToken = jwtProvider.createAccessToken(userId);
-		return new TokenResponse(accessToken, newRefreshToken, false);
+		return new TokenResponse(accessToken, newRefreshToken, false, isOnboardingCompleted(userId));
+	}
+
+	// 온보딩 완료 여부는 별도 플래그로 관리하지 않고, "기본 역할·관점 프로필이 있는지"로 판단
+	private boolean isOnboardingCompleted(Long userId) {
+		return roleProfileRepository.findByUserIdAndIsDefaultTrue(userId).isPresent();
 	}
 
 	public void revoke(Long userId) {
