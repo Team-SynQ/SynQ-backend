@@ -108,6 +108,8 @@ openai:
 # 모든 환경에서 필요한 값이라 프로파일 밖에 둔다.
 # 기본값은 임의로 잡은 출발점이고, local 전용 /local/rag/search 로 튜닝한다.
 ai:
+  chat:
+    client: ${AI_CHAT_CLIENT}
   rag:
     reference-material:
       client: ${AI_RAG_REFERENCE_MATERIAL_CLIENT:fake}
@@ -137,6 +139,9 @@ spring:
       port: ${SPRING_DATA_REDIS_PORT:6380}
 
 ai:
+  chat:
+    # local에서는 API 키 없이 채팅 저장과 응답 흐름을 검증한다.
+    client: ${AI_CHAT_CLIENT:fake}
   summary:
     # Mock 구현체는 local/test에서만 활성화된다. 실제 OpenAI 호출 확인 시 openai로 변경한다.
     client: ${AI_SUMMARY_CLIENT:fake}

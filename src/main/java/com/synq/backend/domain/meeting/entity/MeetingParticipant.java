@@ -51,4 +51,8 @@ public class MeetingParticipant extends BaseEntity {
 	public static MeetingParticipant of(Long meetingId, Long userId, ParticipantRole role) {
 		return new MeetingParticipant(meetingId, userId, role, LocalDateTime.now());
 	}
+
+	public void leave() {
+		this.leftAt = LocalDateTime.now();
+	}
 }

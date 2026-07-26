@@ -3,10 +3,16 @@ package com.synq.backend.global.apipayload.handler;
 import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
+import jakarta.validation.ConstraintViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GeneralExceptionAdvice {
@@ -25,6 +31,19 @@ public class GeneralExceptionAdvice {
 				.orElse(GeneralErrorCode.BAD_REQUEST.getMessage());
 		return ResponseEntity.status(GeneralErrorCode.BAD_REQUEST.getStatus())
 				.body(new ApiResponse<>(false, GeneralErrorCode.BAD_REQUEST.getCode(), message, null));
+	}
+
+	@ExceptionHandler({
+			ConstraintViolationException.class,
+			HandlerMethodValidationException.class,
+			MethodArgumentTypeMismatchException.class,
+			HttpMessageNotReadableException.class,
+			MissingRequestHeaderException.class,
+			MissingServletRequestParameterException.class
+	})
+	public ResponseEntity<ApiResponse<Void>> handleRequestException(Exception e) {
+		return ResponseEntity.status(GeneralErrorCode.BAD_REQUEST.getStatus())
+				.body(ApiResponse.onFailure(GeneralErrorCode.BAD_REQUEST, null));
 	}
 
 	@ExceptionHandler(Exception.class)
