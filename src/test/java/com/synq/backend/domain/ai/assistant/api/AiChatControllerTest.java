@@ -308,6 +308,33 @@ class AiChatControllerTest extends PostgresTestContainer {
 		assertThat(failed.getErrorMessage()).doesNotContain("외부 AI 장애");
 	}
 
+	@Test
+	void 실패한_요청을_같은_clientRequestId로_재전송해도_502를_반환한다() throws Exception {
+		User user = saveUser("재시도 실패 사용자", "failed-retry-chat@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(user.getUserId());
+		UUID clientRequestId = UUID.randomUUID();
+		doThrow(new IllegalStateException("외부 AI 장애"))
+				.when(fakeAiChatClient)
+				.generate(any());
+
+		String body = requestBody("실패한 질문", null, clientRequestId);
+		mockMvc.perform(post("/meetings/{meetingId}/chat-messages", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body))
+				.andExpect(status().isBadGateway())
+				.andExpect(jsonPath("$.code").value("AI_CHAT502_1"));
+
+		mockMvc.perform(post("/meetings/{meetingId}/chat-messages", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body))
+				.andExpect(status().isBadGateway())
+				.andExpect(jsonPath("$.code").value("AI_CHAT502_1"));
+
+		assertThat(aiChatMessageRepository.count()).isEqualTo(1);
+	}
+
 	private User saveUser(String name, String email) {
 		return userRepository.save(User.ofLocal(name, email, "encoded-password"));
 	}

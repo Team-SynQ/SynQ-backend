@@ -5,6 +5,7 @@ import com.synq.backend.domain.ai.assistant.domain.AiChatClient;
 import com.synq.backend.domain.ai.assistant.domain.AiChatMessage;
 import com.synq.backend.domain.ai.assistant.domain.AiChatPrompt;
 import com.synq.backend.domain.ai.assistant.domain.AiChatResult;
+import com.synq.backend.domain.ai.assistant.domain.AiChatStatus;
 import com.synq.backend.domain.meeting.code.MeetingErrorCode;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingStatus;
@@ -62,6 +63,9 @@ public class AiChatService {
 			if (!existing.getQuestion().equals(normalizedQuestion)
 					|| !Objects.equals(existing.getLinkedSegmentId(), linkedSegmentId)) {
 				throw new GeneralException(AiChatErrorCode.IDEMPOTENCY_KEY_REUSED);
+			}
+			if (existing.getStatus() == AiChatStatus.FAILED) {
+				throw new GeneralException(AiChatErrorCode.AI_GENERATION_FAILED);
 			}
 			return new AiChatSendResult(existing, false);
 		}
