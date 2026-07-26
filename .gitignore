@@ -51,3 +51,6 @@ application-local.yml
 CLAUDE.md
 AGENTS.md
 docs/superpowers/
+
+# Nginx 동적 상태 파일
+infra/nginx/conf.d/active-env.conf
