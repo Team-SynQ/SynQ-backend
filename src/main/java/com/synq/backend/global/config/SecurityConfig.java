@@ -34,6 +34,7 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(PUBLIC_ENDPOINTS).permitAll()
 						.requestMatchers("/users/me").authenticated()
+						.requestMatchers("/projects/*/meetings", "/meetings/**").authenticated()
 						// 각 도메인 컨트롤러 테스트에 인증 절차 추가 이후 anyRequest().authenticated()로 전환 필요
 						.anyRequest().permitAll())
 				.exceptionHandling(exception -> exception.authenticationEntryPoint(entryPoint))
