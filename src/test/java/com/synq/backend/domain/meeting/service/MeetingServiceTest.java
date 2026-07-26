@@ -1,12 +1,15 @@
 package com.synq.backend.domain.meeting.service;
 
 import com.synq.backend.domain.meeting.code.MeetingErrorCode;
+import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.port.ProjectMembershipChecker;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -38,5 +41,21 @@ class MeetingServiceTest {
 						exception -> assertThat(exception.getCode())
 								.isEqualTo(MeetingErrorCode.NOT_PROJECT_MEMBER));
 		verifyNoInteractions(meetingRepository, meetingParticipantRepository, eventPublisher);
+	}
+
+	// AlwaysMemberProjectMembershipChecker(test 프로필)는 항상 true라 이 분기는 통합 테스트로는
+	// 도달 불가능하다. 프로젝트 비멤버 케이스는 여기서 mock으로 직접 검증한다.
+	@Test
+	void 참여시_기존_참여자가_아니고_프로젝트_멤버도_아니면_NOT_PROJECT_MEMBER_TO_JOIN_예외를_발생시킨다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdAndUserIdAndLeftAtIsNull(5L, 10L))
+				.thenReturn(Optional.empty());
+		when(projectMembershipChecker.isMember(1L, 10L)).thenReturn(false);
+
+		assertThatThrownBy(() -> meetingService.join(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.NOT_PROJECT_MEMBER_TO_JOIN));
 	}
 }
