@@ -61,7 +61,7 @@ services:
     image: ${DOCKERHUB_USERNAME}/synq-backend:latest
     container_name: synq-backend-blue
     ports:
-      - "8081:8080"
+      - "127.0.0.1:8081:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       # DB
@@ -80,6 +80,7 @@ services:
       - AI_LIVE_CONTEXT_CLIENT=${AI_LIVE_CONTEXT_CLIENT}
       - AI_SUMMARY_CLIENT=${AI_SUMMARY_CLIENT}
       - AI_SUMMARY_CONTEXT_SOURCE=${AI_SUMMARY_CONTEXT_SOURCE}
+      - AI_CHAT_CLIENT=${AI_CHAT_CLIENT}
       # Auth
       - KAKAO_CLIENT_ID=${PROD_KAKAO_CLIENT_ID}
       - KAKAO_CLIENT_SECRET=${PROD_KAKAO_CLIENT_SECRET}
@@ -109,7 +110,7 @@ services:
     image: ${DOCKERHUB_USERNAME}/synq-backend:latest
     container_name: synq-backend-green
     ports:
-      - "8082:8080"
+      - "127.0.0.1:8082:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       # DB
@@ -128,6 +129,7 @@ services:
       - AI_LIVE_CONTEXT_CLIENT=${AI_LIVE_CONTEXT_CLIENT}
       - AI_SUMMARY_CLIENT=${AI_SUMMARY_CLIENT}
       - AI_SUMMARY_CONTEXT_SOURCE=${AI_SUMMARY_CONTEXT_SOURCE}
+      - AI_CHAT_CLIENT=${AI_CHAT_CLIENT}
       # Auth
       - KAKAO_CLIENT_ID=${PROD_KAKAO_CLIENT_ID}
       - KAKAO_CLIENT_SECRET=${PROD_KAKAO_CLIENT_SECRET}

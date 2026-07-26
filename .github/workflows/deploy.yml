@@ -103,6 +103,7 @@ jobs:
           source: "infra/"
           target: "/home/ubuntu/synq"
           strip_components: 0
+          timeout: '60s'
 
       # 서버에 SSH 접속하여 배포 스크립트 실행
       - name: Connect to EC2 Server and Execute Deploy Script
@@ -115,3 +116,4 @@ jobs:
             cd /home/ubuntu/synq
             chmod +x infra/deploy.sh
             ./infra/deploy.sh
+          timeout: '60s'
