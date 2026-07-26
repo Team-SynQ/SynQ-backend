@@ -61,7 +61,7 @@ services:
     image: ${DOCKERHUB_USERNAME}/synq-backend:latest
     container_name: synq-backend-blue
     ports:
-      - "8081:8080"
+      - "127.0.0.1:8081:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       # DB
@@ -109,7 +109,7 @@ services:
     image: ${DOCKERHUB_USERNAME}/synq-backend:latest
     container_name: synq-backend-green
     ports:
-      - "8082:8080"
+      - "127.0.0.1:8082:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
       # DB
