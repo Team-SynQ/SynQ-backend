@@ -116,6 +116,15 @@ ai:
     search:
       top-k: ${AI_RAG_SEARCH_TOP_K:5}
       min-similarity: ${AI_RAG_SEARCH_MIN_SIMILARITY:0.5}
+  # 3-hint 는 속도 우선이라 rag.search 기본값과 별도로 더 타이트하게 잡는다.
+  assistant:
+    # 3-hint 관련 대역(생성기 + 포트) 활성화 스위치. Record/Project 실제 어댑터 전까지 prod 도 fake 로 기동한다.
+    client: ${AI_ASSISTANT_CLIENT:fake}
+    hint:
+      window-before: ${AI_ASSISTANT_HINT_WINDOW_BEFORE:2}
+      window-after: ${AI_ASSISTANT_HINT_WINDOW_AFTER:2}
+      top-k: ${AI_ASSISTANT_HINT_TOP_K:3}
+      min-similarity: ${AI_ASSISTANT_HINT_MIN_SIMILARITY:0.3}
   summary:
     # 실제 SummaryAiClient 구현체가 준비되기 전까지는 Fake/Mock 조합을 기본으로 사용한다.
     client: ${AI_SUMMARY_CLIENT:fake}
@@ -150,6 +159,9 @@ ai:
   live-context:
     # local에서는 Fake 구현체로 전사 이벤트와 영속 흐름을 검증한다.
     client: ${AI_LIVE_CONTEXT_CLIENT:fake}
+  assistant:
+    # 3-hint 생성기. 실제 OpenAI 호출 확인 시 openai로 변경한다.
+    client: ${AI_ASSISTANT_CLIENT:fake}
 
 jwt:
   secret: ${JWT_SECRET:local-dev-only-secret-please-override-in-production-env}
