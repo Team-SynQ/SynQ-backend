@@ -26,6 +26,7 @@ required_vars=(
     PROD_NAVER_CLIENT_ID PROD_NAVER_CLIENT_SECRET PROD_CORS_ALLOWED_ORIGINS
     PROD_GOOGLE_CLIENT_ID PROD_GOOGLE_CLIENT_SECRET PROD_GOOGLE_REDIRECT_URI
     AI_LIVE_CONTEXT_CLIENT AI_SUMMARY_CLIENT AI_SUMMARY_CONTEXT_SOURCE
+    AI_CHAT_CLIENT
 )
 for var_name in "${required_vars[@]}"; do
     if [ -z "${!var_name:-}" ]; then
@@ -35,7 +36,7 @@ for var_name in "${required_vars[@]}"; do
 done
 
 COMPOSE_FILE="infra/docker-compose.prod.yml"
-NGINX_CONF="infra/nginx/conf.d/default.conf"
+ACTIVE_ENV_CONF="infra/nginx/conf.d/active-env.inc"
 
 # 인프라 서비스(DB, Redis) 가동 확인
 echo "=========================================="
@@ -47,17 +48,23 @@ docker compose -f $COMPOSE_FILE up -d db redis
 echo "=========================================="
 echo "[2/5] 현재 Active 상태 식별"
 echo "=========================================="
-if grep -q "server springboot-blue:8080" "$NGINX_CONF"; then
+IS_BLUE=$(docker ps -q -f "name=^/?synq-backend-blue$")
+IS_GREEN=$(docker ps -q -f "name=^/?synq-backend-green$")
+
+if [ -n "$IS_BLUE" ]; then
     TARGET_COLOR="green"
     TARGET_PORT=8082
     CURRENT_COLOR="blue"
-elif grep -q "server springboot-green:8080" "$NGINX_CONF"; then
+elif [ -n "$IS_GREEN" ]; then
     TARGET_COLOR="blue"
     TARGET_PORT=8081
     CURRENT_COLOR="green"
 else
-    echo "[ERROR] 활성 컨테이너를 식별할 수 없습니다. 배포를 중단합니다."
-    exit 1
+    # 초기 배포 시 none 처리
+    TARGET_COLOR="green"
+    TARGET_PORT=8082
+    CURRENT_COLOR="none"
+    echo "[INFO] 활성 컨테이너가 없습니다. 초기 배포(Green)를 진행합니다."
 fi
 
 echo "현재 컨테이너: $CURRENT_COLOR"
@@ -74,7 +81,6 @@ docker compose -f $COMPOSE_FILE up -d springboot-$TARGET_COLOR
 echo "=========================================="
 echo "[4/5] $TARGET_COLOR 컨테이너 헬스 체크 시작"
 echo "=========================================="
-
 MAX_RETRIES=15
 RETRY_COUNT=0
 HEALTH_CHECK_PASSED=false
@@ -106,10 +112,9 @@ fi
 echo "=========================================="
 echo "[5/5] Nginx 라우팅 스위칭: $CURRENT_COLOR ➔ $TARGET_COLOR"
 echo "=========================================="
-
-# 백업 생성 및 Nginx 스위칭
-cp "$NGINX_CONF" "${NGINX_CONF}.bak"
-sed -i "s/server springboot-${CURRENT_COLOR}:8080/server springboot-${TARGET_COLOR}:8080/g" "$NGINX_CONF"
+# 디렉토리 생성 및 Nginx 스위칭
+mkdir -p "$(dirname "$ACTIVE_ENV_CONF")"
+echo "server synq-backend-${TARGET_COLOR}:8080;" > "$ACTIVE_ENV_CONF"
 
 # Nginx 최초 기동 보장
 docker compose -f $COMPOSE_FILE up -d nginx
@@ -122,17 +127,22 @@ if docker exec synq-nginx nginx -t && docker exec synq-nginx nginx -s reload; th
 
     if [ "$SMOKE_STATUS" -eq 200 ]; then
         echo "라우팅 스위칭 및 Smoke Test 완료."
-        rm "${NGINX_CONF}.bak"
     else
         echo "[ERROR] Smoke Test 실패 (HTTP $SMOKE_STATUS). Nginx 라우팅 오류가 의심되어 Rollback 합니다."
-        mv "${NGINX_CONF}.bak" "$NGINX_CONF"
-        docker exec synq-nginx nginx -s reload
+        # 초기 배포 시 롤백 건너뜀
+        if [ "$CURRENT_COLOR" != "none" ]; then
+            echo "server synq-backend-${CURRENT_COLOR}:8080;" > "$ACTIVE_ENV_CONF"
+            docker exec synq-nginx nginx -s reload || true
+        fi
         docker compose -f $COMPOSE_FILE stop springboot-$TARGET_COLOR
         exit 1
     fi
 else
     echo "[ERROR] 라우팅 스위칭 실패. 원본으로 Rollback 합니다."
-    mv "${NGINX_CONF}.bak" "$NGINX_CONF"
+    if [ "$CURRENT_COLOR" != "none" ]; then
+        echo "server synq-backend-${CURRENT_COLOR}:8080;" > "$ACTIVE_ENV_CONF"
+        docker exec synq-nginx nginx -s reload || true
+    fi
     docker compose -f $COMPOSE_FILE stop springboot-$TARGET_COLOR
     exit 1
 fi
@@ -140,11 +150,14 @@ fi
 echo "신규 $TARGET_COLOR 컨테이너가 서비스를 수신합니다."
 
 # 7. Graceful Drain 대기 후 구버전 컨테이너 종료
-echo "잔여 요청 처리를 위해 5초간 대기..."
-sleep 5
-
-echo "구버전 ($CURRENT_COLOR) 컨테이너 종료 (Graceful Shutdown 유예 적용)..."
-docker compose -f $COMPOSE_FILE stop -t 90 springboot-$CURRENT_COLOR
+if [ "$CURRENT_COLOR" != "none" ]; then
+    echo "잔여 요청 처리를 위해 5초간 대기..."
+    sleep 5
+    echo "구버전 ($CURRENT_COLOR) 컨테이너 종료 (Graceful Shutdown 유예 적용)..."
+    docker compose -f $COMPOSE_FILE stop -t 90 springboot-$CURRENT_COLOR
+else
+    echo "초기 배포이므로 구버전 종료 로직을 건너뜁니다."
+fi
 
 echo "댕글링 이미지 정리..."
 docker image prune -f

@@ -3,6 +3,7 @@ package com.synq.backend.domain.ai;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.synq.backend.BackendApplication;
+import com.synq.backend.domain.ai.assistant.domain.AiChatClient;
 import com.synq.backend.domain.ai.rag.port.ReferenceMaterialPort;
 import com.synq.backend.domain.ai.summary.domain.MeetingContextReader;
 import com.synq.backend.domain.ai.summary.domain.MeetingSummaryStore;
@@ -48,6 +49,7 @@ class ProdAiMockConfigurationTest {
 		registry.add("jwt.secret", () -> "prod-test-jwt-secret-at-least-thirty-two-characters");
 		registry.add("gemini.api-key", () -> "test-key");
 		registry.add("ai.rag.reference-material.client", () -> "fake");
+		registry.add("ai.chat.client", () -> "fake");
 		registry.add("ai.summary.client", () -> "fake");
 		registry.add("ai.summary.context-source", () -> "mock");
 		registry.add("ai.live-context.client", () -> "fake");
@@ -63,6 +65,7 @@ class ProdAiMockConfigurationTest {
 	@Test
 	void prod_부트_설정에서_fake_mock_AI_포트가_각각_하나씩_등록된다() {
 		assertThat(applicationContext.getBeansOfType(ReferenceMaterialPort.class)).hasSize(1);
+		assertThat(applicationContext.getBeansOfType(AiChatClient.class)).hasSize(1);
 		assertThat(applicationContext.getBeansOfType(SummaryAiClient.class)).hasSize(1);
 		assertThat(applicationContext.getBeansOfType(SummaryJobStore.class)).hasSize(1);
 		assertThat(applicationContext.getBeansOfType(MeetingSummaryStore.class)).hasSize(1);
