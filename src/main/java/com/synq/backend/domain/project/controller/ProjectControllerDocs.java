@@ -2,6 +2,7 @@ package com.synq.backend.domain.project.controller;
 
 import com.synq.backend.domain.project.dto.ProjectCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectCreateResponse;
+import com.synq.backend.domain.project.dto.ProjectDetailResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
@@ -23,6 +24,19 @@ import java.util.List;
 
 @Tag(name = "Project", description = "프로젝트 API")
 public interface ProjectControllerDocs {
+
+	@Operation(summary = "프로젝트 상세 조회", description = "프로젝트 멤버가 프로젝트 기본 정보를 조회한다.")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "프로젝트 상세 조회 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "프로젝트 접근 권한 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "프로젝트 또는 사용자 없음")
+	})
+	@GetMapping("/{projectId}")
+	ResponseEntity<ApiResponse<ProjectDetailResponse>> findById(
+			@PathVariable Long projectId,
+			@RequestHeader(value = "X-User-Id", required = false) Long userId
+	);
 
 	@Operation(summary = "프로젝트 목록 조회", description = "로그인한 사용자가 참여 중인 프로젝트 목록을 최근 활동순으로 조회한다.")
 	@ApiResponses({
