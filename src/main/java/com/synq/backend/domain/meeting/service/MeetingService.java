@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -66,6 +67,33 @@ public class MeetingService {
 	private boolean isHost(Long meetingId, Long userId) {
 		return meetingParticipantRepository.findByMeetingIdAndUserId(meetingId, userId).stream()
 				.anyMatch(participant -> participant.getRole() == ParticipantRole.HOST);
+	}
+
+	// 진행 중(IN_PROGRESS)인 회의만 참여할 수 있다 — 종료된 회의는 이미 참여했던 사람이라도 다시 들어올 수 없다.
+	// 그 다음에야 이미 참여 중인 유저가 다시 호출해도(새로고침/중복 탭) 에러 대신 기존 참여 정보를 그대로 반환한다.
+	// join으로 들어오는 참여자는 항상 MEMBER이며, HOST는 회의 생성 시점에만 부여된다.
+	@Transactional
+	public MeetingJoinResult join(Long meetingId, Long userId) {
+		Meeting meeting = meetingRepository.findById(meetingId)
+				.orElseThrow(() -> new GeneralException(MeetingErrorCode.MEETING_NOT_FOUND));
+
+		if (meeting.getStatus() != MeetingStatus.IN_PROGRESS) {
+			throw new GeneralException(MeetingErrorCode.MEETING_ALREADY_ENDED);
+		}
+
+		Optional<MeetingParticipant> existing =
+				meetingParticipantRepository.findByMeetingIdAndUserIdAndLeftAtIsNull(meetingId, userId);
+		if (existing.isPresent()) {
+			return new MeetingJoinResult(meeting, existing.get());
+		}
+
+		if (!projectMembershipChecker.isMember(meeting.getProjectId(), userId)) {
+			throw new GeneralException(MeetingErrorCode.NOT_PROJECT_MEMBER_TO_JOIN);
+		}
+
+		MeetingParticipant participant = meetingParticipantRepository.save(
+				MeetingParticipant.of(meetingId, userId, ParticipantRole.MEMBER));
+		return new MeetingJoinResult(meeting, participant);
 	}
 
 	// AI 정리 완료/실패 이벤트를 받아 회의 상태를 확정하는 진입점.
