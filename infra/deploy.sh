@@ -36,7 +36,7 @@ for var_name in "${required_vars[@]}"; do
 done
 
 COMPOSE_FILE="infra/docker-compose.prod.yml"
-ACTIVE_ENV_CONF="infra/nginx/conf.d/active-env.conf"
+ACTIVE_ENV_CONF="infra/nginx/conf.d/active-env.inc"
 
 # 인프라 서비스(DB, Redis) 가동 확인
 echo "=========================================="
@@ -132,7 +132,7 @@ if docker exec synq-nginx nginx -t && docker exec synq-nginx nginx -s reload; th
         # 초기 배포 시 롤백 건너뜀
         if [ "$CURRENT_COLOR" != "none" ]; then
             echo "server synq-backend-${CURRENT_COLOR}:8080;" > "$ACTIVE_ENV_CONF"
-            docker exec synq-nginx nginx -s reload
+            docker exec synq-nginx nginx -s reload || true
         fi
         docker compose -f $COMPOSE_FILE stop springboot-$TARGET_COLOR
         exit 1
@@ -141,7 +141,7 @@ else
     echo "[ERROR] 라우팅 스위칭 실패. 원본으로 Rollback 합니다."
     if [ "$CURRENT_COLOR" != "none" ]; then
         echo "server synq-backend-${CURRENT_COLOR}:8080;" > "$ACTIVE_ENV_CONF"
-        docker exec synq-nginx nginx -s reload
+        docker exec synq-nginx nginx -s reload || true
     fi
     docker compose -f $COMPOSE_FILE stop springboot-$TARGET_COLOR
     exit 1
