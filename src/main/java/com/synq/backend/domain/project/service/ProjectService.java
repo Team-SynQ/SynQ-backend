@@ -6,6 +6,7 @@ import com.synq.backend.domain.project.code.ProjectErrorCode;
 import com.synq.backend.domain.project.config.ProjectInvitationProperties;
 import com.synq.backend.domain.project.dto.ProjectCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectCreateResponse;
+import com.synq.backend.domain.project.dto.ProjectDetailResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
@@ -50,6 +51,22 @@ public class ProjectService {
 		Project project = projectRepository.save(Project.of(userId, request.title(), request.description()));
 		projectMemberRepository.save(ProjectMember.of(project.getId(), userId, ProjectMemberRole.OWNER));
 		return ProjectCreateResponse.from(project);
+	}
+
+	@Transactional(readOnly = true)
+	public ProjectDetailResponse findById(Long projectId, Long userId) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		validateUser(userId);
+
+		Project project = projectRepository.findById(projectId)
+				.orElseThrow(() -> new GeneralException(ProjectErrorCode.PROJECT_NOT_FOUND));
+		if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
+			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_MEMBER);
+		}
+		// Project 엔티티 updatedAt 반환
+		return ProjectDetailResponse.from(project);
 	}
 
 	@Transactional(readOnly = true)

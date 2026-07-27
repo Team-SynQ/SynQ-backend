@@ -2,6 +2,7 @@ package com.synq.backend.domain.project.controller;
 
 import com.synq.backend.domain.project.dto.ProjectCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectCreateResponse;
+import com.synq.backend.domain.project.dto.ProjectDetailResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
@@ -23,6 +24,13 @@ import java.util.List;
 public class ProjectController implements ProjectControllerDocs {
 
 	private final ProjectService projectService;
+
+	@Override
+	public ResponseEntity<ApiResponse<ProjectDetailResponse>> findById(Long projectId, Long userId) {
+		ProjectDetailResponse response = projectService.findById(projectId, userId);
+		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
+	}
 
 	@Override
 	public ResponseEntity<ApiResponse<List<ProjectListResponse>>> findAll(Long userId) {
