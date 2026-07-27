@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Transactional(readOnly = true)
@@ -34,7 +35,7 @@ public class RoleProfileService {
 	}
 
 	public List<RoleProfileResponse> getMyRoleProfiles(Long userId) {
-		return roleProfileRepository.findAllByUserIdOrderByCreatedAtAsc(userId).stream()
+		return roleProfileRepository.findAllByUserIdOrderByCreatedAtAscIdAsc(userId).stream()
 				.map(profile -> toResponse(profile, findPerspectives(profile.getId())))
 				.toList();
 	}
@@ -122,6 +123,10 @@ public class RoleProfileService {
 		}
 		if (request.perspectives() != null && request.perspectives().size() > MAX_PERSPECTIVES) {
 			throw new GeneralException(UserErrorCode.TOO_MANY_PERSPECTIVES);
+		}
+		if (request.perspectives() != null
+				&& Set.copyOf(request.perspectives()).size() != request.perspectives().size()) {
+			throw new GeneralException(UserErrorCode.DUPLICATE_PERSPECTIVE);
 		}
 	}
 

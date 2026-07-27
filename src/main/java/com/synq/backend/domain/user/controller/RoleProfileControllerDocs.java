@@ -24,7 +24,8 @@ import java.util.List;
 public interface RoleProfileControllerDocs {
 
 	@Operation(summary = "역할·관점 프로필 목록 조회",
-			description = "로그인한 사용자가 가진 역할·관점 프로필 목록을 등록순으로 조회한다. 그중 하나는 기본(isDefault=true) 프로필이다.")
+			description = "로그인한 사용자가 가진 역할·관점 프로필 목록을 등록순으로 조회한다. "
+					+ "프로필이 존재하는 경우 그중 하나는 기본(isDefault=true) 프로필이다. 아직 온보딩을 완료하지 않은 사용자는 빈 목록을 받을 수 있다.")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요")
@@ -60,7 +61,7 @@ public interface RoleProfileControllerDocs {
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
 					description = "본인 소유가 아니거나 존재하지 않는 프로필")
 	})
-	@PostMapping("/{profileId}")
+	@PatchMapping("/{profileId}")
 	ResponseEntity<ApiResponse<RoleProfileResponse>> update(
 			@AuthenticationPrincipal(expression = "userId") Long userId,
 			@PathVariable Long profileId,

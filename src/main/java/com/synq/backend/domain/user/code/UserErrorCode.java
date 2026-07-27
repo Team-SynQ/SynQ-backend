@@ -19,7 +19,10 @@ public enum UserErrorCode implements BaseCode {
 			"관심 관점은 최대 3개까지 선택할 수 있습니다."),
 	CANNOT_DELETE_DEFAULT_ROLE_PROFILE(HttpStatus.BAD_REQUEST,
 			"USER400_3",
-			"기본 역할·관점 프로필은 삭제할 수 없습니다. 다른 프로필을 기본으로 설정한 후 삭제해주세요.");
+			"기본 역할·관점 프로필은 삭제할 수 없습니다. 다른 프로필을 기본으로 설정한 후 삭제해주세요."),
+	DUPLICATE_PERSPECTIVE(HttpStatus.BAD_REQUEST,
+			"USER400_4",
+			"관심 관점은 중복해서 선택할 수 없습니다.");
 
 	private final HttpStatus status;
 	private final String code;

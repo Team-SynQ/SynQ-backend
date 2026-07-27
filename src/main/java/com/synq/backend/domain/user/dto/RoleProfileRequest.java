@@ -9,7 +9,7 @@ import java.util.List;
 
 public record RoleProfileRequest(
 		@NotNull Role role,
-		String detailRole,
+		@Size(max = 30) String detailRole,
 		@Size(max = 3) List<Perspective> perspectives
 ) {
 }

@@ -38,16 +38,18 @@ public class AuthTokenService {
 	}
 
 	public TokenResponse issue(Long userId, boolean isNewUser) {
+		boolean onboardingCompleted = isOnboardingCompleted(userId);
 		String accessToken = jwtProvider.createAccessToken(userId);
 		String refreshToken = UUID.randomUUID().toString();
 		refreshTokenRepository.issue(userId, sha256Hex(refreshToken), refreshTokenTtl());
-		return new TokenResponse(accessToken, refreshToken, isNewUser, isOnboardingCompleted(userId));
+		return new TokenResponse(accessToken, refreshToken, isNewUser, onboardingCompleted);
 	}
 
 	public TokenResponse refresh(String rawRefreshToken) {
 		String oldTokenHash = sha256Hex(rawRefreshToken);
 		Long userId = refreshTokenRepository.findUserIdByTokenHash(oldTokenHash)
 				.orElseThrow(() -> new GeneralException(AuthErrorCode.INVALID_REFRESH_TOKEN));
+		boolean onboardingCompleted = isOnboardingCompleted(userId);
 
 		String newRefreshToken = UUID.randomUUID().toString();
 		boolean rotated = refreshTokenRepository.rotate(userId, oldTokenHash,
@@ -57,7 +59,7 @@ public class AuthTokenService {
 		}
 
 		String accessToken = jwtProvider.createAccessToken(userId);
-		return new TokenResponse(accessToken, newRefreshToken, false, isOnboardingCompleted(userId));
+		return new TokenResponse(accessToken, newRefreshToken, false, onboardingCompleted);
 	}
 
 	// 온보딩 완료 여부는 별도 플래그로 관리하지 않고, "기본 역할·관점 프로필이 있는지"로 판단

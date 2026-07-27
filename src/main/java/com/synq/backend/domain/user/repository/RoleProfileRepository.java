@@ -12,7 +12,7 @@ import java.util.Optional;
 
 public interface RoleProfileRepository extends JpaRepository<RoleProfile, Long> {
 
-	List<RoleProfile> findAllByUserIdOrderByCreatedAtAsc(Long userId);
+	List<RoleProfile> findAllByUserIdOrderByCreatedAtAscIdAsc(Long userId);
 
 	Optional<RoleProfile> findByIdAndUserId(Long id, Long userId);
 
