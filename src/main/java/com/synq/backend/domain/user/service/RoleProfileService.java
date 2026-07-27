@@ -66,7 +66,7 @@ public class RoleProfileService {
 
 	@Transactional
 	public void delete(Long userId, Long profileId) {
-		RoleProfile profile = getOwnedProfile(userId, profileId);
+		RoleProfile profile = getOwnedProfileForUpdate(userId, profileId);
 		if (profile.isDefault()) {
 			throw new GeneralException(UserErrorCode.CANNOT_DELETE_DEFAULT_ROLE_PROFILE);
 		}
@@ -76,7 +76,7 @@ public class RoleProfileService {
 
 	@Transactional
 	public void setDefault(Long userId, Long profileId) {
-		RoleProfile target = getOwnedProfile(userId, profileId);
+		RoleProfile target = getOwnedProfileForUpdate(userId, profileId);
 		if (target.isDefault()) {
 			return;
 		}
@@ -94,6 +94,11 @@ public class RoleProfileService {
 
 	private RoleProfile getOwnedProfile(Long userId, Long profileId) {
 		return roleProfileRepository.findByIdAndUserId(profileId, userId)
+				.orElseThrow(() -> new GeneralException(UserErrorCode.ROLE_PROFILE_NOT_FOUND));
+	}
+
+	private RoleProfile getOwnedProfileForUpdate(Long userId, Long profileId) {
+		return roleProfileRepository.findByIdAndUserIdForUpdate(profileId, userId)
 				.orElseThrow(() -> new GeneralException(UserErrorCode.ROLE_PROFILE_NOT_FOUND));
 	}
 
