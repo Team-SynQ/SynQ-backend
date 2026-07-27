@@ -4,15 +4,17 @@ import com.synq.backend.domain.meeting.dto.MeetingJoinResponse;
 import com.synq.backend.global.apipayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 
 @Tag(name = "Meeting", description = "미팅 API")
 public interface MeetingJoinControllerDocs {
 
+	@SecurityRequirement(name = "bearerAuth")
 	@Operation(summary = "회의 참여", description = """
 			프로젝트 멤버가 진행 중인 회의에 참여자(MEMBER)로 등록된다. 이미 참여 중이면 에러 없이
 			기존 참여 정보를 그대로 반환한다(멱등). HOST는 회의 생성 시에만 부여되며 이 API로는 부여되지 않는다.""")
@@ -25,7 +27,6 @@ public interface MeetingJoinControllerDocs {
 	@PostMapping("/join")
 	ResponseEntity<ApiResponse<MeetingJoinResponse>> join(
 			@PathVariable Long meetingId,
-			// TODO: AUTH 도메인 완성되면 SecurityContext 기반 현재 유저 추출로 교체한다.
-			@RequestHeader("X-User-Id") Long userId
+			@AuthenticationPrincipal(expression = "userId") Long userId
 	);
 }

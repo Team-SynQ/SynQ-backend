@@ -1,6 +1,8 @@
 package com.synq.backend.domain.meeting.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import com.synq.backend.domain.auth.jwt.AccessTokenBlacklistService;
+import com.synq.backend.domain.auth.jwt.JwtProvider;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
@@ -8,7 +10,9 @@ import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -28,10 +32,16 @@ class MeetingControllerTest extends PostgresTestContainer {
 	@Autowired
 	private MeetingParticipantRepository meetingParticipantRepository;
 
+	@Autowired
+	private JwtProvider jwtProvider;
+
+	@MockitoBean
+	private AccessTokenBlacklistService accessTokenBlacklistService;
+
 	@Test
 	void 동의하면_미팅을_생성하고_생성자를_호스트로_등록한다() throws Exception {
 		MvcResult result = mockMvc.perform(post("/projects/{projectId}/meetings", 1L)
-						.header("X-User-Id", 10L)
+						.header(HttpHeaders.AUTHORIZATION, bearer(10L))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"consentAgreed\": true}"))
 				.andExpect(status().isCreated())
@@ -51,10 +61,22 @@ class MeetingControllerTest extends PostgresTestContainer {
 	@Test
 	void 동의하지_않으면_400과_도메인_에러코드를_반환한다() throws Exception {
 		mockMvc.perform(post("/projects/{projectId}/meetings", 1L)
-						.header("X-User-Id", 10L)
+						.header(HttpHeaders.AUTHORIZATION, bearer(10L))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"consentAgreed\": false}"))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.code").value("MEETING400_1"));
+	}
+
+	@Test
+	void 토큰_없이_호출하면_401을_반환한다() throws Exception {
+		mockMvc.perform(post("/projects/{projectId}/meetings", 1L)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"consentAgreed\": true}"))
+				.andExpect(status().isUnauthorized());
+	}
+
+	private String bearer(Long userId) {
+		return "Bearer " + jwtProvider.createAccessToken(userId);
 	}
 }
