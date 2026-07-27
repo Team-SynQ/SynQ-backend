@@ -44,16 +44,6 @@ public class User {
 	@Column(name = "provider_id")
 	private String providerId;
 
-	@Enumerated(EnumType.STRING)
-	@Column(length = 30)
-	private Role role;
-
-	@Column(name = "detail_role", length = 30)
-	private String detailRole;
-
-	@Column(name = "onboarding_completed_at")
-	private OffsetDateTime onboardingCompletedAt;
-
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private OffsetDateTime createdAt;
 
@@ -75,9 +65,5 @@ public class User {
 
 	public static User ofLocal(String name, String email, String passwordHash) {
 		return new User(name, email, passwordHash, Provider.LOCAL, null);
-	}
-
-	public boolean isOnboarded() {
-		return onboardingCompletedAt != null;
 	}
 }
