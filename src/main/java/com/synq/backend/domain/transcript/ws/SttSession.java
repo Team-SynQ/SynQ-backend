@@ -11,12 +11,14 @@ import com.synq.backend.domain.transcript.entity.TranscriptSegment;
 import com.synq.backend.domain.transcript.service.TranscriptSegmentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -44,7 +46,8 @@ public class SttSession implements SonioxStreamListener {
 	private final ObjectMapper objectMapper;
 
 	private volatile boolean firstAudioFrameSeen;
-	private volatile boolean closed;
+	private volatile boolean streamRejected;
+	private final AtomicBoolean closed = new AtomicBoolean(false);
 
 	public SttSession(Long meetingId, WebSocketSession browserSession, MeetingTimeline timeline, int startSequence,
 					TranscriptSegmentService transcriptSegmentService, SonioxProperties properties,
@@ -73,23 +76,47 @@ public class SttSession implements SonioxStreamListener {
 	}
 
 	public void relayAudio(byte[] payload) {
-		verifyStreamHeader(payload);
+		if (streamRejected) {
+			// 헤더 없이 시작된 걸 이미 감지한 스트림. Soniox 로 흘려봐야 디코딩 불가능하므로 버린다.
+			return;
+		}
+		if (!verifyStreamHeader(payload)) {
+			return;
+		}
 		sonioxClient.sendAudio(payload);
 	}
 
 	/**
 	 * 재연결 시 MediaRecorder 를 재시작하지 않으면 헤더 없는 청크로 스트림이 시작돼
-	 * Soniox 가 포맷을 잡지 못한다. 조용히 전사가 멈추는 것을 막기 위해 첫 프레임을 검사한다.
+	 * Soniox 가 포맷을 잡지 못한다. 계속 흘려보내는 대신 세션을 끊어 재연결을 강제한다.
+	 *
+	 * @return 헤더가 정상이거나 이미 확인된 스트림이면 true, 헤더 없이 시작돼 거부했으면 false
 	 */
-	private void verifyStreamHeader(byte[] payload) {
+	private boolean verifyStreamHeader(byte[] payload) {
 		if (firstAudioFrameSeen) {
-			return;
+			return true;
 		}
 		firstAudioFrameSeen = true;
-		if (!startsWithEbmlMagic(payload)) {
-			log.warn("webm 헤더 없이 오디오 스트림이 시작됐습니다. 재연결 시 MediaRecorder 재시작이 필요합니다. meetingId={}",
-					meetingId);
-			send(SttServerMessage.interrupted("MISSING_AUDIO_HEADER"));
+		if (startsWithEbmlMagic(payload)) {
+			return true;
+		}
+
+		streamRejected = true;
+		log.warn("webm 헤더 없이 오디오 스트림이 시작됐습니다. 재연결 시 MediaRecorder 재시작이 필요합니다. meetingId={}",
+				meetingId);
+		send(SttServerMessage.interrupted("MISSING_AUDIO_HEADER"));
+		close(false);
+		closeBrowserSession();
+		return false;
+	}
+
+	private void closeBrowserSession() {
+		try {
+			if (browserSession.isOpen()) {
+				browserSession.close(CloseStatus.BAD_DATA.withReason("MISSING_AUDIO_HEADER"));
+			}
+		} catch (IOException e) {
+			log.debug("헤더 오류로 인한 브라우저 WS 종료 중 오류: {}", e.getMessage());
 		}
 	}
 
@@ -140,16 +167,20 @@ public class SttSession implements SonioxStreamListener {
 	 * 바로 닫으면 종료 직전 발화를 잃는다.
 	 */
 	public void close(boolean graceful) {
-		if (closed) {
+		if (!closed.compareAndSet(false, true)) {
+			// 이미 다른 스레드(정상 종료/에러 콜백/handler)가 닫는 중이거나 닫았다. 중복 실행 방지.
 			return;
 		}
-		closed = true;
-		if (graceful) {
-			sonioxClient.closeGracefully(properties.closeFlushTimeoutMs());
-		} else {
-			sonioxClient.abort();
+		try {
+			if (graceful) {
+				sonioxClient.closeGracefully(properties.closeFlushTimeoutMs());
+			} else {
+				sonioxClient.abort();
+			}
+		} finally {
+			// Soniox 쪽 종료가 실패하더라도 이미 확정된 토큰은 반드시 저장한다.
+			buffer.flushRemaining().ifPresent(this::persist);
 		}
-		buffer.flushRemaining().ifPresent(this::persist);
 	}
 
 	private void persist(FinalizedSegment segment) {
@@ -164,7 +195,9 @@ public class SttSession implements SonioxStreamListener {
 			send(SttServerMessage.transcript(saved.getId(), saved.getContent(), startMs, sequenceIndex));
 		} catch (RuntimeException e) {
 			// 한 세그먼트 저장 실패가 스트림 전체를 죽이지 않도록 삼킨다.
-			log.error("전사 세그먼트 저장에 실패했습니다. meetingId={} content={}", meetingId, segment.content(), e);
+			// content 는 회의 발화 원문(민감정보)이라 로그에는 길이만 남긴다.
+			log.error("전사 세그먼트 저장에 실패했습니다. meetingId={} contentLength={}",
+					meetingId, segment.content().length(), e);
 		}
 	}
 

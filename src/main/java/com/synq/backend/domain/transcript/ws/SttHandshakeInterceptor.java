@@ -52,7 +52,8 @@ public class SttHandshakeInterceptor implements HandshakeInterceptor {
 								WebSocketHandler wsHandler, Map<String, Object> attributes) {
 		Optional<Long> meetingId = extractMeetingId(request.getURI());
 		if (meetingId.isEmpty()) {
-			return reject(response, HttpStatus.BAD_REQUEST, "meetingId 를 해석할 수 없습니다: " + request.getURI());
+			// URI 전체(쿼리스트링 포함)를 로그에 남기면 ?token=JWT 가 그대로 노출된다. path 만 남긴다.
+			return reject(response, HttpStatus.BAD_REQUEST, "meetingId 를 해석할 수 없습니다: path=" + request.getURI().getPath());
 		}
 
 		Optional<Long> userId = extractUserId(request.getURI());

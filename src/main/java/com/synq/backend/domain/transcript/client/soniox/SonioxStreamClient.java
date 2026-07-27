@@ -32,6 +32,10 @@ public class SonioxStreamClient extends WebSocketListener {
 	private final SonioxProperties properties;
 	private final SonioxStreamListener listener;
 
+	// 연결 대기 상한. Soniox 연결이 죽었는데도(open==false 고정) 브라우저가 계속 오디오를 보내면
+	// 무한정 쌓여 OOM 으로 이어질 수 있어 상한을 둔다. 1프레임≈1초라 100이면 충분히 넉넉하다.
+	private static final int MAX_PENDING_AUDIO_FRAMES = 100;
+
 	// onOpen 전에 도착한 오디오를 담아둔다. webm 은 첫 청크에만 헤더가 있어 이걸 흘리면 스트림 전체가 깨진다.
 	private final Deque<ByteString> pendingAudio = new ArrayDeque<>();
 	private final CountDownLatch finishedLatch = new CountDownLatch(1);
@@ -56,9 +60,17 @@ public class SonioxStreamClient extends WebSocketListener {
 
 	/** 브라우저에서 받은 오디오를 그대로 릴레이한다. 서버는 오디오를 저장하지 않는다. */
 	public void sendAudio(byte[] payload) {
+		if (closing) {
+			// 종료/실패가 이미 확정된 스트림에는 릴레이 자체를 하지 않는다 (무한 적재 방지).
+			return;
+		}
 		ByteString frame = ByteString.of(payload);
 		synchronized (pendingAudio) {
 			if (!open) {
+				if (pendingAudio.size() >= MAX_PENDING_AUDIO_FRAMES) {
+					log.warn("Soniox 연결 대기 큐가 가득 차 오디오 프레임을 폐기합니다. meetingId={}", meetingId);
+					return;
+				}
 				pendingAudio.addLast(frame);
 				return;
 			}
@@ -73,7 +85,12 @@ public class SonioxStreamClient extends WebSocketListener {
 	public void closeGracefully(long flushTimeoutMs) {
 		closing = true;
 		WebSocket socket = this.webSocket;
-		if (socket == null) {
+		if (socket == null || !open) {
+			// 아직 config 를 보내기 전(onOpen 이전)이면 Soniox 프로토콜상 흘려보낼 스트림 자체가 없다.
+			// 여기서 종료 프레임을 먼저 보내면 이후 onOpen 이 config 를 그 뒤에 보내 순서가 깨진다.
+			if (socket != null) {
+				socket.cancel();
+			}
 			return;
 		}
 		try {
@@ -98,11 +115,22 @@ public class SonioxStreamClient extends WebSocketListener {
 
 	@Override
 	public void onOpen(WebSocket webSocket, Response response) {
+		if (closing) {
+			// close() 가 onOpen 보다 먼저 호출된 경쟁 상태. config/오디오를 보내면 이미 끝난 스트림에
+			// 뒤늦게 프로토콜 순서를 깨뜨리게 되므로 그냥 취소한다.
+			webSocket.cancel();
+			return;
+		}
 		log.info("Soniox 스트림을 열었습니다. meetingId={}", meetingId);
 		webSocket.send(configMessage());
 
 		// config 전송 이후에만 오디오가 유효하다. 큐에 쌓아둔 순서를 그대로 흘린다.
 		synchronized (pendingAudio) {
+			if (closing) {
+				pendingAudio.clear();
+				webSocket.cancel();
+				return;
+			}
 			open = true;
 			while (!pendingAudio.isEmpty()) {
 				webSocket.send(pendingAudio.pollFirst());
@@ -137,6 +165,8 @@ public class SonioxStreamClient extends WebSocketListener {
 	@Override
 	public void onFailure(WebSocket webSocket, Throwable t, Response response) {
 		open = false;
+		// 실패한 연결은 재시도하지 않는다. sendAudio() 가 더 이상 오디오를 적재하지 않도록 종결 상태로 못박는다.
+		closing = true;
 		finishedLatch.countDown();
 		if (closing) {
 			// 정상 종료 과정에서의 소켓 종료는 실패로 보지 않는다.

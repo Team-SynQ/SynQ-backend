@@ -45,11 +45,10 @@ class MeetingTimelineTest {
 	}
 
 	@Test
-	@DisplayName("startedAt 이 없으면 오프셋 없이 동작한다")
-	void fallsBackToZeroOffsetWithoutStartedAt() {
-		MeetingTimeline timeline = MeetingTimeline.from(null, MEETING_STARTED_AT);
-
-		assertThat(timeline.baseOffsetMs()).isZero();
+	@DisplayName("startedAt 이 없으면 0 오프셋으로 조용히 넘어가지 않고 예외로 막는다")
+	void rejectsMissingStartedAt() {
+		assertThatThrownBy(() -> MeetingTimeline.from(null, MEETING_STARTED_AT))
+				.isInstanceOf(IllegalStateException.class);
 	}
 
 	@Test
@@ -66,6 +65,16 @@ class MeetingTimelineTest {
 		MeetingTimeline timeline = new MeetingTimeline(Integer.MAX_VALUE);
 
 		assertThatThrownBy(() -> timeline.toAbsoluteMs(1))
+				.isInstanceOf(GeneralException.class);
+	}
+
+	@Test
+	@DisplayName("음수 스트림 타임스탬프는 합산 결과가 유효해도 거부한다")
+	void rejectsNegativeStreamRelativeMs() {
+		MeetingTimeline timeline = new MeetingTimeline(1000L);
+
+		// baseOffsetMs=1000, streamRelativeMs=-1 -> 합산은 999로 유효해 보이지만 입력 자체가 비정상이다.
+		assertThatThrownBy(() -> timeline.toAbsoluteMs(-1))
 				.isInstanceOf(GeneralException.class);
 	}
 }

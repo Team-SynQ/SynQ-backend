@@ -24,10 +24,16 @@ public record MeetingTimeline(long baseOffsetMs) {
 		}
 	}
 
-	/** 스트림을 여는 시점에 한 번 계산하고 이후 불변으로 쓴다. */
+	/**
+	 * 스트림을 여는 시점에 한 번 계산하고 이후 불변으로 쓴다.
+	 *
+	 * <p>meetingStartedAt 이 없으면 0 오프셋으로 조용히 넘어가지 않고 예외를 던진다(fail-closed).
+	 * 정상 플로우에서는 Meeting.of() 가 항상 startedAt 을 채우므로 null 은 있을 수 없는 상태이고,
+	 * 여기서 0으로 넘어가면 재연결 세그먼트가 이전 구간과 시간축이 겹칠 수 있다.
+	 */
 	public static MeetingTimeline from(LocalDateTime meetingStartedAt, LocalDateTime streamStartedAt) {
 		if (meetingStartedAt == null) {
-			return new MeetingTimeline(0L);
+			throw new IllegalStateException("meeting.startedAt 이 없어 회의 타임라인을 계산할 수 없습니다.");
 		}
 		long offset = Duration.between(meetingStartedAt, streamStartedAt).toMillis();
 		// 서버 시계 역행이나 startedAt 이 미래인 경우에도 음수 오프셋을 만들지 않는다.
@@ -35,9 +41,14 @@ public record MeetingTimeline(long baseOffsetMs) {
 	}
 
 	public int toAbsoluteMs(int streamRelativeMs) {
+		// 합산 결과만 검사하면 baseOffsetMs=1000, streamRelativeMs=-1 같은 경우 999ms 로
+		// 조용히 저장돼버린다. Soniox 가 음수 타임스탬프를 줄 일은 없으므로 입력 자체를 막는다.
+		if (streamRelativeMs < 0) {
+			throw new GeneralException(TranscriptErrorCode.TIMESTAMP_OUT_OF_RANGE);
+		}
 		long absolute = baseOffsetMs + streamRelativeMs;
 		// start_ms 는 INTEGER 컬럼이다. 조용히 wrap 되지 않도록 명시적으로 막는다.
-		if (absolute < 0 || absolute > Integer.MAX_VALUE) {
+		if (absolute > Integer.MAX_VALUE) {
 			throw new GeneralException(TranscriptErrorCode.TIMESTAMP_OUT_OF_RANGE);
 		}
 		return (int) absolute;

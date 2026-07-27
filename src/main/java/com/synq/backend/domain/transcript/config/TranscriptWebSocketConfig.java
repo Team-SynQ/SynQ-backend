@@ -3,6 +3,8 @@ package com.synq.backend.domain.transcript.config;
 import com.synq.backend.domain.transcript.ws.HostAudioWebSocketHandler;
 import com.synq.backend.domain.transcript.ws.SttHandshakeInterceptor;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,12 +40,17 @@ public class TranscriptWebSocketConfig implements WebSocketConfigurer {
 		// ServerContainer 속성이 없어 afterPropertiesSet() 이 항상 예외를 던진다. 실제 배포(임베디드
 		// Tomcat)에서는 onRefresh() 단계에서 이미 그 속성이 채워져 있어 정상 동작하므로, 그 예외만 무시한다.
 		ServletServerContainerFactoryBean container = new ServletServerContainerFactoryBean() {
+			private static final Logger log = LoggerFactory.getLogger(TranscriptWebSocketConfig.class);
+
 			@Override
 			public void afterPropertiesSet() {
 				try {
 					super.afterPropertiesSet();
 				} catch (IllegalStateException e) {
-					// mock 웹 환경에서는 버퍼 크기 설정이 의미가 없으므로 무시하고 넘어간다.
+					// mock 웹 환경(테스트)에서는 항상 이 경로를 타서 기대된 상황이지만, 실제 배포에서
+					// 발생하면 WS 버퍼 크기 설정이 통째로 무시된 채 조용히 넘어가는 것이므로 반드시 남긴다.
+					log.warn("WebSocket 컨테이너 버퍼 크기 설정을 건너뜁니다 (mock 웹 환경이면 정상, 그 외 환경이면 확인 필요): {}",
+							e.getMessage());
 				}
 			}
 		};
