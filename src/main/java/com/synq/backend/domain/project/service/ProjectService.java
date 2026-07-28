@@ -62,8 +62,7 @@ public class ProjectService {
 		}
 		validateUser(userId);
 
-		Project project = projectRepository.findById(projectId)
-				.orElseThrow(() -> new GeneralException(ProjectErrorCode.PROJECT_NOT_FOUND));
+		Project project = findActiveProjectById(projectId);
 		if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
 			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_MEMBER);
 		}
@@ -78,8 +77,7 @@ public class ProjectService {
 		}
 		validateUser(userId);
 
-		Project project = projectRepository.findById(projectId)
-				.orElseThrow(() -> new GeneralException(ProjectErrorCode.PROJECT_NOT_FOUND));
+		Project project = findActiveProjectById(projectId);
 		if (!project.getOwnerId().equals(userId)) {
 			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_OWNER);
 		}
@@ -87,7 +85,6 @@ public class ProjectService {
 			throw new GeneralException(GeneralErrorCode.BAD_REQUEST);
 		}
 
-		// PATCH 요청 필드만 수정
 		if (request.hasTitle()) {
 			project.updateTitle(request.title());
 		}
@@ -96,6 +93,21 @@ public class ProjectService {
 		}
 		projectRepository.flush();
 		return ProjectUpdateResponse.from(project);
+	}
+
+	@Transactional
+	public void delete(Long projectId, Long userId) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		validateUser(userId);
+
+		Project project = findActiveProjectById(projectId);
+		if (!project.getOwnerId().equals(userId)) {
+			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_OWNER);
+		}
+		project.softDelete();
+		projectRepository.flush();
 	}
 
 	@Transactional(readOnly = true)
@@ -153,8 +165,7 @@ public class ProjectService {
 		}
 		validateUser(userId);
 
-		Project project = projectRepository.findById(projectId)
-				.orElseThrow(() -> new GeneralException(ProjectErrorCode.PROJECT_NOT_FOUND));
+		Project project = findActiveProjectById(projectId);
 		if (!project.getOwnerId().equals(userId)) {
 			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_OWNER);
 		}
@@ -221,6 +232,12 @@ public class ProjectService {
 			throw new GeneralException(ProjectErrorCode.INVITATION_EXPIRED);
 		}
 		return project;
+	}
+
+	private Project findActiveProjectById(Long projectId) {
+		return projectRepository.findById(projectId)
+				.filter(project -> !project.isDeleted())
+				.orElseThrow(() -> new GeneralException(ProjectErrorCode.PROJECT_NOT_FOUND));
 	}
 
 	private String generateInviteToken() {

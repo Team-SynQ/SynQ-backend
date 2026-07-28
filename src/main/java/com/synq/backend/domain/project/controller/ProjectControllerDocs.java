@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,6 +28,19 @@ import java.util.List;
 
 @Tag(name = "Project", description = "프로젝트 API")
 public interface ProjectControllerDocs {
+
+	@Operation(summary = "프로젝트 삭제", description = "프로젝트 소유자가 프로젝트를 Soft Delete한다.")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "프로젝트 삭제 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "프로젝트 삭제 권한 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "프로젝트 또는 사용자 없음")
+	})
+	@DeleteMapping("/{projectId}")
+	ResponseEntity<Void> delete(
+			@PathVariable Long projectId,
+			@RequestHeader(value = "X-User-Id", required = false) Long userId
+	);
 
 	@Operation(summary = "프로젝트 수정", description = "프로젝트 소유자가 프로젝트명과 설명을 수정한다.")
 	@ApiResponses({
