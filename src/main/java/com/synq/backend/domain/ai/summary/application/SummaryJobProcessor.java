@@ -65,9 +65,9 @@ public class SummaryJobProcessor {
 		// Job 상태가 확정된 뒤에 결과를 알린다. 이벤트를 try 안에서 발행하면 구독자(회의 상태 반영) 실패가
 		// catch 로 전파돼 방금 저장한 COMPLETED Job 을 FAILED 로 덮어쓸 수 있어, 발행은 반드시 밖에서 한다.
 		if (succeeded) {
-			eventPublisher.publishEvent(new SummaryCompletedEvent(startedJob.meetingId()));
+			eventPublisher.publishEvent(new SummaryCompletedEvent(startedJob.meetingId(), startedJob.id()));
 		} else {
-			eventPublisher.publishEvent(new SummaryFailedEvent(startedJob.meetingId(), errorMessage));
+			eventPublisher.publishEvent(new SummaryFailedEvent(startedJob.meetingId(), startedJob.id(), errorMessage));
 		}
 	}
 }
