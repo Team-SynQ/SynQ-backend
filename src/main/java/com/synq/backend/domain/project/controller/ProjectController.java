@@ -28,6 +28,12 @@ public class ProjectController implements ProjectControllerDocs {
 	private final ProjectService projectService;
 
 	@Override
+	public ResponseEntity<Void> delete(Long projectId, Long userId) {
+		projectService.delete(projectId, userId);
+		return ResponseEntity.noContent().build();
+	}
+
+	@Override
 	public ResponseEntity<ApiResponse<ProjectUpdateResponse>> update(
 			Long projectId,
 			Long userId,
