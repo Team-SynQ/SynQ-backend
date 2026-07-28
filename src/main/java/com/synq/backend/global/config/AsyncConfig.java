@@ -49,4 +49,18 @@ public class AsyncConfig {
 		executor.initialize();
 		return executor;
 	}
+
+	/**
+	 * SSE 응답 쓰기 전용 풀. 느린 클라이언트가 AI 처리 스레드를 점유하지 않게 분리한다.
+	 */
+	@Bean(name = "sseExecutor")
+	public Executor sseExecutor() {
+		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+		executor.setCorePoolSize(4);
+		executor.setMaxPoolSize(16);
+		executor.setQueueCapacity(200);
+		executor.setThreadNamePrefix("sse-");
+		executor.initialize();
+		return executor;
+	}
 }

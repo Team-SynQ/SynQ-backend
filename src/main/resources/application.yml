@@ -135,6 +135,7 @@ ai:
     sse:
       timeout: ${AI_EVENT_SSE_TIMEOUT:30m}
       heartbeat-interval: ${AI_EVENT_SSE_HEARTBEAT_INTERVAL:20s}
+      queue-capacity: ${AI_EVENT_SSE_QUEUE_CAPACITY:100}
 
 ---
 # local(dev) 전용 편의 설정

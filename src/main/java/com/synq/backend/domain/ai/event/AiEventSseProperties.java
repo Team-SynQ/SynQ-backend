@@ -9,7 +9,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "ai.event.sse")
 public record AiEventSseProperties(
 		Duration timeout,
-		Duration heartbeatInterval
+		Duration heartbeatInterval,
+		int queueCapacity
 ) {
 
 	public AiEventSseProperties {
@@ -18,6 +19,12 @@ public record AiEventSseProperties(
 		}
 		if (heartbeatInterval == null || heartbeatInterval.isNegative() || heartbeatInterval.isZero()) {
 			throw new IllegalArgumentException("SSE heartbeatInterval은 0보다 커야 합니다.");
+		}
+		if (heartbeatInterval.compareTo(timeout) >= 0) {
+			throw new IllegalArgumentException("SSE heartbeatInterval은 timeout보다 짧아야 합니다.");
+		}
+		if (queueCapacity <= 0) {
+			throw new IllegalArgumentException("SSE queueCapacity는 1 이상이어야 합니다.");
 		}
 	}
 }

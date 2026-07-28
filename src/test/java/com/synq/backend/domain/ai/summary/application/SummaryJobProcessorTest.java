@@ -1,7 +1,9 @@
 package com.synq.backend.domain.ai.summary.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
 
+import com.synq.backend.domain.ai.event.SummaryFailedEvent;
 import com.synq.backend.domain.ai.summary.mock.FakeSummaryAiClient;
 import com.synq.backend.domain.ai.summary.mock.InMemoryMeetingSummaryStore;
 import com.synq.backend.domain.ai.summary.mock.InMemorySummaryJobStore;
@@ -11,6 +13,9 @@ import com.synq.backend.domain.ai.summary.mock.MockTranscriptReader;
 import com.synq.backend.domain.ai.summary.domain.SummaryJob;
 import com.synq.backend.domain.ai.summary.domain.SummaryJobStatus;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+import org.springframework.context.ApplicationEventPublisher;
 
 class SummaryJobProcessorTest {
 
@@ -47,5 +52,33 @@ class SummaryJobProcessorTest {
 		SummaryJob failedJob = jobStore.findById(job.id()).orElseThrow();
 		assertThat(failedJob.status()).isEqualTo(SummaryJobStatus.FAILED);
 		assertThat(failedJob.errorMessage()).isEqualTo("IllegalStateException");
+	}
+
+	@Test
+	void 상세_예외는_Job에만_저장하고_SSE에는_안전한_메시지를_전달한다() {
+		var jobStore = new InMemorySummaryJobStore();
+		var summaryStore = new InMemoryMeetingSummaryStore();
+		var contextBuilder = new SummaryContextBuilder(
+				new MockTranscriptReader(), new MockMeetingContextReader(), new MockRagContextReader());
+		ApplicationEventPublisher eventPublisher = Mockito.mock(ApplicationEventPublisher.class);
+		var processor = new SummaryJobProcessor(
+				jobStore,
+				summaryStore,
+				contextBuilder,
+				context -> {
+					throw new IllegalStateException("OpenAI 내부 응답: 민감한 상세 내용");
+				},
+				eventPublisher
+		);
+		SummaryJob job = jobStore.save(SummaryJob.queued(1L));
+
+		processor.process(job.id());
+
+		assertThat(jobStore.findById(job.id()).orElseThrow().errorMessage())
+				.isEqualTo("OpenAI 내부 응답: 민감한 상세 내용");
+		ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+		verify(eventPublisher).publishEvent((Object) eventCaptor.capture());
+		SummaryFailedEvent event = (SummaryFailedEvent) eventCaptor.getValue();
+		assertThat(event.reason()).isEqualTo(SummaryJobProcessor.SUMMARY_GENERATION_FAILED_MESSAGE);
 	}
 }

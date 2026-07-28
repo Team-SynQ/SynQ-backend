@@ -10,17 +10,21 @@ import com.synq.backend.global.apipayload.exception.GeneralException;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.core.task.SyncTaskExecutor;
 
 class AiEventSubscriptionServiceTest {
 
 	private final MeetingRepository meetingRepository = Mockito.mock(MeetingRepository.class);
 	private final MeetingParticipantRepository participantRepository = Mockito.mock(MeetingParticipantRepository.class);
-	private final AiEventSseEmitterRegistry emitterRegistry = new AiEventSseEmitterRegistry();
+	private final AiEventSseProperties properties = new AiEventSseProperties(
+			Duration.ofMinutes(30), Duration.ofSeconds(20), 100);
+	private final AiEventSseEmitterRegistry emitterRegistry = new AiEventSseEmitterRegistry(
+			new SyncTaskExecutor(), properties);
 	private final AiEventSubscriptionService service = new AiEventSubscriptionService(
 			meetingRepository,
 			participantRepository,
 			emitterRegistry,
-			new AiEventSseProperties(Duration.ofMinutes(30), Duration.ofSeconds(20))
+			properties
 	);
 
 	@Test

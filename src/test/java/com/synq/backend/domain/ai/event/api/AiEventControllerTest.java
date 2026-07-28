@@ -23,6 +23,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @AutoConfigureMockMvc
 class AiEventControllerTest extends PostgresTestContainer {
@@ -62,11 +63,13 @@ class AiEventControllerTest extends PostgresTestContainer {
 		Meeting meeting = meetingRepository.save(Meeting.of(1L, "SSE 테스트 회의"));
 		participantRepository.save(MeetingParticipant.of(meeting.getId(), user.getUserId(), ParticipantRole.HOST));
 
-		mockMvc.perform(get("/meetings/{meetingId}/ai-events", meeting.getId())
+		MvcResult result = mockMvc.perform(get("/meetings/{meetingId}/ai-events", meeting.getId())
 					.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId())))
 				.andExpect(request().asyncStarted())
 				.andExpect(header().string("X-Accel-Buffering", "no"))
-				.andExpect(status().isOk());
+				.andExpect(status().isOk())
+				.andReturn();
+		result.getRequest().getAsyncContext().complete();
 	}
 
 	@Test

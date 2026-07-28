@@ -15,6 +15,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class SummaryJobProcessor {
 
+	static final String SUMMARY_GENERATION_FAILED_MESSAGE = "AI 요약 생성에 실패했습니다.";
+
 	private final SummaryJobStore jobStore;
 	private final MeetingSummaryStore summaryStore;
 	private final SummaryContextBuilder contextBuilder;
@@ -67,7 +69,12 @@ public class SummaryJobProcessor {
 		if (succeeded) {
 			eventPublisher.publishEvent(new SummaryCompletedEvent(startedJob.meetingId(), startedJob.id()));
 		} else {
-			eventPublisher.publishEvent(new SummaryFailedEvent(startedJob.meetingId(), startedJob.id(), errorMessage));
+			// 내부 예외 상세는 Job에만 보관하고, SSE에는 사용자에게 안전한 메시지만 전달한다.
+			eventPublisher.publishEvent(new SummaryFailedEvent(
+					startedJob.meetingId(),
+					startedJob.id(),
+					SUMMARY_GENERATION_FAILED_MESSAGE
+			));
 		}
 	}
 }
