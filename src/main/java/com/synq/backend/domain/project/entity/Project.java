@@ -48,6 +48,14 @@ public class Project extends BaseEntity {
 		return new Project(ownerId, title, description);
 	}
 
+	public void updateTitle(String title) {
+		this.title = title;
+	}
+
+	public void updateDescription(String description) {
+		this.description = description;
+	}
+
 	public void updateInvitation(String inviteToken, LocalDateTime expiresAt) {
 		this.inviteToken = inviteToken;
 		this.inviteTokenExpiresAt = expiresAt;

@@ -7,4 +7,9 @@ public record ProjectCreateRequest(
 		@NotBlank @Size(max = 30) String title,
 		@Size(max = 500) String description
 ) {
+	public ProjectCreateRequest {
+		if (title != null) {
+			title = title.trim();
+		}
+	}
 }

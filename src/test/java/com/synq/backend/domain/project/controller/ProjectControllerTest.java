@@ -74,6 +74,20 @@ class ProjectControllerTest extends PostgresTestContainer {
 				.andExpect(jsonPath("$.code").value("COMMON400_1"));
 	}
 
+	@Test
+	void 프로젝트명_앞뒤_공백을_제거한_뒤_생성한다() throws Exception {
+		User owner = saveUser("controller-trim-title@synq.com");
+
+		mockMvc.perform(post("/projects")
+						.header("X-User-Id", owner.getUserId())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"title":"  SynQ  ","description":null}
+								"""))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.result.title").value("SynQ"));
+	}
+
 	private User saveUser(String email) {
 		return userRepository.save(User.ofLocal("테스트", email, "password-hash"));
 	}
