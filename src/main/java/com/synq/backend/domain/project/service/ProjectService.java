@@ -11,6 +11,8 @@ import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
+import com.synq.backend.domain.project.dto.ProjectMemberListResponse;
+import com.synq.backend.domain.project.dto.ProjectMemberResponse;
 import com.synq.backend.domain.project.dto.ProjectUpdateRequest;
 import com.synq.backend.domain.project.dto.ProjectUpdateResponse;
 import com.synq.backend.domain.project.entity.Project;
@@ -19,6 +21,7 @@ import com.synq.backend.domain.project.entity.ProjectMemberRole;
 import com.synq.backend.domain.project.repository.ProjectMemberRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.user.repository.UserRepository;
+import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
@@ -68,6 +71,39 @@ public class ProjectService {
 		}
 		// Project 엔티티 updatedAt 반환
 		return ProjectDetailResponse.from(project);
+	}
+
+	@Transactional(readOnly = true)
+	public ProjectMemberListResponse findMembers(Long projectId, Long userId) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		validateUser(userId);
+
+		Project project = findActiveProjectById(projectId);
+		if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
+			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_MEMBER);
+		}
+
+		List<ProjectMember> members =
+				projectMemberRepository.findAllByProjectIdOrderByJoinedAtAsc(projectId);
+		Map<Long, User> userById = userRepository.findAllById(
+						members.stream().map(ProjectMember::getUserId).toList()
+				).stream()
+				.collect(java.util.stream.Collectors.toMap(User::getUserId, user -> user));
+		List<ProjectMemberResponse> memberResponses = members.stream()
+				.map(member -> ProjectMemberResponse.from(
+						member,
+						userById.get(member.getUserId()),
+						userId
+				))
+				.toList();
+
+		return ProjectMemberListResponse.from(
+				project,
+				Math.toIntExact(MAX_PROJECT_MEMBERS),
+				memberResponses
+		);
 	}
 
 	@Transactional

@@ -8,6 +8,7 @@ import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
+import com.synq.backend.domain.project.dto.ProjectMemberListResponse;
 import com.synq.backend.domain.project.dto.ProjectUpdateRequest;
 import com.synq.backend.domain.project.dto.ProjectUpdateResponse;
 import com.synq.backend.domain.project.service.ProjectService;
@@ -31,6 +32,13 @@ public class ProjectController implements ProjectControllerDocs {
 	public ResponseEntity<Void> delete(Long projectId, Long userId) {
 		projectService.delete(projectId, userId);
 		return ResponseEntity.noContent().build();
+	}
+
+	@Override
+	public ResponseEntity<ApiResponse<ProjectMemberListResponse>> findMembers(Long projectId, Long userId) {
+		ProjectMemberListResponse response = projectService.findMembers(projectId, userId);
+		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
 	}
 
 	@Override

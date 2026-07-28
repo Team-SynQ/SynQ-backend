@@ -42,8 +42,10 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
 			JOIN Project project ON project.id = member.projectId
 			WHERE member.userId = :userId
 			  AND project.deletedAt IS NULL
-			""")
+	""")
 	List<ProjectMember> findAllByUserId(@Param("userId") Long userId);
+
+	List<ProjectMember> findAllByProjectIdOrderByJoinedAtAsc(Long projectId);
 
 	@Query("""
 			SELECT COUNT(member)
