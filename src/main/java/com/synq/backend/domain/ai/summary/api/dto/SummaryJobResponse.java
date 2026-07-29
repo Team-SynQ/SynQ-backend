@@ -4,8 +4,22 @@ import com.synq.backend.domain.ai.summary.domain.SummaryJob;
 import java.time.Instant;
 import java.util.UUID;
 
-public record SummaryJobResponse(UUID jobId, String status, String errorMessage, Instant completedAt) {
+public record SummaryJobResponse(
+		UUID jobId,
+		String status,
+		String modelName,
+		String promptVersion,
+		String errorMessage,
+		Instant completedAt
+) {
 	public static SummaryJobResponse from(SummaryJob job) {
-		return new SummaryJobResponse(job.id(), job.status().name(), job.errorMessage(), job.completedAt());
+		return new SummaryJobResponse(
+				job.id(),
+				job.status().name(),
+				job.modelName(),
+				job.promptVersion(),
+				job.errorMessage(),
+				job.completedAt()
+		);
 	}
 }

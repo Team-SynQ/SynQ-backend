@@ -6,6 +6,7 @@ import java.util.List;
 
 public record MeetingSummaryResponse(
 		Long meetingId,
+		int version,
 		String overallSummary,
 		List<String> keyTopics,
 		List<String> decisions,
@@ -16,7 +17,7 @@ public record MeetingSummaryResponse(
 	public static MeetingSummaryResponse from(MeetingSummary summary) {
 		var content = summary.content();
 		return new MeetingSummaryResponse(
-				summary.meetingId(), content.overallSummary(), content.keyTopics(), content.decisions(),
+				summary.meetingId(), summary.version(), content.overallSummary(), content.keyTopics(), content.decisions(),
 				content.actionItems(), content.openQuestions(), summary.generatedAt());
 	}
 }

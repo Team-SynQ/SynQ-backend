@@ -35,11 +35,12 @@ public class SecurityConfig {
 						.requestMatchers(PUBLIC_ENDPOINTS).permitAll()
 						// WS 는 브라우저가 Authorization 헤더를 못 붙여 SttHandshakeInterceptor 가 쿼리파라미터
 						// 토큰으로 직접 인증한다. anyRequest().authenticated() 로 전환해도 막히지 않도록 명시한다.
-						.requestMatchers("/ws/**").permitAll()
-						.requestMatchers("/users/me", "/users/me/**").authenticated()
-						.requestMatchers("/projects/*/meetings", "/meetings/*/end", "/meetings/*/join").authenticated()
-						// 각 도메인 컨트롤러 테스트에 인증 절차 추가 이후 anyRequest().authenticated()로 전환 필요
-						.anyRequest().permitAll())
+							.requestMatchers("/ws/**").permitAll()
+							.requestMatchers("/users/me", "/users/me/**").authenticated()
+							.requestMatchers("/projects/*/meetings", "/meetings/*/end", "/meetings/*/join").authenticated()
+							.requestMatchers("/meetings/*/ai-summary/**", "/meetings/*/summary/**").authenticated()
+							// 각 도메인 컨트롤러 테스트에 인증 절차 추가 이후 anyRequest().authenticated()로 전환 필요
+							.anyRequest().permitAll())
 				.exceptionHandling(exception -> exception.authenticationEntryPoint(entryPoint))
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 		return http.build();
