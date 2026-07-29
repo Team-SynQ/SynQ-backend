@@ -5,7 +5,6 @@ import java.util.List;
 public record SummaryContext(
 		Long meetingId,
 		String transcript,
-		String rollingSummary,
 		List<String> referenceContexts
 ) {
 	public SummaryContext {
