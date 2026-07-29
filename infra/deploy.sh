@@ -123,7 +123,7 @@ if docker exec synq-nginx nginx -t && docker exec synq-nginx nginx -s reload; th
 
     # Nginx Smoke Test 추가
     echo "Nginx Smoke Test 진행 중..."
-    SMOKE_STATUS=$(curl -k -s -o /dev/null -w "%{http_code}" "https://localhost/actuator/health" || true)
+    SMOKE_STATUS=$(curl -k -s -o /dev/null -w "%{http_code}" --connect-timeout 2 --max-time 5 "https://localhost/actuator/health" || true)
 
     if [ "$SMOKE_STATUS" -eq 200 ]; then
         echo "라우팅 스위칭 및 Smoke Test 완료."
