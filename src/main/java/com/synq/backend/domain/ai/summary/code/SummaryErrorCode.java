@@ -9,8 +9,11 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum SummaryErrorCode implements BaseCode {
 	MEETING_NOT_ENDED(HttpStatus.CONFLICT,
-			"SUMMARY409_1",
-			"종료된 회의만 요약을 생성할 수 있습니다.");
+				"SUMMARY409_1",
+				"종료된 회의만 요약을 생성할 수 있습니다."),
+	NOT_MEETING_PARTICIPANT(HttpStatus.FORBIDDEN,
+				"SUMMARY403_1",
+				"회의 참여자만 요약을 이용할 수 있습니다.");
 
 	private final HttpStatus status;
 	private final String code;

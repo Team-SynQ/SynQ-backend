@@ -139,9 +139,13 @@ ai:
       top-k: ${AI_ASSISTANT_HINT_TOP_K:3}
       min-similarity: ${AI_ASSISTANT_HINT_MIN_SIMILARITY:0.3}
   summary:
-    # 실제 SummaryAiClient 구현체가 준비되기 전까지는 Fake/Mock 조합을 기본으로 사용한다.
     client: ${AI_SUMMARY_CLIENT:fake}
-    context-source: ${AI_SUMMARY_CONTEXT_SOURCE:mock}
+    model-name: ${OPENAI_MODEL:gpt-5.4-nano}
+    prompt-version: ${AI_SUMMARY_PROMPT_VERSION:v1}
+    # 토큰 수를 정밀 계산하기 전 입력 폭주를 막는 보수적인 문자 수 제한.
+    max-input-chars: ${AI_SUMMARY_MAX_INPUT_CHARS:250000}
+    # 서버 중단 등으로 완료되지 못한 활성 Job을 다음 요청에서 복구하는 기준.
+    active-job-timeout: ${AI_SUMMARY_ACTIVE_JOB_TIMEOUT:30m}
   live-context:
     client: ${AI_LIVE_CONTEXT_CLIENT:openai}
   event:
@@ -170,10 +174,7 @@ ai:
     # local에서는 API 키 없이 채팅 저장과 응답 흐름을 검증한다.
     client: ${AI_CHAT_CLIENT:fake}
   summary:
-    # Mock 구현체는 local/test에서만 활성화된다. 실제 OpenAI 호출 확인 시 openai로 변경한다.
     client: ${AI_SUMMARY_CLIENT:fake}
-    # Live Context까지 생성된 뒤 회의 후 요약 입력으로 사용할 때 live-context로 변경한다.
-    context-source: ${AI_SUMMARY_CONTEXT_SOURCE:mock}
   live-context:
     # local에서는 Fake 구현체로 전사 이벤트와 영속 흐름을 검증한다.
     client: ${AI_LIVE_CONTEXT_CLIENT:fake}

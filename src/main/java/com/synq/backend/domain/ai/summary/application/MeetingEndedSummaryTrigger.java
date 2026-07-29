@@ -28,7 +28,7 @@ public class MeetingEndedSummaryTrigger {
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
 	public void handle(MeetingEndedEvent event) {
 		try {
-			meetingSummaryService.request(event.meetingId());
+			meetingSummaryService.requestAfterMeetingEnd(event.meetingId());
 		} catch (GeneralException e) {
 			// 이미 진행 중인 요약 작업이 있는 등(CONFLICT) 접수 실패는 회의 종료 자체를 되돌리지 않는다.
 			log.warn("회의 종료 이벤트로 요약을 시작하지 못했습니다. meetingId={}", event.meetingId(), e);
