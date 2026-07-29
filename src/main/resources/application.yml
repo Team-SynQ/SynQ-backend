@@ -144,6 +144,11 @@ ai:
     context-source: ${AI_SUMMARY_CONTEXT_SOURCE:mock}
   live-context:
     client: ${AI_LIVE_CONTEXT_CLIENT:openai}
+  event:
+    sse:
+      timeout: ${AI_EVENT_SSE_TIMEOUT:30m}
+      heartbeat-interval: ${AI_EVENT_SSE_HEARTBEAT_INTERVAL:20s}
+      queue-capacity: ${AI_EVENT_SSE_QUEUE_CAPACITY:100}
 
 ---
 # local(dev) 전용 편의 설정

@@ -10,11 +10,13 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "project")
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Project extends BaseEntity {
@@ -38,6 +40,9 @@ public class Project extends BaseEntity {
 	@Column(name = "invite_token_expires_at")
 	private LocalDateTime inviteTokenExpiresAt;
 
+	@Column(name = "deleted_at")
+	private LocalDateTime deletedAt;
+
 	private Project(Long ownerId, String title, String description) {
 		this.ownerId = ownerId;
 		this.title = title;
@@ -48,8 +53,24 @@ public class Project extends BaseEntity {
 		return new Project(ownerId, title, description);
 	}
 
+	public void updateTitle(String title) {
+		this.title = title;
+	}
+
+	public void updateDescription(String description) {
+		this.description = description;
+	}
+
 	public void updateInvitation(String inviteToken, LocalDateTime expiresAt) {
 		this.inviteToken = inviteToken;
 		this.inviteTokenExpiresAt = expiresAt;
+	}
+
+	public void softDelete() {
+		this.deletedAt = LocalDateTime.now();
+	}
+
+	public boolean isDeleted() {
+		return deletedAt != null;
 	}
 }

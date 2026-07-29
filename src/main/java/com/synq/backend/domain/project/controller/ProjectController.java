@@ -2,11 +2,14 @@ package com.synq.backend.domain.project.controller;
 
 import com.synq.backend.domain.project.dto.ProjectCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectCreateResponse;
+import com.synq.backend.domain.project.dto.ProjectDetailResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
+import com.synq.backend.domain.project.dto.ProjectUpdateRequest;
+import com.synq.backend.domain.project.dto.ProjectUpdateResponse;
 import com.synq.backend.domain.project.service.ProjectService;
 import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
@@ -23,6 +26,30 @@ import java.util.List;
 public class ProjectController implements ProjectControllerDocs {
 
 	private final ProjectService projectService;
+
+	@Override
+	public ResponseEntity<Void> delete(Long projectId, Long userId) {
+		projectService.delete(projectId, userId);
+		return ResponseEntity.noContent().build();
+	}
+
+	@Override
+	public ResponseEntity<ApiResponse<ProjectUpdateResponse>> update(
+			Long projectId,
+			Long userId,
+			ProjectUpdateRequest request
+	) {
+		ProjectUpdateResponse response = projectService.update(projectId, userId, request);
+		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
+	}
+
+	@Override
+	public ResponseEntity<ApiResponse<ProjectDetailResponse>> findById(Long projectId, Long userId) {
+		ProjectDetailResponse response = projectService.findById(projectId, userId);
+		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
+	}
 
 	@Override
 	public ResponseEntity<ApiResponse<List<ProjectListResponse>>> findAll(Long userId) {

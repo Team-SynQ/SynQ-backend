@@ -5,14 +5,25 @@ services:
     container_name: synq-nginx
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./nginx/log:/var/log/nginx
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
     restart: unless-stopped
     networks:
       - synq-network
 
-  # --- 2. DB ---
+  # --- 2. Certbot ---
+  certbot:
+    image: certbot/certbot
+    container_name: synq-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+
+  # --- 3. DB ---
   db:
     image: pgvector/pgvector:pg16
     container_name: synq-postgres
@@ -39,7 +50,7 @@ services:
     networks:
       - synq-network
 
-  # --- 3. Redis ---
+  # --- 4. Redis ---
   redis:
     image: redis:7.2-alpine
     container_name: synq-redis
@@ -56,7 +67,7 @@ services:
     networks:
       - synq-network
 
-  # --- 4-1. Spring Boot (Blue) ---
+  # --- 5-1. Spring Boot (Blue) ---
   springboot-blue:
     image: ${DOCKERHUB_USERNAME}/synq-backend:latest
     container_name: synq-backend-blue
@@ -105,7 +116,7 @@ services:
     networks:
       - synq-network
 
-  # --- 4-2. Spring Boot (Green) ---
+  # --- 5-2. Spring Boot (Green) ---
   springboot-green:
     image: ${DOCKERHUB_USERNAME}/synq-backend:latest
     container_name: synq-backend-green

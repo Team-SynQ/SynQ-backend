@@ -6,10 +6,13 @@ import com.synq.backend.domain.project.code.ProjectErrorCode;
 import com.synq.backend.domain.project.config.ProjectInvitationProperties;
 import com.synq.backend.domain.project.dto.ProjectCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectCreateResponse;
+import com.synq.backend.domain.project.dto.ProjectDetailResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
+import com.synq.backend.domain.project.dto.ProjectUpdateRequest;
+import com.synq.backend.domain.project.dto.ProjectUpdateResponse;
 import com.synq.backend.domain.project.entity.Project;
 import com.synq.backend.domain.project.entity.ProjectMember;
 import com.synq.backend.domain.project.entity.ProjectMemberRole;
@@ -50,6 +53,61 @@ public class ProjectService {
 		Project project = projectRepository.save(Project.of(userId, request.title(), request.description()));
 		projectMemberRepository.save(ProjectMember.of(project.getId(), userId, ProjectMemberRole.OWNER));
 		return ProjectCreateResponse.from(project);
+	}
+
+	@Transactional(readOnly = true)
+	public ProjectDetailResponse findById(Long projectId, Long userId) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		validateUser(userId);
+
+		Project project = findActiveProjectById(projectId);
+		if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
+			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_MEMBER);
+		}
+		// Project 엔티티 updatedAt 반환
+		return ProjectDetailResponse.from(project);
+	}
+
+	@Transactional
+	public ProjectUpdateResponse update(Long projectId, Long userId, ProjectUpdateRequest request) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		validateUser(userId);
+
+		Project project = findActiveProjectById(projectId);
+		if (!project.getOwnerId().equals(userId)) {
+			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_OWNER);
+		}
+		if (!request.isAnyFieldPresent()) {
+			throw new GeneralException(GeneralErrorCode.BAD_REQUEST);
+		}
+
+		if (request.hasTitle()) {
+			project.updateTitle(request.title());
+		}
+		if (request.hasDescription()) {
+			project.updateDescription(request.description());
+		}
+		projectRepository.flush();
+		return ProjectUpdateResponse.from(project);
+	}
+
+	@Transactional
+	public void delete(Long projectId, Long userId) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		validateUser(userId);
+
+		Project project = findActiveProjectById(projectId);
+		if (!project.getOwnerId().equals(userId)) {
+			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_OWNER);
+		}
+		project.softDelete();
+		projectRepository.flush();
 	}
 
 	@Transactional(readOnly = true)
@@ -107,8 +165,7 @@ public class ProjectService {
 		}
 		validateUser(userId);
 
-		Project project = projectRepository.findById(projectId)
-				.orElseThrow(() -> new GeneralException(ProjectErrorCode.PROJECT_NOT_FOUND));
+		Project project = findActiveProjectById(projectId);
 		if (!project.getOwnerId().equals(userId)) {
 			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_OWNER);
 		}
@@ -175,6 +232,12 @@ public class ProjectService {
 			throw new GeneralException(ProjectErrorCode.INVITATION_EXPIRED);
 		}
 		return project;
+	}
+
+	private Project findActiveProjectById(Long projectId) {
+		return projectRepository.findById(projectId)
+				.filter(project -> !project.isDeleted())
+				.orElseThrow(() -> new GeneralException(ProjectErrorCode.PROJECT_NOT_FOUND));
 	}
 
 	private String generateInviteToken() {

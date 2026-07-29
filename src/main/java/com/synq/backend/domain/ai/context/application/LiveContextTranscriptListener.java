@@ -1,6 +1,9 @@
 package com.synq.backend.domain.ai.context.application;
 
+import com.synq.backend.domain.ai.context.domain.LiveContextSnapshot;
+import com.synq.backend.domain.ai.event.LiveContextUpdatedEvent;
 import com.synq.backend.domain.transcript.event.TranscriptFinalizedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -18,16 +21,28 @@ public class LiveContextTranscriptListener {
 	private static final Logger log = LoggerFactory.getLogger(LiveContextTranscriptListener.class);
 
 	private final LiveContextService liveContextService;
+	private final ApplicationEventPublisher eventPublisher;
 
-	public LiveContextTranscriptListener(LiveContextService liveContextService) {
+	public LiveContextTranscriptListener(
+			LiveContextService liveContextService,
+			ApplicationEventPublisher eventPublisher
+	) {
 		this.liveContextService = liveContextService;
+		this.eventPublisher = eventPublisher;
 	}
 
 	@Async("liveContextExecutor")
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
 	public void handle(TranscriptFinalizedEvent event) {
 		try {
-			liveContextService.refresh(event);
+			liveContextService.refresh(event).ifPresent(context -> eventPublisher.publishEvent(
+					new LiveContextUpdatedEvent(
+							event.meetingId(),
+							LiveContextSnapshot.from(context),
+							context.getLastSegmentId(),
+							context.getLastSequenceIndex()
+					)
+			));
 		} catch (RuntimeException e) {
 			// AI 갱신 실패가 이미 저장된 STT 전사를 실패 처리하지 않도록 예외를 전파하지 않는다.
 			log.error("회의 Live Context 갱신에 실패했습니다. meetingId={}, segmentId={}",
