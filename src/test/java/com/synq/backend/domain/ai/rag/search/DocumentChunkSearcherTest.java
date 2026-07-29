@@ -3,6 +3,7 @@ package com.synq.backend.domain.ai.rag.search;
 import com.synq.backend.domain.ai.rag.entity.DocumentChunk;
 import com.synq.backend.domain.ai.rag.repository.DocumentChunkRepository;
 import com.synq.backend.support.PostgresTestContainer;
+import com.synq.backend.support.ReferenceMaterialTestFixture;
 import com.synq.backend.support.StubEmbeddingClient;
 import org.assertj.core.data.Offset;
 import org.junit.jupiter.api.AfterEach;
@@ -20,12 +21,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class DocumentChunkSearcherTest extends PostgresTestContainer {
 
 	private static final String MODEL = "test-model";
-	private static final Long PROJECT_ID = 1L;
 
 	@Autowired
 	private DocumentChunkRepository repository;
 
+	@Autowired
+	private ReferenceMaterialTestFixture referenceMaterialTestFixture;
+
 	private DocumentChunkSearcher searcher;
+	private ReferenceMaterialTestFixture.Fixture referenceFixture;
 
 	/** StubEmbeddingClient 의 질의 벡터는 항상 (1, 0, 0, ...) 이다. */
 	private static float[] vector(float first, float second) {
@@ -38,6 +42,7 @@ class DocumentChunkSearcherTest extends PostgresTestContainer {
 	@BeforeEach
 	void setUp() {
 		repository.deleteAll();
+		referenceFixture = referenceMaterialTestFixture.create();
 		searcher = new DocumentChunkSearcher(new StubEmbeddingClient(), repository);
 	}
 
@@ -50,16 +55,23 @@ class DocumentChunkSearcherTest extends PostgresTestContainer {
 
 	@Test
 	void 질의와_가까운_청크를_유사도와_함께_반환한다() {
-		repository.save(DocumentChunk.of(42L, PROJECT_ID, 3, "일치하는 청크", vector(1.0f, 0.0f), MODEL));
+		repository.save(DocumentChunk.of(
+				referenceFixture.referenceMaterialId(),
+				referenceFixture.projectId(),
+				3,
+				"일치하는 청크",
+				vector(1.0f, 0.0f),
+				MODEL
+		));
 		repository.flush();
 
 		List<ChunkMatch> matches = searcher.search(
-				new ChunkSearchQuery(PROJECT_ID, "인증 방식", 5, -1.0));
+				new ChunkSearchQuery(referenceFixture.projectId(), "인증 방식", 5, -1.0));
 
 		assertThat(matches).hasSize(1);
 		ChunkMatch match = matches.get(0);
 		assertThat(match.content()).isEqualTo("일치하는 청크");
-		assertThat(match.referenceMaterialId()).isEqualTo(42L);
+		assertThat(match.referenceMaterialId()).isEqualTo(referenceFixture.referenceMaterialId());
 		assertThat(match.chunkIndex()).isEqualTo(3);
 		assertThat(match.similarity()).isCloseTo(1.0, Offset.offset(0.0001));
 		assertThat(match.chunkId()).isNotNull();
@@ -67,12 +79,16 @@ class DocumentChunkSearcherTest extends PostgresTestContainer {
 
 	@Test
 	void 유사도_내림차순으로_반환한다() {
-		repository.save(DocumentChunk.of(1L, PROJECT_ID, 0, "먼 청크", vector(0.6f, 0.8f), MODEL));
-		repository.save(DocumentChunk.of(1L, PROJECT_ID, 1, "가까운 청크", vector(1.0f, 0.0f), MODEL));
+		repository.save(DocumentChunk.of(
+				referenceFixture.referenceMaterialId(), referenceFixture.projectId(),
+				0, "먼 청크", vector(0.6f, 0.8f), MODEL));
+		repository.save(DocumentChunk.of(
+				referenceFixture.referenceMaterialId(), referenceFixture.projectId(),
+				1, "가까운 청크", vector(1.0f, 0.0f), MODEL));
 		repository.flush();
 
 		List<ChunkMatch> matches = searcher.search(
-				new ChunkSearchQuery(PROJECT_ID, "질의", 5, -1.0));
+				new ChunkSearchQuery(referenceFixture.projectId(), "질의", 5, -1.0));
 
 		assertThat(matches).extracting(ChunkMatch::content)
 				.containsExactly("가까운 청크", "먼 청크");
@@ -81,14 +97,14 @@ class DocumentChunkSearcherTest extends PostgresTestContainer {
 	@Test
 	void 결과가_없으면_빈_리스트다() {
 		List<ChunkMatch> matches = searcher.search(
-				new ChunkSearchQuery(PROJECT_ID, "질의", 5, -1.0));
+				new ChunkSearchQuery(referenceFixture.projectId(), "질의", 5, -1.0));
 
 		assertThat(matches).isEmpty();
 	}
 
 	@Test
 	void 빈_질의는_거부한다() {
-		assertThatThrownBy(() -> new ChunkSearchQuery(PROJECT_ID, "   ", 5, -1.0))
+		assertThatThrownBy(() -> new ChunkSearchQuery(referenceFixture.projectId(), "   ", 5, -1.0))
 				.isInstanceOf(IllegalArgumentException.class);
 	}
 
@@ -100,7 +116,7 @@ class DocumentChunkSearcherTest extends PostgresTestContainer {
 
 	@Test
 	void topK가_0_이하이면_거부한다() {
-		assertThatThrownBy(() -> new ChunkSearchQuery(PROJECT_ID, "질의", 0, -1.0))
+		assertThatThrownBy(() -> new ChunkSearchQuery(referenceFixture.projectId(), "질의", 0, -1.0))
 				.isInstanceOf(IllegalArgumentException.class);
 	}
 
@@ -108,7 +124,8 @@ class DocumentChunkSearcherTest extends PostgresTestContainer {
 	@ValueSource(doubles = {1.5, -3.0, Double.NaN, Double.POSITIVE_INFINITY})
 	void 코사인_유사도_범위_밖_임계값은_거부한다(double invalid) {
 		// 범위 밖 값은 에러 없이 결과를 0건으로 만들거나 필터를 무의미하게 한다.
-		assertThatThrownBy(() -> new ChunkSearchQuery(PROJECT_ID, "질의", 5, invalid))
+		assertThatThrownBy(() -> new ChunkSearchQuery(
+				referenceFixture.projectId(), "질의", 5, invalid))
 				.isInstanceOf(InvalidChunkSearchQueryException.class)
 				.hasMessageContaining("minSimilarity");
 	}
