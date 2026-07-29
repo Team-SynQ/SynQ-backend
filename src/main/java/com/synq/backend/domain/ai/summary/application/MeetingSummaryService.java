@@ -61,7 +61,7 @@ public class MeetingSummaryService {
 		}
 		jobStore.findActiveByMeetingId(meetingId).ifPresent(job -> {
 			if (job.isStale(Instant.now(), properties.activeJobTimeout())) {
-				jobStore.save(job.fail(STALE_JOB_MESSAGE));
+				jobStore.failIfActive(job.id(), STALE_JOB_MESSAGE);
 				return;
 			}
 			throw new GeneralException(GeneralErrorCode.CONFLICT);
@@ -82,7 +82,7 @@ public class MeetingSummaryService {
 		try {
 			processor.processAsync(job.id());
 		} catch (TaskRejectedException e) {
-			jobStore.save(job.fail("요약 작업 대기열이 가득 찼습니다."));
+			jobStore.failIfActive(job.id(), "요약 작업 대기열이 가득 찼습니다.");
 			throw new GeneralException(GeneralErrorCode.SERVICE_UNAVAILABLE);
 		}
 		return job;

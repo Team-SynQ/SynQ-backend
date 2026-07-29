@@ -34,11 +34,15 @@ public class SummaryResultWriter {
 	}
 
 	@Transactional
-	public MeetingSummary save(
+	public boolean saveIfJobProcessing(
 			SummaryJob job,
 			GeneratedSummary overall,
 			List<PersonalGeneration> personalGenerations
 	) {
+		// 상태 전이를 먼저 선점해, 만료 처리된 오래된 Job이 결과를 저장하지 못하게 한다.
+		if (!summaryJobStore.completeIfProcessing(job.id())) {
+			return false;
+		}
 		MeetingSummary savedSummary = meetingSummaryStore.save(
 				MeetingSummary.from(job.meetingId(), job.id(), overall)
 		);
@@ -51,8 +55,7 @@ public class SummaryResultWriter {
 						result.content()
 					))
 					.toList());
-		summaryJobStore.save(job.complete());
-		return savedSummary;
+		return true;
 	}
 
 	public record PersonalGeneration(

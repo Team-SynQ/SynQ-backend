@@ -58,19 +58,41 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 	@Test
 	void Job과_전체_개인_요약을_같은_버전으로_저장하고_조회한다() {
 		SummaryJob job = jobStore.save(SummaryJob.queued(MEETING_ID, "test-model", "test-v1"));
-		SummaryJob processingJob = jobStore.save(job.start());
-		MeetingSummary overall = resultWriter.save(
+		SummaryJob processingJob = jobStore.startIfQueued(job.id()).orElseThrow();
+		assertThat(resultWriter.saveIfJobProcessing(
 				processingJob,
 				new GeneratedSummary("전체 요약", List.of("주제"), List.of(), List.of(), List.of()),
 				List.of(new SummaryResultWriter.PersonalGeneration(
 						new PersonalSummaryTarget(USER_ID, "DEV_TECH", List.of("TECH_RISK")),
 						new GeneratedPersonalSummary("개인 요약", List.of("핵심"), List.of(), List.of())
 				))
-		);
+		)).isTrue();
 
+		MeetingSummary overall = meetingSummaryStore.findLatestByMeetingId(MEETING_ID).orElseThrow();
+		var personal = personalSummaryStore.findLatestByMeetingIdAndUserId(MEETING_ID, USER_ID).orElseThrow();
 		assertThat(jobStore.findById(job.id()).orElseThrow().status()).isEqualTo(SummaryJobStatus.COMPLETED);
-		assertThat(meetingSummaryStore.findLatestByMeetingId(MEETING_ID).orElseThrow().version()).isEqualTo(1);
-		assertThat(personalSummaryStore.findLatestByMeetingIdAndUserId(MEETING_ID, USER_ID)
-				.orElseThrow().content().personalSummary()).isEqualTo("개인 요약");
+		assertThat(overall.version()).isEqualTo(1);
+		assertThat(personal.version()).isEqualTo(overall.version());
+		assertThat(personal.content().personalSummary()).isEqualTo("개인 요약");
+	}
+
+	@Test
+	void 실패로_전환된_Job은_지연_실행되더라도_요약을_저장하지_않는다() {
+		SummaryJob job = jobStore.save(SummaryJob.queued(MEETING_ID, "test-model", "test-v1"));
+		SummaryJob processingJob = jobStore.startIfQueued(job.id()).orElseThrow();
+		assertThat(jobStore.failIfActive(job.id(), "작업 만료")).isTrue();
+
+		assertThat(resultWriter.saveIfJobProcessing(
+				processingJob,
+				new GeneratedSummary("전체 요약", List.of("주제"), List.of(), List.of(), List.of()),
+				List.of(new SummaryResultWriter.PersonalGeneration(
+						new PersonalSummaryTarget(USER_ID, "DEV_TECH", List.of("TECH_RISK")),
+						new GeneratedPersonalSummary("개인 요약", List.of("핵심"), List.of(), List.of())
+				))
+		)).isFalse();
+
+		assertThat(jobStore.findById(job.id()).orElseThrow().status()).isEqualTo(SummaryJobStatus.FAILED);
+		assertThat(meetingSummaryStore.findLatestByMeetingId(MEETING_ID)).isEmpty();
+		assertThat(personalSummaryStore.findLatestByMeetingIdAndUserId(MEETING_ID, USER_ID)).isEmpty();
 	}
 }

@@ -61,11 +61,15 @@ public class SummaryJobProcessor {
 	}
 
 	public void process(UUID jobId) {
-		SummaryJob job = jobStore.findById(jobId)
-				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 요약 작업입니다."));
-		SummaryJob startedJob = jobStore.save(job.start());
+		SummaryJob startedJob = jobStore.startIfQueued(jobId).orElse(null);
+		if (startedJob == null) {
+			// 만료 또는 취소된 Job은 지연 실행되더라도 결과를 만들지 않는다.
+			log.info("요약 작업을 시작하지 않습니다. 이미 종료되었거나 시작된 Job입니다. jobId={}", jobId);
+			return;
+		}
 
-		boolean succeeded;
+		boolean succeeded = false;
+		boolean failureRecorded = false;
 		String errorMessage = null;
 		try {
 			// Context 조합과 AI 호출을 분리해, 나중에 Reader나 AI 제공자를 독립적으로 교체할 수 있다.
@@ -73,29 +77,40 @@ public class SummaryJobProcessor {
 			var generation = generateOverall(context);
 			var generated = generation.summary();
 			var targets = personalSummaryTargetReader.findByMeetingId(startedJob.meetingId());
-			var generatedPersonalSummaries = targets.stream()
-					.map(target -> new SummaryResultWriter.PersonalGeneration(
+			var generatedPersonalSummaries = new ArrayList<SummaryResultWriter.PersonalGeneration>();
+			for (var target : targets) {
+				try {
+					generatedPersonalSummaries.add(new SummaryResultWriter.PersonalGeneration(
 							target,
 							personalSummaryAiClient.generate(generation.personalContext(), generated, target)
-					))
-					.toList();
+					));
+				} catch (Exception e) {
+					// 한 참여자의 개인 요약 실패는 전체 회의 요약 결과를 폐기하지 않는다.
+					log.warn("개인 요약 생성에 실패해 해당 참여자를 제외합니다. meetingId={}, userId={}",
+							startedJob.meetingId(), target.userId(), e);
+				}
+			}
 
-			resultWriter.save(startedJob, generated, generatedPersonalSummaries);
-			succeeded = true;
+			succeeded = resultWriter.saveIfJobProcessing(startedJob, generated, generatedPersonalSummaries);
+			if (!succeeded) {
+				log.info("요약 작업 결과를 저장하지 않습니다. 이미 종료된 Job입니다. jobId={}", startedJob.id());
+			}
 		} catch (Exception e) {
 			log.error("AI 요약 생성에 실패했습니다. meetingId={}, jobId={}",
 					startedJob.meetingId(), startedJob.id(), e);
 			// 제공자 응답과 내부 예외는 로그에만 남기고 API에는 고정된 안전한 메시지를 제공한다.
 			errorMessage = SUMMARY_GENERATION_FAILED_MESSAGE;
-			jobStore.save(startedJob.fail(errorMessage));
-			succeeded = false;
+			failureRecorded = jobStore.failIfActive(startedJob.id(), errorMessage);
+			if (!failureRecorded) {
+				log.info("요약 작업 실패 상태를 저장하지 않습니다. 이미 종료된 Job입니다. jobId={}", startedJob.id());
+			}
 		}
 
 		// Job 상태가 확정된 뒤에 결과를 알린다. 이벤트를 try 안에서 발행하면 구독자(회의 상태 반영) 실패가
 		// catch 로 전파돼 방금 저장한 COMPLETED Job 을 FAILED 로 덮어쓸 수 있어, 발행은 반드시 밖에서 한다.
 		if (succeeded) {
 			eventPublisher.publishEvent(new SummaryCompletedEvent(startedJob.meetingId(), startedJob.id()));
-		} else {
+		} else if (failureRecorded) {
 			// 내부 예외 상세는 Job에만 보관하고, SSE에는 사용자에게 안전한 메시지만 전달한다.
 			eventPublisher.publishEvent(new SummaryFailedEvent(
 					startedJob.meetingId(),

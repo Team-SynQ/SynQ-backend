@@ -238,6 +238,15 @@ class SummaryJobAsyncTest {
 		SummaryJob lastSavedJob() {
 			return lastSavedJob;
 		}
+
+		@Override
+		public boolean failIfActive(java.util.UUID jobId, String errorMessage) {
+			boolean failed = super.failIfActive(jobId, errorMessage);
+			if (failed) {
+				lastSavedJob = findById(jobId).orElseThrow();
+			}
+			return failed;
+		}
 	}
 
 	static class BlockingSummaryAiClient implements SummaryAiClient {

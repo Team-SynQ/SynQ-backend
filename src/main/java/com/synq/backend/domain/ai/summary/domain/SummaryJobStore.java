@@ -9,4 +9,10 @@ public interface SummaryJobStore {
 	Optional<SummaryJob> findById(UUID jobId);
 
 	Optional<SummaryJob> findActiveByMeetingId(Long meetingId);
+
+	Optional<SummaryJob> startIfQueued(UUID jobId);
+
+	boolean failIfActive(UUID jobId, String errorMessage);
+
+	boolean completeIfProcessing(UUID jobId);
 }
