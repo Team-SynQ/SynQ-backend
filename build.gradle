@@ -23,6 +23,11 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
 
+	// 호스트 오디오 수신용 raw WebSocket(STOMP 미사용)
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+	// Soniox 실시간 STT 는 공식 Java SDK 가 없어 raw WebSocket 으로 직접 연동한다.
+	implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 

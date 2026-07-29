@@ -98,6 +98,19 @@ springdoc:
   api-docs:
     path: /v3/api-docs          # JSON 스펙: http://localhost:8080/v3/api-docs
 
+soniox:
+  # 실제 키는 SONIOX_API_KEY 환경변수로 주입한다.
+  api-key: ${SONIOX_API_KEY:}
+  url: ${SONIOX_URL:wss://stt-rt.soniox.com/transcribe-websocket}
+  model: ${SONIOX_MODEL:stt-rt-preview}
+  # MediaRecorder 가 보내는 webm 컨테이너를 그대로 흘린다. 프론트가 raw PCM 으로 바뀌면 여기를 바꾼다.
+  audio-format: ${SONIOX_AUDIO_FORMAT:auto}
+  language-hints: ${SONIOX_LANGUAGE_HINTS:ko,en}
+  # <end> 토큰이 오지 않을 때를 대비한 안전망. 주 경로를 방해하지 않도록 넉넉히 잡는다.
+  segment-idle-timeout-ms: ${SONIOX_SEGMENT_IDLE_TIMEOUT_MS:5000}
+  # 회의 종료 후 Soniox 가 남은 토큰을 flush 할 때까지 기다리는 최대 시간.
+  close-flush-timeout-ms: ${SONIOX_CLOSE_FLUSH_TIMEOUT_MS:3000}
+
 openai:
   # 실제 키는 OPENAI_API_KEY 환경변수로 주입한다.
   api-key: ${OPENAI_API_KEY:}
