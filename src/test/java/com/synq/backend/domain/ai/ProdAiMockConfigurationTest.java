@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.synq.backend.BackendApplication;
 import com.synq.backend.domain.ai.assistant.domain.AiChatClient;
 import com.synq.backend.domain.ai.rag.port.ReferenceMaterialPort;
-import com.synq.backend.domain.ai.summary.domain.MeetingContextReader;
 import com.synq.backend.domain.ai.summary.domain.MeetingSummaryStore;
 import com.synq.backend.domain.ai.summary.domain.RagContextReader;
 import com.synq.backend.domain.ai.summary.domain.SummaryAiClient;
@@ -51,7 +50,6 @@ class ProdAiMockConfigurationTest {
 		registry.add("ai.rag.reference-material.client", () -> "fake");
 		registry.add("ai.chat.client", () -> "fake");
 		registry.add("ai.summary.client", () -> "fake");
-		registry.add("ai.summary.context-source", () -> "mock");
 		registry.add("ai.live-context.client", () -> "fake");
 		registry.add("kakao.client-id", () -> "test");
 		registry.add("kakao.redirect-uri", () -> "http://localhost/callback");
@@ -70,7 +68,6 @@ class ProdAiMockConfigurationTest {
 		assertThat(applicationContext.getBeansOfType(SummaryJobStore.class)).hasSize(1);
 		assertThat(applicationContext.getBeansOfType(MeetingSummaryStore.class)).hasSize(1);
 		assertThat(applicationContext.getBeansOfType(TranscriptReader.class)).hasSize(1);
-		assertThat(applicationContext.getBeansOfType(MeetingContextReader.class)).hasSize(1);
 		assertThat(applicationContext.getBeansOfType(RagContextReader.class)).hasSize(1);
 	}
 

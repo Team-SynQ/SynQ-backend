@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.synq.backend.domain.ai.summary.domain.GeneratedSummary;
-import com.synq.backend.domain.ai.summary.domain.MeetingContextReader;
 import com.synq.backend.domain.ai.summary.domain.MeetingSummaryStore;
+import com.synq.backend.domain.ai.summary.domain.PersonalSummaryAiClient;
+import com.synq.backend.domain.ai.summary.domain.PersonalSummaryStore;
+import com.synq.backend.domain.ai.summary.domain.PersonalSummaryTargetReader;
 import com.synq.backend.domain.ai.summary.domain.RagContextReader;
 import com.synq.backend.domain.ai.summary.domain.SummaryAiClient;
 import com.synq.backend.domain.ai.summary.domain.SummaryContext;
@@ -14,10 +16,11 @@ import com.synq.backend.domain.ai.summary.domain.SummaryJobStatus;
 import com.synq.backend.domain.ai.summary.domain.SummaryJobStore;
 import com.synq.backend.domain.ai.summary.domain.TranscriptReader;
 import com.synq.backend.domain.ai.summary.mock.InMemoryMeetingSummaryStore;
+import com.synq.backend.domain.ai.summary.mock.InMemoryPersonalSummaryStore;
 import com.synq.backend.domain.ai.summary.mock.InMemorySummaryJobStore;
-import com.synq.backend.domain.ai.summary.mock.MockMeetingContextReader;
 import com.synq.backend.domain.ai.summary.mock.MockRagContextReader;
 import com.synq.backend.domain.ai.summary.mock.MockTranscriptReader;
+import com.synq.backend.domain.ai.summary.mock.FakeSummaryAiClient;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import java.util.List;
@@ -50,11 +53,11 @@ class SummaryJobAsyncTest {
 
 	@Test
 	void 비동기_요약_중에는_중복_요청을_차단하고_완료_상태로_전이한다() throws Exception {
-		SummaryJob job = meetingSummaryService.request(1L);
+		SummaryJob job = meetingSummaryService.requestAfterMeetingEnd(1L);
 
 		assertThat(summaryAiClient.awaitStarted()).isTrue();
 		assertThat(jobStore.findById(job.id()).orElseThrow().status()).isEqualTo(SummaryJobStatus.PROCESSING);
-		assertThatThrownBy(() -> meetingSummaryService.request(1L))
+		assertThatThrownBy(() -> meetingSummaryService.requestAfterMeetingEnd(1L))
 				.isInstanceOf(GeneralException.class)
 				.extracting("code")
 				.isEqualTo(GeneralErrorCode.CONFLICT);
@@ -67,10 +70,10 @@ class SummaryJobAsyncTest {
 
 	@Test
 	void 요약_실행_대기열이_가득차면_Job을_실패로_남기고_503을_반환한다() throws Exception {
-		SummaryJob runningJob = meetingSummaryService.request(1L);
+		SummaryJob runningJob = meetingSummaryService.requestAfterMeetingEnd(1L);
 		assertThat(summaryAiClient.awaitStarted()).isTrue();
 
-		assertThatThrownBy(() -> meetingSummaryService.request(2L))
+		assertThatThrownBy(() -> meetingSummaryService.requestAfterMeetingEnd(2L))
 				.isInstanceOf(GeneralException.class)
 				.extracting("code")
 				.isEqualTo(GeneralErrorCode.SERVICE_UNAVAILABLE);
@@ -120,13 +123,37 @@ class SummaryJobAsyncTest {
 		}
 
 		@Bean
-		TranscriptReader transcriptReader() {
-			return new MockTranscriptReader();
+		PersonalSummaryStore personalSummaryStore() {
+			return new InMemoryPersonalSummaryStore();
 		}
 
 		@Bean
-		MeetingContextReader meetingContextReader() {
-			return new MockMeetingContextReader();
+		PersonalSummaryTargetReader personalSummaryTargetReader() {
+			return meetingId -> java.util.List.of();
+		}
+
+		@Bean
+		PersonalSummaryAiClient personalSummaryAiClient() {
+			return new FakeSummaryAiClient();
+		}
+
+		@Bean
+		SummaryProperties summaryProperties() {
+			return new SummaryProperties("test-model", "test-v1", 600_000);
+		}
+
+		@Bean
+		SummaryResultWriter summaryResultWriter(
+				MeetingSummaryStore meetingSummaryStore,
+				PersonalSummaryStore personalSummaryStore,
+				SummaryJobStore summaryJobStore
+		) {
+			return new SummaryResultWriter(meetingSummaryStore, personalSummaryStore, summaryJobStore);
+		}
+
+		@Bean
+		TranscriptReader transcriptReader() {
+			return new MockTranscriptReader();
 		}
 
 		@Bean
@@ -137,10 +164,13 @@ class SummaryJobAsyncTest {
 		@Bean
 		SummaryContextBuilder summaryContextBuilder(
 				TranscriptReader transcriptReader,
-				MeetingContextReader meetingContextReader,
 				RagContextReader ragContextReader
 		) {
-			return new SummaryContextBuilder(transcriptReader, meetingContextReader, ragContextReader);
+			return new SummaryContextBuilder(
+					transcriptReader,
+					ragContextReader,
+					new SummaryProperties("test-model", "test-v1", 600_000)
+			);
 		}
 
 		@Bean
@@ -156,22 +186,42 @@ class SummaryJobAsyncTest {
 		@Bean
 		SummaryJobProcessor summaryJobProcessor(
 				SummaryJobStore jobStore,
-				MeetingSummaryStore summaryStore,
 				SummaryContextBuilder contextBuilder,
 				SummaryAiClient summaryAiClient,
+				PersonalSummaryAiClient personalSummaryAiClient,
+				PersonalSummaryTargetReader personalSummaryTargetReader,
+				SummaryResultWriter resultWriter,
+				SummaryProperties properties,
 				org.springframework.context.ApplicationEventPublisher eventPublisher
 		) {
-			return new SummaryJobProcessor(jobStore, summaryStore, contextBuilder, summaryAiClient, eventPublisher);
+			return new SummaryJobProcessor(
+					jobStore,
+					contextBuilder,
+					summaryAiClient,
+					personalSummaryAiClient,
+					personalSummaryTargetReader,
+					resultWriter,
+					properties,
+					eventPublisher
+			);
 		}
 
 		@Bean
 		MeetingSummaryService meetingSummaryService(
 				SummaryJobStore jobStore,
 				MeetingSummaryStore summaryStore,
-				SummaryJobProcessor processor
+				SummaryJobProcessor processor,
+				SummaryProperties properties
 		) {
 			// 이 테스트는 비동기/중복요청 동작을 검증하므로 회의는 항상 종료된 것으로 간주한다.
-			return new MeetingSummaryService(jobStore, summaryStore, processor, meetingId -> true);
+			return new MeetingSummaryService(
+					jobStore,
+					summaryStore,
+					processor,
+					meetingId -> true,
+					properties,
+					org.mockito.Mockito.mock(SummaryAccessValidator.class)
+			);
 		}
 	}
 
@@ -187,6 +237,15 @@ class SummaryJobAsyncTest {
 
 		SummaryJob lastSavedJob() {
 			return lastSavedJob;
+		}
+
+		@Override
+		public boolean failIfActive(java.util.UUID jobId, String errorMessage) {
+			boolean failed = super.failIfActive(jobId, errorMessage);
+			if (failed) {
+				lastSavedJob = findById(jobId).orElseThrow();
+			}
+			return failed;
 		}
 	}
 

@@ -5,11 +5,7 @@ import com.synq.backend.domain.ai.summary.domain.MeetingSummaryStore;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
-@Component
-@ConditionalOnProperty(prefix = "ai.summary", name = "client", havingValue = "fake")
 public class InMemoryMeetingSummaryStore implements MeetingSummaryStore {
 
 	// #23 Mock 단계의 임시 저장소다. 실제 구현에서는 meeting_summary 테이블 어댑터로 교체한다.
@@ -17,8 +13,12 @@ public class InMemoryMeetingSummaryStore implements MeetingSummaryStore {
 
 	@Override
 	public MeetingSummary save(MeetingSummary summary) {
-		summaries.put(summary.meetingId(), summary);
-		return summary;
+		int nextVersion = findLatestByMeetingId(summary.meetingId())
+				.map(value -> value.version() + 1)
+				.orElse(1);
+		MeetingSummary versioned = summary.withVersion(nextVersion);
+		summaries.put(summary.meetingId(), versioned);
+		return versioned;
 	}
 
 	@Override

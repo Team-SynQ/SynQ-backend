@@ -7,18 +7,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
-@Component
-@ConditionalOnProperty(prefix = "ai.summary", name = "client", havingValue = "fake")
 public class InMemorySummaryJobStore implements SummaryJobStore {
 
 	// #23 Mock 단계의 임시 저장소다. 실제 구현에서는 ai_summary_job 테이블 어댑터로 교체한다.
 	private final Map<UUID, SummaryJob> jobs = new ConcurrentHashMap<>();
 
 	@Override
-	public SummaryJob save(SummaryJob job) {
+	public synchronized SummaryJob save(SummaryJob job) {
 		jobs.put(job.id(), job);
 		return job;
 	}
@@ -35,5 +31,37 @@ public class InMemorySummaryJobStore implements SummaryJobStore {
 				.filter(job -> job.status() == SummaryJobStatus.QUEUED
 						|| job.status() == SummaryJobStatus.PROCESSING)
 				.findFirst();
+	}
+
+	@Override
+	public synchronized Optional<SummaryJob> startIfQueued(UUID jobId) {
+		SummaryJob job = jobs.get(jobId);
+		if (job == null || job.status() != SummaryJobStatus.QUEUED) {
+			return Optional.empty();
+		}
+		SummaryJob started = job.start();
+		jobs.put(jobId, started);
+		return Optional.of(started);
+	}
+
+	@Override
+	public synchronized boolean failIfActive(UUID jobId, String errorMessage) {
+		SummaryJob job = jobs.get(jobId);
+		if (job == null || (job.status() != SummaryJobStatus.QUEUED
+				&& job.status() != SummaryJobStatus.PROCESSING)) {
+			return false;
+		}
+		jobs.put(jobId, job.fail(errorMessage));
+		return true;
+	}
+
+	@Override
+	public synchronized boolean completeIfProcessing(UUID jobId) {
+		SummaryJob job = jobs.get(jobId);
+		if (job == null || job.status() != SummaryJobStatus.PROCESSING) {
+			return false;
+		}
+		jobs.put(jobId, job.complete());
+		return true;
 	}
 }

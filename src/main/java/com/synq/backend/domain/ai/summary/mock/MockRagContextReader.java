@@ -2,11 +2,7 @@ package com.synq.backend.domain.ai.summary.mock;
 
 import com.synq.backend.domain.ai.summary.domain.RagContextReader;
 import java.util.List;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
-@Component
-@ConditionalOnProperty(prefix = "ai.summary", name = "context-source", havingValue = "mock")
 public class MockRagContextReader implements RagContextReader {
 
 	@Override

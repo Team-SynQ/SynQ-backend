@@ -1,6 +1,9 @@
 package com.synq.backend.domain.ai.summary.mock;
 
 import com.synq.backend.domain.ai.summary.domain.GeneratedSummary;
+import com.synq.backend.domain.ai.summary.domain.GeneratedPersonalSummary;
+import com.synq.backend.domain.ai.summary.domain.PersonalSummaryAiClient;
+import com.synq.backend.domain.ai.summary.domain.PersonalSummaryTarget;
 import com.synq.backend.domain.ai.summary.domain.SummaryContext;
 import com.synq.backend.domain.ai.summary.domain.SummaryAiClient;
 import java.util.List;
@@ -9,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @ConditionalOnProperty(prefix = "ai.summary", name = "client", havingValue = "fake")
-public class FakeSummaryAiClient implements SummaryAiClient {
+public class FakeSummaryAiClient implements SummaryAiClient, PersonalSummaryAiClient {
 
 	@Override
 	public GeneratedSummary generate(SummaryContext context) {
@@ -20,6 +23,20 @@ public class FakeSummaryAiClient implements SummaryAiClient {
 				List.of("이번 스프린트에서 회의 후 AI 요약 API 기본 흐름을 구현한다."),
 				List.of("API 명세 초안을 작성한다."),
 				List.of("SSE 적용 시점을 다음 회의에서 결정한다.")
+		);
+	}
+
+	@Override
+	public GeneratedPersonalSummary generate(
+			SummaryContext context,
+			GeneratedSummary overallSummary,
+			PersonalSummaryTarget target
+	) {
+		return new GeneratedPersonalSummary(
+				target.roleDescription() + " 관점에서 회의 결과와 후속 작업을 확인해야 합니다.",
+				List.of("회의 후 AI 요약 API 구현", "전사 데이터 연동"),
+				List.of(),
+				List.of("내 역할에서 추가로 확인할 위험 요소는 무엇인가?")
 		);
 	}
 }

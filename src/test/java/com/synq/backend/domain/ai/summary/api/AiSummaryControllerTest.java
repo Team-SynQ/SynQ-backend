@@ -12,10 +12,14 @@ import com.synq.backend.domain.ai.summary.application.SummaryContextBuilder;
 import com.synq.backend.domain.ai.summary.application.SummaryJobProcessor;
 import com.synq.backend.domain.ai.summary.mock.FakeSummaryAiClient;
 import com.synq.backend.domain.ai.summary.mock.InMemoryMeetingSummaryStore;
+import com.synq.backend.domain.ai.summary.mock.InMemoryPersonalSummaryStore;
 import com.synq.backend.domain.ai.summary.mock.InMemorySummaryJobStore;
-import com.synq.backend.domain.ai.summary.mock.MockMeetingContextReader;
 import com.synq.backend.domain.ai.summary.mock.MockRagContextReader;
 import com.synq.backend.domain.ai.summary.mock.MockTranscriptReader;
+import com.synq.backend.domain.ai.summary.application.PersonalSummaryQueryService;
+import com.synq.backend.domain.ai.summary.domain.PersonalSummaryTarget;
+import com.synq.backend.domain.auth.jwt.CurrentUserIdResolver;
+import org.mockito.Mockito;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,17 +34,46 @@ class AiSummaryControllerTest {
 	void setUp() {
 		var jobStore = new InMemorySummaryJobStore();
 		var summaryStore = new InMemoryMeetingSummaryStore();
+		var personalSummaryStore = new InMemoryPersonalSummaryStore();
 		var contextBuilder = new SummaryContextBuilder(
-				new MockTranscriptReader(), new MockMeetingContextReader(), new MockRagContextReader());
-		var processor = new SummaryJobProcessor(jobStore, summaryStore, contextBuilder, new FakeSummaryAiClient(), event -> {});
+				new MockTranscriptReader(),
+				new MockRagContextReader(),
+				new com.synq.backend.domain.ai.summary.application.SummaryProperties(
+						"test-model", "test-v1", 600_000));
+		var fakeClient = new FakeSummaryAiClient();
+		var properties = new com.synq.backend.domain.ai.summary.application.SummaryProperties(
+				"test-model", "test-v1", 600_000);
+		var processor = new SummaryJobProcessor(
+				jobStore,
+				contextBuilder,
+				fakeClient,
+				fakeClient,
+				meetingId -> java.util.List.of(new PersonalSummaryTarget(
+						7L, "DEV_TECH - 백엔드", java.util.List.of("TECH_RISK"))),
+				new com.synq.backend.domain.ai.summary.application.SummaryResultWriter(
+						summaryStore, personalSummaryStore, jobStore),
+				properties,
+				event -> {
+				}
+		);
 		// 이 테스트는 요약 파이프라인 자체를 검증하므로 회의는 항상 종료된 것으로 간주한다.
-		var service = new MeetingSummaryService(jobStore, summaryStore, processor, meetingId -> true);
-		mockMvc = MockMvcBuilders.standaloneSetup(new AiSummaryController(service)).build();
+		var accessValidator = Mockito.mock(
+				com.synq.backend.domain.ai.summary.application.SummaryAccessValidator.class);
+		var service = new MeetingSummaryService(
+				jobStore, summaryStore, processor, meetingId -> true, properties, accessValidator);
+		CurrentUserIdResolver userIdResolver = Mockito.mock(CurrentUserIdResolver.class);
+		Mockito.when(userIdResolver.resolve("Bearer test-token")).thenReturn(7L);
+		mockMvc = MockMvcBuilders.standaloneSetup(new AiSummaryController(
+				service,
+				new PersonalSummaryQueryService(personalSummaryStore),
+				userIdResolver
+		)).build();
 	}
 
 	@Test
 	void Mock_데이터로_요약_생성부터_조회까지_수행한다() throws Exception {
-		MvcResult generated = mockMvc.perform(post("/meetings/{meetingId}/ai-summary/generate", 1L))
+		MvcResult generated = mockMvc.perform(post("/meetings/{meetingId}/ai-summary/generate", 1L)
+						.header("Authorization", "Bearer test-token"))
 				.andExpect(status().isAccepted())
 				.andExpect(jsonPath("$.result.status").value("QUEUED"))
 				.andReturn();
@@ -49,15 +82,24 @@ class AiSummaryControllerTest {
 		String jobStatus = waitForCompletion(jobId);
 		assertThat(jobStatus).isEqualTo("COMPLETED");
 
-		mockMvc.perform(get("/meetings/{meetingId}/summary", 1L))
+		mockMvc.perform(get("/meetings/{meetingId}/summary", 1L)
+						.header("Authorization", "Bearer test-token"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.result.overallSummary").isNotEmpty())
 				.andExpect(jsonPath("$.result.actionItems[0]").value("API 명세 초안을 작성한다."));
+
+		mockMvc.perform(get("/meetings/{meetingId}/summary/me", 1L)
+						.header("Authorization", "Bearer test-token"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result.userId").value(7))
+				.andExpect(jsonPath("$.result.role").value("DEV_TECH - 백엔드"))
+				.andExpect(jsonPath("$.result.personalSummary").isNotEmpty());
 	}
 
 	private String waitForCompletion(String jobId) throws Exception {
 		for (int attempt = 0; attempt < 20; attempt++) {
 			MvcResult result = mockMvc.perform(get("/meetings/{meetingId}/ai-summary/status", 1L)
+						.header("Authorization", "Bearer test-token")
 						.queryParam("jobId", jobId))
 					.andExpect(status().isOk())
 					.andReturn();

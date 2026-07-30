@@ -37,6 +37,5 @@ public abstract class PostgresTestContainer {
 		registry.add("ai.rag.reference-material.client", () -> "fake");
 		registry.add("ai.chat.client", () -> "fake");
 		registry.add("ai.summary.client", () -> "fake");
-		registry.add("ai.summary.context-source", () -> "mock");
 	}
 }
