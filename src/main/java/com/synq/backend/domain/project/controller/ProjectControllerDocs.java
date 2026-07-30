@@ -8,6 +8,7 @@ import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
+import com.synq.backend.domain.project.dto.ProjectMemberListResponse;
 import com.synq.backend.domain.project.dto.ProjectUpdateRequest;
 import com.synq.backend.domain.project.dto.ProjectUpdateResponse;
 import com.synq.backend.global.apipayload.ApiResponse;
@@ -38,6 +39,19 @@ public interface ProjectControllerDocs {
 	})
 	@DeleteMapping("/{projectId}")
 	ResponseEntity<Void> delete(
+			@PathVariable Long projectId,
+			@RequestHeader(value = "X-User-Id", required = false) Long userId
+	);
+
+	@Operation(summary = "프로젝트 멤버 목록 조회", description = "프로젝트 멤버가 프로젝트의 전체 멤버 목록을 조회한다.")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "프로젝트 멤버 목록 조회 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "프로젝트 접근 권한 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "프로젝트 또는 사용자 없음")
+	})
+	@GetMapping("/{projectId}/members")
+	ResponseEntity<ApiResponse<ProjectMemberListResponse>> findMembers(
 			@PathVariable Long projectId,
 			@RequestHeader(value = "X-User-Id", required = false) Long userId
 	);
