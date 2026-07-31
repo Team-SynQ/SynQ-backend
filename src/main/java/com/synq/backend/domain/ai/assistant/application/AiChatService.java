@@ -126,6 +126,8 @@ public class AiChatService {
 					"현재 회의의 핵심 논의와 사용자가 확인할 다음 사항",
 					null
 			));
+		} catch (GeneralException exception) {
+			throw exception;
 		} catch (RuntimeException exception) {
 			throw new GeneralException(AiChatErrorCode.AI_GENERATION_FAILED, exception);
 		}

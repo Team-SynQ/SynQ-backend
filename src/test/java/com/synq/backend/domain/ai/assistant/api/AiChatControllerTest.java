@@ -15,6 +15,7 @@ import com.synq.backend.domain.ai.assistant.repository.AiChatMessageRepository;
 import com.synq.backend.domain.ai.assistant.domain.AiChatStatus;
 import com.synq.backend.domain.ai.assistant.domain.AiChatPrompt;
 import com.synq.backend.domain.ai.assistant.mock.FakeAiChatClient;
+import com.synq.backend.domain.ai.assistant.code.AiChatErrorCode;
 import com.synq.backend.domain.ai.rag.search.ChunkSearcher;
 import com.synq.backend.domain.auth.jwt.AccessTokenBlacklistService;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
@@ -27,6 +28,7 @@ import com.synq.backend.domain.transcript.entity.TranscriptSegment;
 import com.synq.backend.domain.transcript.repository.TranscriptSegmentRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
+import com.synq.backend.global.apipayload.exception.GeneralException;
 import com.synq.backend.support.PostgresTestContainer;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -354,6 +356,20 @@ class AiChatControllerTest extends PostgresTestContainer {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.result.welcomeMessage").isNotEmpty())
 				.andExpect(jsonPath("$.result.suggestedQuestions.length()").value(2));
+	}
+
+	@Test
+	void 초기_추천_질문_맥락_구성의_도메인_오류는_그대로_반환한다() throws Exception {
+		User user = saveUser("추천 질문 오류 사용자", "chat-welcome-error@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(user.getUserId());
+		doThrow(new GeneralException(AiChatErrorCode.CHAT_NOT_AVAILABLE))
+				.when(chunkSearcher)
+				.search(any());
+
+		mockMvc.perform(get("/meetings/{meetingId}/chat-messages/suggestions", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId())))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("AI_CHAT409_1"));
 	}
 
 	@Test
