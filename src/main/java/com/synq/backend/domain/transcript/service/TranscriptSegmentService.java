@@ -1,8 +1,14 @@
 package com.synq.backend.domain.transcript.service;
 
+import com.synq.backend.domain.meeting.entity.Meeting;
+import com.synq.backend.domain.meeting.entity.MeetingStatus;
+import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
+import com.synq.backend.domain.meeting.repository.MeetingRepository;
+import com.synq.backend.domain.transcript.code.TranscriptErrorCode;
 import com.synq.backend.domain.transcript.entity.TranscriptSegment;
 import com.synq.backend.domain.transcript.event.TranscriptFinalizedEvent;
 import com.synq.backend.domain.transcript.repository.TranscriptSegmentRepository;
+import com.synq.backend.global.apipayload.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -13,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class TranscriptSegmentService {
 
 	private final TranscriptSegmentRepository transcriptSegmentRepository;
+	private final MeetingRepository meetingRepository;
+	private final MeetingParticipantRepository meetingParticipantRepository;
 	private final ApplicationEventPublisher eventPublisher;
 
 	/**
@@ -47,5 +55,24 @@ public class TranscriptSegmentService {
 	@Transactional(readOnly = true)
 	public int nextSequenceIndex(Long meetingId) {
 		return transcriptSegmentRepository.findMaxSequenceByMeetingId(meetingId).orElse(-1) + 1;
+	}
+
+	// 오타/오인식 교정. 호스트 제한 없이 회의에 남아있는 참가자면 누구나 수정할 수 있다.
+	// 회의가 끝나면(IN_PROGRESS 가 아니면) 더 이상 수정할 수 없다 — summary retry 로 우회 반영하는 방식은 채택하지 않았다.
+	@Transactional
+	public TranscriptSegment update(Long meetingId, Long segmentId, Long userId, String content) {
+		Meeting meeting = meetingRepository.findById(meetingId)
+				.orElseThrow(() -> new GeneralException(TranscriptErrorCode.MEETING_NOT_FOUND));
+		if (!meetingParticipantRepository.existsByMeetingIdAndUserIdAndLeftAtIsNull(meetingId, userId)) {
+			throw new GeneralException(TranscriptErrorCode.NOT_PARTICIPANT);
+		}
+		if (meeting.getStatus() != MeetingStatus.IN_PROGRESS) {
+			throw new GeneralException(TranscriptErrorCode.SEGMENT_EDIT_NOT_ALLOWED);
+		}
+
+		TranscriptSegment segment = transcriptSegmentRepository.findByIdAndMeetingId(segmentId, meetingId)
+				.orElseThrow(() -> new GeneralException(TranscriptErrorCode.SEGMENT_NOT_FOUND));
+		segment.editContent(content);
+		return segment;
 	}
 }

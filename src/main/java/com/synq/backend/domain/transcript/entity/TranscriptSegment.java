@@ -44,6 +44,9 @@ public class TranscriptSegment extends BaseEntity {
 	@Column(name = "speaker_label", length = 50)
 	private String speakerLabel;
 
+	@Column(name = "is_modified", nullable = false)
+	private boolean isModified;
+
 	private TranscriptSegment(Long meetingId, Integer sequenceIndex, Integer startMs, Integer endMs,
 							String content, String speakerLabel) {
 		this.meetingId = meetingId;
@@ -52,9 +55,16 @@ public class TranscriptSegment extends BaseEntity {
 		this.endMs = endMs;
 		this.content = content;
 		this.speakerLabel = speakerLabel;
+		this.isModified = false;
 	}
 
 	public static TranscriptSegment of(Long meetingId, int sequenceIndex, int startMs, int endMs, String content) {
 		return new TranscriptSegment(meetingId, sequenceIndex, startMs, endMs, content, null);
+	}
+
+	// 사용자가 오타/오인식을 직접 교정한다. start_ms/end_ms/sequenceIndex 는 발화 순서 보장을 위해 불변으로 둔다.
+	public void editContent(String content) {
+		this.content = content;
+		this.isModified = true;
 	}
 }
