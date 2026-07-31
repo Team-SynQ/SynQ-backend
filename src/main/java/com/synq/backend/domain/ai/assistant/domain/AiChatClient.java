@@ -6,4 +6,6 @@ package com.synq.backend.domain.ai.assistant.domain;
 public interface AiChatClient {
 
 	AiChatResult generate(AiChatPrompt prompt);
+
+	AiChatWelcome generateWelcome(AiChatContext context);
 }

@@ -123,6 +123,11 @@ openai:
 ai:
   chat:
     client: ${AI_CHAT_CLIENT}
+    recent-transcript-limit: ${AI_CHAT_RECENT_TRANSCRIPT_LIMIT:12}
+    linked-segment-window: ${AI_CHAT_LINKED_SEGMENT_WINDOW:2}
+    recent-turn-limit: ${AI_CHAT_RECENT_TURN_LIMIT:5}
+    rag-top-k: ${AI_CHAT_RAG_TOP_K:5}
+    rag-min-similarity: ${AI_CHAT_RAG_MIN_SIMILARITY:0.5}
   rag:
     reference-material:
       client: ${AI_RAG_REFERENCE_MATERIAL_CLIENT:fake}
