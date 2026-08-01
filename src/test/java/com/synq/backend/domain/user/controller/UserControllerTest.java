@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -50,7 +51,7 @@ class UserControllerTest extends PostgresTestContainer {
 		mockMvc.perform(get("/users/me")
 						.header("Authorization", bearerToken(user)))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.result.email").doesNotExist());
+				.andExpect(jsonPath("$.result.email").value(nullValue()));
 	}
 
 	@Test
