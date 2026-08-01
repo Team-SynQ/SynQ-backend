@@ -13,6 +13,9 @@ public interface TranscriptSegmentRepository extends JpaRepository<TranscriptSeg
 	// 발화 순서 보장: 같은 start_ms 가 겹칠 수 있어 sequenceIndex 를 2차 정렬로 둔다.
 	List<TranscriptSegment> findByMeetingIdOrderByStartMsAscSequenceIndexAsc(Long meetingId);
 
+	// 경로의 meetingId 소속이 맞는지 조회 시점에 함께 확인한다.
+	Optional<TranscriptSegment> findByIdAndMeetingId(Long id, Long meetingId);
+
 	@Query("select max(s.sequenceIndex) from TranscriptSegment s where s.meetingId = :meetingId")
 	Optional<Integer> findMaxSequenceByMeetingId(@Param("meetingId") Long meetingId);
 }

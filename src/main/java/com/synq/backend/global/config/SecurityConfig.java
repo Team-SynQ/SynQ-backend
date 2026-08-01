@@ -39,6 +39,7 @@ public class SecurityConfig {
 							.requestMatchers("/users/me", "/users/me/**").authenticated()
 							.requestMatchers("/projects/*/meetings", "/meetings/*/end", "/meetings/*/join").authenticated()
 							.requestMatchers("/meetings/*/ai-summary/**", "/meetings/*/summary/**").authenticated()
+							.requestMatchers("/meetings/*/transcript-segments/**").authenticated()
 							// 각 도메인 컨트롤러 테스트에 인증 절차 추가 이후 anyRequest().authenticated()로 전환 필요
 							.anyRequest().permitAll())
 				.exceptionHandling(exception -> exception.authenticationEntryPoint(entryPoint))
