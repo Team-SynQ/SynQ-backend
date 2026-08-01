@@ -61,6 +61,24 @@ class ProjectControllerTest extends ProjectControllerTestSupport {
 		ProjectMember member = projectMemberRepository
 				.findByProjectIdAndUserId(project.getId(), owner.getUserId()).orElseThrow();
 		assertThat(member.getRole()).isEqualTo(ProjectMemberRole.OWNER);
+		assertThat(project.getOwnerId()).isNotEqualTo(forgedUser.getUserId());
+	}
+
+	@Test
+	void JWT가_없거나_유효하지_않으면_401을_반환한다() throws Exception {
+		String requestBody = "{\"title\":\"SynQ\",\"description\":null}";
+
+		mockMvc.perform(post("/projects")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.code").value("AUTH401_1"));
+		mockMvc.perform(post("/projects")
+						.header("Authorization", "Bearer invalid-token")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.code").value("AUTH401_1"));
 	}
 
 	@Test

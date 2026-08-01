@@ -134,7 +134,8 @@ class ProjectMemberListControllerTest extends ProjectControllerTestSupport {
 	void Swagger에_프로젝트_멤버_목록_조회_API가_문서화된다() throws Exception {
 		mockMvc.perform(get("/v3/api-docs"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.paths['/projects/{projectId}/members'].get").exists());
+				.andExpect(jsonPath("$.paths['/projects/{projectId}/members'].get").exists())
+				.andExpect(jsonPath("$.paths['/projects/{projectId}/members'].get.security[0].bearerAuth").exists());
 	}
 
 	private List<String> fieldNames(JsonNode node) {

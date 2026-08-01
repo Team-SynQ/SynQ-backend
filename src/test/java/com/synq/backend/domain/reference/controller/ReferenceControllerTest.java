@@ -147,7 +147,7 @@ class ReferenceControllerTest extends PostgresTestContainer {
 	}
 
 	@Test
-	void 유효하지_않은_JWT이면_401을_반환한다() throws Exception {
+	void 유효하지_않은_JWT이면_링크_등록은_401을_반환한다() throws Exception {
 		mockMvc.perform(post("/projects/{projectId}/references/links", 1L)
 						.header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token")
 						.contentType(MediaType.APPLICATION_JSON)
@@ -317,8 +317,7 @@ class ReferenceControllerTest extends PostgresTestContainer {
 		saveMember(project, owner, ProjectMemberRole.OWNER);
 
 		mockMvc.perform(get("/projects/{projectId}/references", project.getId())
-						.header(HttpHeaders.AUTHORIZATION, bearer(outsider))
-						.header("X-User-Id", owner.getUserId()))
+						.header(HttpHeaders.AUTHORIZATION, bearer(outsider)))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("PROJECT403_2"));
 	}
@@ -338,6 +337,28 @@ class ReferenceControllerTest extends PostgresTestContainer {
 		mockMvc.perform(get("/projects/{projectId}/references", 1L))
 				.andExpect(status().isUnauthorized())
 				.andExpect(jsonPath("$.code").value("AUTH401_1"));
+	}
+
+	@Test
+	void 유효하지_않은_JWT이면_목록_조회는_401을_반환한다() throws Exception {
+		mockMvc.perform(get("/projects/{projectId}/references", 1L)
+						.header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token"))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.code").value("AUTH401_1"));
+	}
+
+	@Test
+	void X_User_Id를_멤버로_위조해도_JWT_사용자_기준으로_403을_반환한다() throws Exception {
+		User owner = saveUser("소유자", "reference-controller-forgery-owner@synq.com");
+		User outsider = saveUser("외부 사용자", "reference-controller-forgery-outsider@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+
+		mockMvc.perform(get("/projects/{projectId}/references", project.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(outsider))
+						.header("X-User-Id", owner.getUserId()))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("PROJECT403_2"));
 	}
 
 	@Test

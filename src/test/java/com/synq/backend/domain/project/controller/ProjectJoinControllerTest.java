@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -56,6 +57,11 @@ class ProjectJoinControllerTest extends ProjectControllerTestSupport {
 				.andExpect(jsonPath("$.result.memberRole").value("MEMBER"))
 				.andExpect(jsonPath("$.result.joinedAt").isNotEmpty())
 				.andExpect(jsonPath("$.result.newlyJoined").doesNotExist());
+
+		ProjectMember joinedMember = projectMemberRepository
+				.findByProjectIdAndUserId(project.getId(), participant.getUserId())
+				.orElseThrow();
+		assertThat(joinedMember.getRole()).isEqualTo(ProjectMemberRole.MEMBER);
 	}
 
 	@Test

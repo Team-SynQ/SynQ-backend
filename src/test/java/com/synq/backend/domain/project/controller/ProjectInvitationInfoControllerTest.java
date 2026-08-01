@@ -92,7 +92,8 @@ class ProjectInvitationInfoControllerTest extends ProjectControllerTestSupport {
 	void Swagger에_프로젝트_초대_정보_조회_API가_문서화된다() throws Exception {
 		mockMvc.perform(get("/v3/api-docs"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.paths['/projects/invitations/{inviteToken}'].get").exists());
+				.andExpect(jsonPath("$.paths['/projects/invitations/{inviteToken}'].get").exists())
+				.andExpect(jsonPath("$.paths['/projects/invitations/{inviteToken}'].get.security").isEmpty());
 	}
 
 	private Project saveProject(User owner, String inviteToken, LocalDateTime expiresAt) {
