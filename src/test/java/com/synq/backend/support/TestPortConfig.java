@@ -2,6 +2,9 @@ package com.synq.backend.support;
 
 import com.synq.backend.domain.ai.client.EmbeddingClient;
 import com.synq.backend.domain.ai.rag.port.ReferenceMaterialPort;
+import com.synq.backend.domain.project.repository.ProjectRepository;
+import com.synq.backend.domain.reference.repository.ReferenceMaterialRepository;
+import com.synq.backend.domain.user.repository.UserRepository;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
@@ -27,5 +30,18 @@ public class TestPortConfig {
 	@Primary
 	public EmbeddingClient embeddingClient() {
 		return new StubEmbeddingClient();
+	}
+
+	@Bean
+	public ReferenceMaterialTestFixture referenceMaterialTestFixture(
+			UserRepository userRepository,
+			ProjectRepository projectRepository,
+			ReferenceMaterialRepository referenceMaterialRepository
+	) {
+		return new ReferenceMaterialTestFixture(
+				userRepository,
+				projectRepository,
+				referenceMaterialRepository
+		);
 	}
 }
