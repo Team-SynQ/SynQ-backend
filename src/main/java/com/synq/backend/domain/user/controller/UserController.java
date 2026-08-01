@@ -9,21 +9,15 @@ import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "User", description = "유저")
 @RestController
 @RequestMapping("/users")
-public class UserController {
+public class UserController implements UserControllerDocs {
 
 	private final UserRepository userRepository;
 	private final UserService userService;
@@ -33,21 +27,18 @@ public class UserController {
 		this.userService = userService;
 	}
 
-	@SecurityRequirement(name = "bearerAuth")
+	@Override
 	@GetMapping("/me")
-	public ResponseEntity<ApiResponse<UserMeResponse>> me(
-			@AuthenticationPrincipal(expression = "userId") Long userId) {
+	public ResponseEntity<ApiResponse<UserMeResponse>> me(Long userId) {
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
 		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, UserMeResponse.from(user)));
 	}
 
-	@SecurityRequirement(name = "bearerAuth")
+	@Override
 	@PatchMapping("/me/name")
-	public ResponseEntity<ApiResponse<UserMeResponse>> updateName(
-			@AuthenticationPrincipal(expression = "userId") Long userId,
-			@Valid @RequestBody UserNameUpdateRequest request) {
+	public ResponseEntity<ApiResponse<UserMeResponse>> updateName(Long userId, UserNameUpdateRequest request) {
 		UserMeResponse response = userService.updateName(userId, request.name());
 		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
