@@ -6,6 +6,9 @@ import com.synq.backend.domain.project.entity.ProjectMember;
 import com.synq.backend.domain.project.entity.ProjectMemberRole;
 import com.synq.backend.domain.project.repository.ProjectMemberRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
+import com.synq.backend.domain.reference.code.ReferenceErrorCode;
+import com.synq.backend.domain.reference.dto.ReferenceLinkCreateRequest;
+import com.synq.backend.domain.reference.dto.ReferenceLinkCreateResponse;
 import com.synq.backend.domain.reference.dto.ReferenceListResponse;
 import com.synq.backend.domain.reference.dto.ReferenceResponse;
 import com.synq.backend.domain.reference.entity.ReferenceFileExtension;
@@ -41,6 +44,125 @@ class ReferenceServiceTest extends PostgresTestContainer {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	@Test
+	void 프로젝트_OWNER가_링크를_UPLOADING_상태로_등록한다() {
+		User owner = saveUser("박서은", "reference-create-owner@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+
+		ReferenceLinkCreateResponse response = referenceService.createLink(
+				project.getId(),
+				owner.getUserId(),
+				new ReferenceLinkCreateRequest("  https://www.notion.so/example  ")
+		);
+
+		assertThat(response.referenceId()).isNotNull();
+		assertThat(response.type()).isEqualTo("LINK");
+		assertThat(response.name()).isEqualTo("notion.so");
+		assertThat(response.url()).isEqualTo("https://www.notion.so/example");
+		assertThat(response.status()).isEqualTo("UPLOADING");
+		assertThat(response.uploaderId()).isEqualTo(owner.getUserId());
+		assertThat(response.uploaderName()).isEqualTo("박서은");
+		assertThat(response.createdAt()).isNotNull();
+
+		ReferenceMaterial saved = referenceMaterialRepository.findById(response.referenceId()).orElseThrow();
+		assertThat(saved.getName()).isEqualTo("notion.so");
+		assertThat(saved.getUrl()).isEqualTo("https://www.notion.so/example");
+		assertThat(saved.getStatus()).isEqualTo(ReferenceStatus.UPLOADING);
+	}
+
+	@Test
+	void 일반_MEMBER도_동일한_URL을_중복_등록할_수_있다() {
+		User owner = saveUser("소유자", "reference-create-member-owner@synq.com");
+		User member = saveUser("멤버", "reference-create-member@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		saveMember(project, member, ProjectMemberRole.MEMBER);
+		ReferenceLinkCreateRequest request = new ReferenceLinkCreateRequest("https://example.com/document");
+
+		ReferenceLinkCreateResponse first = referenceService.createLink(
+				project.getId(), member.getUserId(), request);
+		ReferenceLinkCreateResponse second = referenceService.createLink(
+				project.getId(), member.getUserId(), request);
+
+		assertThat(first.referenceId()).isNotEqualTo(second.referenceId());
+		assertThat(referenceMaterialRepository.countByProjectId(project.getId())).isEqualTo(2);
+	}
+
+	@Test
+	void 프로젝트_외부_사용자는_링크를_등록할_수_없다() {
+		User owner = saveUser("소유자", "reference-create-outsider-owner@synq.com");
+		User outsider = saveUser("외부 사용자", "reference-create-outsider@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+
+		assertThatThrownBy(() -> referenceService.createLink(
+				project.getId(), outsider.getUserId(), linkRequest()))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(ProjectErrorCode.NOT_PROJECT_MEMBER));
+	}
+
+	@Test
+	void 인증_정보나_사용자나_활성_프로젝트가_없으면_링크를_등록할_수_없다() {
+		User owner = saveUser("소유자", "reference-create-validation@synq.com");
+		Project deletedProject = saveProject(owner);
+		saveMember(deletedProject, owner, ProjectMemberRole.OWNER);
+		deletedProject.softDelete();
+
+		assertThatThrownBy(() -> referenceService.createLink(1L, null, linkRequest()))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(GeneralErrorCode.UNAUTHORIZED));
+		assertThatThrownBy(() -> referenceService.createLink(1L, Long.MAX_VALUE, linkRequest()))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(ProjectErrorCode.USER_NOT_FOUND));
+		assertThatThrownBy(() -> referenceService.createLink(Long.MAX_VALUE, owner.getUserId(), linkRequest()))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(ProjectErrorCode.PROJECT_NOT_FOUND));
+		assertThatThrownBy(() -> referenceService.createLink(
+				deletedProject.getId(), owner.getUserId(), linkRequest()))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(ProjectErrorCode.PROJECT_NOT_FOUND));
+	}
+
+	@Test
+	void 활성_파일과_링크가_10개이면_409이고_새_자료를_저장하지_않는다() {
+		User owner = saveUser("소유자", "reference-create-limit@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		for (int index = 0; index < 5; index++) {
+			saveFile(project, owner);
+			saveLink(project, owner);
+		}
+
+		assertThatThrownBy(() -> referenceService.createLink(
+				project.getId(), owner.getUserId(), linkRequest()))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(ReferenceErrorCode.REFERENCE_LIMIT_EXCEEDED));
+		assertThat(referenceMaterialRepository.countByProjectId(project.getId())).isEqualTo(10);
+	}
+
+	@Test
+	void 활성_자료가_9개이면_등록하고_Soft_Delete_자료는_개수에서_제외한다() {
+		User owner = saveUser("소유자", "reference-create-soft-delete@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		for (int index = 0; index < 9; index++) {
+			saveFile(project, owner);
+		}
+		ReferenceMaterial deleted = saveLink(project, owner);
+		deleted.softDelete();
+
+		referenceService.createLink(project.getId(), owner.getUserId(), linkRequest());
+
+		assertThat(referenceMaterialRepository.countByProjectId(project.getId())).isEqualTo(10);
+	}
 
 	@Test
 	void 프로젝트_소유자는_파일과_링크_참고자료를_조회하고_모두_삭제할_수_있다() {
@@ -179,6 +301,10 @@ class ReferenceServiceTest extends PostgresTestContainer {
 				.filter(reference -> reference.referenceId().equals(referenceId))
 				.findFirst()
 				.orElseThrow();
+	}
+
+	private ReferenceLinkCreateRequest linkRequest() {
+		return new ReferenceLinkCreateRequest("https://example.com/document");
 	}
 
 	private Project saveProject(User owner) {
