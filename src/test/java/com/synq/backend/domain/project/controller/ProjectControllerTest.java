@@ -7,7 +7,6 @@ import com.synq.backend.domain.project.repository.ProjectMemberRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
-import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -22,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc
 @Transactional
-class ProjectControllerTest extends PostgresTestContainer {
+class ProjectControllerTest extends ProjectControllerTestSupport {
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -39,9 +38,11 @@ class ProjectControllerTest extends PostgresTestContainer {
 	@Test
 	void 프로젝트를_생성하고_명세의_응답을_반환한다() throws Exception {
 		User owner = saveUser("controller-owner@synq.com");
+		User forgedUser = saveUser("controller-forged-user@synq.com");
 
 		mockMvc.perform(post("/projects")
-						.header("X-User-Id", owner.getUserId())
+						.header("Authorization", bearer(owner))
+						.header("X-User-Id", forgedUser.getUserId())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"title":"SynQ","description":"회의 협업 프로젝트"}
@@ -67,7 +68,7 @@ class ProjectControllerTest extends PostgresTestContainer {
 		User owner = saveUser("controller-validation@synq.com");
 
 		mockMvc.perform(post("/projects")
-						.header("X-User-Id", owner.getUserId())
+						.header("Authorization", bearer(owner))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"title\":\"%s\",\"description\":null}".formatted("가".repeat(31))))
 				.andExpect(status().isBadRequest())
@@ -79,7 +80,7 @@ class ProjectControllerTest extends PostgresTestContainer {
 		User owner = saveUser("controller-trim-title@synq.com");
 
 		mockMvc.perform(post("/projects")
-						.header("X-User-Id", owner.getUserId())
+						.header("Authorization", bearer(owner))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"title":"  SynQ  ","description":null}

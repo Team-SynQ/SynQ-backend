@@ -4,7 +4,6 @@ import com.synq.backend.domain.project.entity.Project;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
-import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -18,7 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc
 @Transactional
-class ProjectDeleteControllerTest extends PostgresTestContainer {
+class ProjectDeleteControllerTest extends ProjectControllerTestSupport {
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -35,7 +34,7 @@ class ProjectDeleteControllerTest extends PostgresTestContainer {
 		Project project = saveProject(owner);
 
 		mockMvc.perform(delete("/projects/{projectId}", project.getId())
-						.header("X-User-Id", owner.getUserId()))
+						.header("Authorization", bearer(owner)))
 				.andExpect(status().isNoContent())
 				.andExpect(content().string(""));
 	}
@@ -47,7 +46,8 @@ class ProjectDeleteControllerTest extends PostgresTestContainer {
 		Project project = saveProject(owner);
 
 		mockMvc.perform(delete("/projects/{projectId}", project.getId())
-						.header("X-User-Id", member.getUserId()))
+						.header("Authorization", bearer(member))
+						.header("X-User-Id", owner.getUserId()))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("PROJECT403_1"));
 	}
@@ -57,7 +57,7 @@ class ProjectDeleteControllerTest extends PostgresTestContainer {
 		User owner = saveUser("delete-controller-missing@synq.com");
 
 		mockMvc.perform(delete("/projects/{projectId}", Long.MAX_VALUE)
-						.header("X-User-Id", owner.getUserId()))
+						.header("Authorization", bearer(owner)))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("PROJECT404_3"));
 	}

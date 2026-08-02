@@ -256,7 +256,7 @@ class ReferenceControllerTest extends PostgresTestContainer {
 		saveFile(project, owner);
 
 		MvcResult result = mockMvc.perform(get("/projects/{projectId}/references", project.getId())
-						.header("X-User-Id", owner.getUserId()))
+						.header(HttpHeaders.AUTHORIZATION, bearer(owner)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.result.currentCount").value(1))
 				.andExpect(jsonPath("$.result.maxCount").value(10))
@@ -301,7 +301,7 @@ class ReferenceControllerTest extends PostgresTestContainer {
 		saveLink(project, member);
 
 		mockMvc.perform(get("/projects/{projectId}/references", project.getId())
-						.header("X-User-Id", member.getUserId()))
+						.header(HttpHeaders.AUTHORIZATION, bearer(member)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.result.references[0].type").value("LINK"))
 				.andExpect(jsonPath("$.result.references[0].fileSize").value(nullValue()))
@@ -317,7 +317,8 @@ class ReferenceControllerTest extends PostgresTestContainer {
 		saveMember(project, owner, ProjectMemberRole.OWNER);
 
 		mockMvc.perform(get("/projects/{projectId}/references", project.getId())
-						.header("X-User-Id", outsider.getUserId()))
+						.header(HttpHeaders.AUTHORIZATION, bearer(outsider))
+						.header("X-User-Id", owner.getUserId()))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("PROJECT403_2"));
 	}
@@ -327,7 +328,7 @@ class ReferenceControllerTest extends PostgresTestContainer {
 		User user = saveUser("사용자", "reference-controller-missing@synq.com");
 
 		mockMvc.perform(get("/projects/{projectId}/references", Long.MAX_VALUE)
-						.header("X-User-Id", user.getUserId()))
+						.header(HttpHeaders.AUTHORIZATION, bearer(user)))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("PROJECT404_3"));
 	}
@@ -344,6 +345,7 @@ class ReferenceControllerTest extends PostgresTestContainer {
 		mockMvc.perform(get("/v3/api-docs"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.paths['/projects/{projectId}/references'].get").exists())
+				.andExpect(jsonPath("$.paths['/projects/{projectId}/references'].get.security[0].bearerAuth").exists())
 				.andExpect(jsonPath("$.paths['/projects/{projectId}/references/links'].post").exists())
 				.andExpect(jsonPath("$.paths['/projects/{projectId}/references/links'].post.security[0].bearerAuth").exists());
 	}

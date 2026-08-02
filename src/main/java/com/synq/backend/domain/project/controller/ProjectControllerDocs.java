@@ -1,5 +1,6 @@
 package com.synq.backend.domain.project.controller;
 
+import com.synq.backend.domain.auth.jwt.UserAuthDto;
 import com.synq.backend.domain.project.dto.ProjectCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectDetailResponse;
@@ -14,16 +15,18 @@ import com.synq.backend.domain.project.dto.ProjectUpdateResponse;
 import com.synq.backend.global.apipayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.List;
 
@@ -31,6 +34,7 @@ import java.util.List;
 public interface ProjectControllerDocs {
 
 	@Operation(summary = "프로젝트 삭제", description = "프로젝트 소유자가 프로젝트를 Soft Delete한다.")
+	@SecurityRequirement(name = "bearerAuth")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "프로젝트 삭제 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
@@ -40,10 +44,11 @@ public interface ProjectControllerDocs {
 	@DeleteMapping("/{projectId}")
 	ResponseEntity<Void> delete(
 			@PathVariable Long projectId,
-			@RequestHeader(value = "X-User-Id", required = false) Long userId
+			@AuthenticationPrincipal(expression = "userId") Long userId
 	);
 
 	@Operation(summary = "프로젝트 멤버 목록 조회", description = "프로젝트 멤버가 프로젝트의 전체 멤버 목록을 조회한다.")
+	@SecurityRequirement(name = "bearerAuth")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "프로젝트 멤버 목록 조회 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
@@ -53,10 +58,11 @@ public interface ProjectControllerDocs {
 	@GetMapping("/{projectId}/members")
 	ResponseEntity<ApiResponse<ProjectMemberListResponse>> findMembers(
 			@PathVariable Long projectId,
-			@RequestHeader(value = "X-User-Id", required = false) Long userId
+			@AuthenticationPrincipal(expression = "userId") Long userId
 	);
 
 	@Operation(summary = "프로젝트 수정", description = "프로젝트 소유자가 프로젝트명과 설명을 수정한다.")
+	@SecurityRequirement(name = "bearerAuth")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "프로젝트 수정 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "입력값 오류"),
@@ -67,11 +73,12 @@ public interface ProjectControllerDocs {
 	@PatchMapping("/{projectId}")
 	ResponseEntity<ApiResponse<ProjectUpdateResponse>> update(
 			@PathVariable Long projectId,
-			@RequestHeader(value = "X-User-Id", required = false) Long userId,
+			@AuthenticationPrincipal(expression = "userId") Long userId,
 			@Valid @RequestBody ProjectUpdateRequest request
 	);
 
 	@Operation(summary = "프로젝트 상세 조회", description = "프로젝트 멤버가 프로젝트 기본 정보를 조회한다.")
+	@SecurityRequirement(name = "bearerAuth")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "프로젝트 상세 조회 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
@@ -81,39 +88,43 @@ public interface ProjectControllerDocs {
 	@GetMapping("/{projectId}")
 	ResponseEntity<ApiResponse<ProjectDetailResponse>> findById(
 			@PathVariable Long projectId,
-			@RequestHeader(value = "X-User-Id", required = false) Long userId
+			@AuthenticationPrincipal(expression = "userId") Long userId
 	);
 
 	@Operation(summary = "프로젝트 목록 조회", description = "로그인한 사용자가 참여 중인 프로젝트 목록을 최근 활동순으로 조회한다.")
+	@SecurityRequirement(name = "bearerAuth")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "프로젝트 목록 조회 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요")
 	})
 	@GetMapping
 	ResponseEntity<ApiResponse<List<ProjectListResponse>>> findAll(
-			@RequestHeader(value = "X-User-Id", required = false) Long userId
+			@AuthenticationPrincipal(expression = "userId") Long userId
 	);
 
 	@Operation(summary = "프로젝트 생성", description = "프로젝트를 생성하고 생성자를 OWNER로 등록한다.")
+	@SecurityRequirement(name = "bearerAuth")
 	@ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "프로젝트 생성 성공"))
 	@PostMapping
 	ResponseEntity<ApiResponse<ProjectCreateResponse>> create(
-			@RequestHeader("X-User-Id") Long userId,
+			@AuthenticationPrincipal(expression = "userId") Long userId,
 			@Valid @RequestBody ProjectCreateRequest request
 	);
 
 	@Operation(summary = "프로젝트 참여", description = "저장된 초대 토큰을 통해 프로젝트에 참여한다.")
+	@SecurityRequirement(name = "bearerAuth")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "프로젝트 참여 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "이미 참여 중인 프로젝트")
 	})
 	@PostMapping("/join")
 	ResponseEntity<ApiResponse<ProjectJoinResponse>> join(
-			@RequestHeader("X-User-Id") Long userId,
+			@AuthenticationPrincipal(expression = "userId") Long userId,
 			@Valid @RequestBody ProjectJoinRequest request
 	);
 
 	@Operation(summary = "프로젝트 초대 링크 생성", description = "프로젝트 소유자가 초대 링크를 생성하거나 유효한 기존 링크를 조회한다.")
+	@SecurityRequirement(name = "bearerAuth")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "초대 링크 생성 또는 조회 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
@@ -123,10 +134,11 @@ public interface ProjectControllerDocs {
 	@PostMapping("/{projectId}/invitation")
 	ResponseEntity<ApiResponse<ProjectInvitationResponse>> createInvitation(
 			@PathVariable Long projectId,
-			@RequestHeader(value = "X-User-Id", required = false) Long userId
+			@AuthenticationPrincipal(expression = "userId") Long userId
 	);
 
 	@Operation(summary = "프로젝트 초대 정보 조회", description = "초대 링크 접속 시 프로젝트 참여 전 확인에 필요한 정보를 조회한다.")
+	@SecurityRequirements
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "프로젝트 초대 정보 조회 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "유효하지 않은 초대 링크"),
@@ -135,6 +147,6 @@ public interface ProjectControllerDocs {
 	@GetMapping("/invitations/{inviteToken}")
 	ResponseEntity<ApiResponse<ProjectInvitationInfoResponse>> findInvitationInfo(
 			@PathVariable String inviteToken,
-			@RequestHeader(value = "X-User-Id", required = false) Long userId
+			@AuthenticationPrincipal UserAuthDto principal
 	);
 }

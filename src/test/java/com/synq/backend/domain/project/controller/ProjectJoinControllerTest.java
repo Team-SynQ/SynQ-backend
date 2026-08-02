@@ -7,7 +7,6 @@ import com.synq.backend.domain.project.repository.ProjectMemberRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
-import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -24,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc
 @Transactional
-class ProjectJoinControllerTest extends PostgresTestContainer {
+class ProjectJoinControllerTest extends ProjectControllerTestSupport {
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -46,7 +45,8 @@ class ProjectJoinControllerTest extends PostgresTestContainer {
 		Project project = saveProjectWithOwner(owner, inviteToken);
 
 		mockMvc.perform(post("/projects/join")
-						.header("X-User-Id", participant.getUserId())
+						.header("Authorization", bearer(participant))
+						.header("X-User-Id", owner.getUserId())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"inviteToken\":\"%s\"}".formatted(inviteToken)))
 				.andExpect(status().isCreated())
@@ -65,7 +65,7 @@ class ProjectJoinControllerTest extends PostgresTestContainer {
 		saveProjectWithOwner(owner, inviteToken);
 
 		mockMvc.perform(post("/projects/join")
-						.header("X-User-Id", owner.getUserId())
+						.header("Authorization", bearer(owner))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"inviteToken\":\"%s\"}".formatted(inviteToken)))
 				.andExpect(status().isOk())
@@ -78,7 +78,7 @@ class ProjectJoinControllerTest extends PostgresTestContainer {
 		User participant = saveUser("controller-not-found@synq.com");
 
 		mockMvc.perform(post("/projects/join")
-						.header("X-User-Id", participant.getUserId())
+						.header("Authorization", bearer(participant))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"inviteToken\":\"%s\"}".formatted(UUID.randomUUID())))
 				.andExpect(status().isNotFound())
@@ -96,7 +96,7 @@ class ProjectJoinControllerTest extends PostgresTestContainer {
 		projectMemberRepository.save(ProjectMember.of(project.getId(), owner.getUserId(), ProjectMemberRole.OWNER));
 
 		mockMvc.perform(post("/projects/join")
-						.header("X-User-Id", participant.getUserId())
+						.header("Authorization", bearer(participant))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"inviteToken\":\"%s\"}".formatted(inviteToken)))
 				.andExpect(status().isGone())
