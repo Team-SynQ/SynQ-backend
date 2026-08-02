@@ -4,7 +4,6 @@ import com.synq.backend.domain.project.entity.Project;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
-import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -17,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc
 @Transactional
-class ProjectInvitationControllerTest extends PostgresTestContainer {
+class ProjectInvitationControllerTest extends ProjectControllerTestSupport {
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -34,7 +33,7 @@ class ProjectInvitationControllerTest extends PostgresTestContainer {
 		Project project = projectRepository.save(Project.of(owner.getUserId(), "SynQ", null));
 
 		mockMvc.perform(post("/projects/{projectId}/invitation", project.getId())
-						.header("X-User-Id", owner.getUserId()))
+						.header("Authorization", bearer(owner)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.isSuccess").value(true))
 				.andExpect(jsonPath("$.result.inviteUrl").value(
@@ -54,7 +53,7 @@ class ProjectInvitationControllerTest extends PostgresTestContainer {
 		User owner = saveUser("controller-missing-project@synq.com");
 
 		mockMvc.perform(post("/projects/{projectId}/invitation", Long.MAX_VALUE)
-						.header("X-User-Id", owner.getUserId()))
+						.header("Authorization", bearer(owner)))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("PROJECT404_3"));
 	}
@@ -66,7 +65,8 @@ class ProjectInvitationControllerTest extends PostgresTestContainer {
 		Project project = projectRepository.save(Project.of(owner.getUserId(), "SynQ", null));
 
 		mockMvc.perform(post("/projects/{projectId}/invitation", project.getId())
-						.header("X-User-Id", member.getUserId()))
+						.header("Authorization", bearer(member))
+						.header("X-User-Id", owner.getUserId()))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("PROJECT403_1"));
 	}

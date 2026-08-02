@@ -9,7 +9,6 @@ import com.synq.backend.domain.project.repository.ProjectMemberRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
-import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -22,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc
 @Transactional
-class ProjectListControllerTest extends PostgresTestContainer {
+class ProjectListControllerTest extends ProjectControllerTestSupport {
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -49,7 +48,7 @@ class ProjectListControllerTest extends PostgresTestContainer {
 		meetingRepository.save(Meeting.of(project.getId(), "1차 기획회의"));
 
 		mockMvc.perform(get("/projects")
-						.header("X-User-Id", user.getUserId()))
+						.header("Authorization", bearer(user)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.isSuccess").value(true))
 				.andExpect(jsonPath("$.result[0].projectId").value(project.getId()))
@@ -64,7 +63,7 @@ class ProjectListControllerTest extends PostgresTestContainer {
 		User user = saveUser("empty-project-list-controller@synq.com");
 
 		mockMvc.perform(get("/projects")
-						.header("X-User-Id", user.getUserId()))
+						.header("Authorization", bearer(user)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.result").isArray())
 				.andExpect(jsonPath("$.result").isEmpty());

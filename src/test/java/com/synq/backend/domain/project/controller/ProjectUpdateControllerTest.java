@@ -4,7 +4,6 @@ import com.synq.backend.domain.project.entity.Project;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
-import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -18,7 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc
 @Transactional
-class ProjectUpdateControllerTest extends PostgresTestContainer {
+class ProjectUpdateControllerTest extends ProjectControllerTestSupport {
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -35,7 +34,7 @@ class ProjectUpdateControllerTest extends PostgresTestContainer {
 		Project project = saveProject(owner, "기존 제목", "기존 설명");
 
 		mockMvc.perform(patch("/projects/{projectId}", project.getId())
-						.header("X-User-Id", owner.getUserId())
+						.header("Authorization", bearer(owner))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"title":"수정 제목","description":"수정 설명"}
@@ -54,7 +53,7 @@ class ProjectUpdateControllerTest extends PostgresTestContainer {
 		Project project = saveProject(owner, "기존 제목", null);
 
 		mockMvc.perform(patch("/projects/{projectId}", project.getId())
-						.header("X-User-Id", owner.getUserId())
+						.header("Authorization", bearer(owner))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{}"))
 				.andExpect(status().isBadRequest())
@@ -68,7 +67,8 @@ class ProjectUpdateControllerTest extends PostgresTestContainer {
 		Project project = saveProject(owner, "기존 제목", null);
 
 		mockMvc.perform(patch("/projects/{projectId}", project.getId())
-						.header("X-User-Id", member.getUserId())
+						.header("Authorization", bearer(member))
+						.header("X-User-Id", owner.getUserId())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"title\":\"수정 제목\"}"))
 				.andExpect(status().isForbidden())
@@ -80,7 +80,7 @@ class ProjectUpdateControllerTest extends PostgresTestContainer {
 		User owner = saveUser("update-controller-missing@synq.com");
 
 		mockMvc.perform(patch("/projects/{projectId}", Long.MAX_VALUE)
-						.header("X-User-Id", owner.getUserId())
+						.header("Authorization", bearer(owner))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"title\":\"수정 제목\"}"))
 				.andExpect(status().isNotFound())
@@ -102,7 +102,7 @@ class ProjectUpdateControllerTest extends PostgresTestContainer {
 		Project project = saveProject(owner, "기존 제목", null);
 
 		mockMvc.perform(patch("/projects/{projectId}", project.getId())
-						.header("X-User-Id", owner.getUserId())
+						.header("Authorization", bearer(owner))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"title\":\"%s\"}".formatted("가".repeat(31))))
 				.andExpect(status().isBadRequest())
@@ -115,7 +115,7 @@ class ProjectUpdateControllerTest extends PostgresTestContainer {
 		Project project = saveProject(owner, "기존 제목", null);
 
 		mockMvc.perform(patch("/projects/{projectId}", project.getId())
-						.header("X-User-Id", owner.getUserId())
+						.header("Authorization", bearer(owner))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"title\":\"   \"}"))
 				.andExpect(status().isBadRequest())
@@ -128,7 +128,7 @@ class ProjectUpdateControllerTest extends PostgresTestContainer {
 		Project project = saveProject(owner, "기존 제목", null);
 
 		mockMvc.perform(patch("/projects/{projectId}", project.getId())
-						.header("X-User-Id", owner.getUserId())
+						.header("Authorization", bearer(owner))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"description\":\"%s\"}".formatted("가".repeat(501))))
 				.andExpect(status().isBadRequest())

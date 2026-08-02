@@ -12,10 +12,9 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 
 @Tag(name = "Reference", description = "참고자료 API")
 public interface ReferenceControllerDocs {
@@ -38,6 +37,7 @@ public interface ReferenceControllerDocs {
 	);
 
 	@Operation(summary = "참고자료 목록 조회", description = "프로젝트 멤버가 파일과 링크 참고자료 목록을 조회한다.")
+	@SecurityRequirement(name = "bearerAuth")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "참고자료 목록 조회 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
@@ -47,6 +47,6 @@ public interface ReferenceControllerDocs {
 	@GetMapping
 	ResponseEntity<ApiResponse<ReferenceListResponse>> findAll(
 			@PathVariable Long projectId,
-			@RequestHeader(value = "X-User-Id", required = false) Long userId
+			@AuthenticationPrincipal(expression = "userId") Long userId
 	);
 }

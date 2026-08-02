@@ -7,7 +7,6 @@ import com.synq.backend.domain.project.repository.ProjectMemberRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
-import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -23,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc
 @Transactional
-class ProjectInvitationInfoControllerTest extends PostgresTestContainer {
+class ProjectInvitationInfoControllerTest extends ProjectControllerTestSupport {
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -47,7 +46,7 @@ class ProjectInvitationInfoControllerTest extends PostgresTestContainer {
 		saveMember(project, member, ProjectMemberRole.MEMBER);
 
 		mockMvc.perform(get("/projects/invitations/{inviteToken}", inviteToken)
-						.header("X-User-Id", member.getUserId()))
+						.header("Authorization", bearer(member)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.result.projectId").value(project.getId()))
 				.andExpect(jsonPath("$.result.title").value("SynQ"))
@@ -65,7 +64,8 @@ class ProjectInvitationInfoControllerTest extends PostgresTestContainer {
 		Project project = saveProject(owner, inviteToken, LocalDateTime.now().plusDays(7));
 		saveMember(project, owner, ProjectMemberRole.OWNER);
 
-		mockMvc.perform(get("/projects/invitations/{inviteToken}", inviteToken))
+		mockMvc.perform(get("/projects/invitations/{inviteToken}", inviteToken)
+						.header("X-User-Id", owner.getUserId()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.result.alreadyJoined").value(false));
 	}
@@ -92,7 +92,8 @@ class ProjectInvitationInfoControllerTest extends PostgresTestContainer {
 	void Swagger에_프로젝트_초대_정보_조회_API가_문서화된다() throws Exception {
 		mockMvc.perform(get("/v3/api-docs"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.paths['/projects/invitations/{inviteToken}'].get").exists());
+				.andExpect(jsonPath("$.paths['/projects/invitations/{inviteToken}'].get").exists())
+				.andExpect(jsonPath("$.paths['/projects/invitations/{inviteToken}'].get.security").isEmpty());
 	}
 
 	private Project saveProject(User owner, String inviteToken, LocalDateTime expiresAt) {

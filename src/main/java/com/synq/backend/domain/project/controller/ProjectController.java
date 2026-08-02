@@ -1,5 +1,6 @@
 package com.synq.backend.domain.project.controller;
 
+import com.synq.backend.domain.auth.jwt.UserAuthDto;
 import com.synq.backend.domain.project.dto.ProjectCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectDetailResponse;
@@ -93,8 +94,9 @@ public class ProjectController implements ProjectControllerDocs {
 	@Override
 	public ResponseEntity<ApiResponse<ProjectInvitationInfoResponse>> findInvitationInfo(
 			String inviteToken,
-			Long userId
+			UserAuthDto principal
 	) {
+		Long userId = principal == null ? null : principal.getUserId();
 		ProjectInvitationInfoResponse response = projectService.findInvitationInfo(inviteToken, userId);
 		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));

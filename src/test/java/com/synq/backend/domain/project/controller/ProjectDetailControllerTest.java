@@ -9,7 +9,6 @@ import com.synq.backend.domain.project.repository.ProjectMemberRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
-import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -27,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc
 @Transactional
-class ProjectDetailControllerTest extends PostgresTestContainer {
+class ProjectDetailControllerTest extends ProjectControllerTestSupport {
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -51,7 +50,7 @@ class ProjectDetailControllerTest extends PostgresTestContainer {
 		saveMember(project, owner, ProjectMemberRole.OWNER);
 
 		MvcResult result = mockMvc.perform(get("/projects/{projectId}", project.getId())
-						.header("X-User-Id", owner.getUserId()))
+						.header("Authorization", bearer(owner)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.result.projectId").isNumber())
 				.andExpect(jsonPath("$.result.ownerId").isNumber())
@@ -83,7 +82,7 @@ class ProjectDetailControllerTest extends PostgresTestContainer {
 		saveMember(project, member, ProjectMemberRole.MEMBER);
 
 		mockMvc.perform(get("/projects/{projectId}", project.getId())
-						.header("X-User-Id", member.getUserId()))
+						.header("Authorization", bearer(member)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.result.description").value(
 						org.hamcrest.Matchers.nullValue()));
@@ -96,7 +95,7 @@ class ProjectDetailControllerTest extends PostgresTestContainer {
 		Project project = saveProject(owner, "SynQ", null);
 
 		mockMvc.perform(get("/projects/{projectId}", project.getId())
-						.header("X-User-Id", outsider.getUserId()))
+						.header("Authorization", bearer(outsider)))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("PROJECT403_2"));
 	}
@@ -106,7 +105,7 @@ class ProjectDetailControllerTest extends PostgresTestContainer {
 		User user = saveUser("detail-404@synq.com");
 
 		mockMvc.perform(get("/projects/{projectId}", Long.MAX_VALUE)
-						.header("X-User-Id", user.getUserId()))
+						.header("Authorization", bearer(user)))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("PROJECT404_3"));
 	}

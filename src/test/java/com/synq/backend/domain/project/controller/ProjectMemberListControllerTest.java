@@ -9,7 +9,6 @@ import com.synq.backend.domain.project.repository.ProjectMemberRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
-import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -27,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @AutoConfigureMockMvc
 @Transactional
-class ProjectMemberListControllerTest extends PostgresTestContainer {
+class ProjectMemberListControllerTest extends ProjectControllerTestSupport {
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -53,7 +52,7 @@ class ProjectMemberListControllerTest extends PostgresTestContainer {
 		saveMember(project, member, ProjectMemberRole.MEMBER);
 
 		MvcResult result = mockMvc.perform(get("/projects/{projectId}/members", project.getId())
-						.header("X-User-Id", owner.getUserId()))
+						.header("Authorization", bearer(owner)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.result.projectId").value(project.getId()))
 				.andExpect(jsonPath("$.result.ownerId").value(owner.getUserId()))
@@ -96,7 +95,7 @@ class ProjectMemberListControllerTest extends PostgresTestContainer {
 		saveMember(project, owner, ProjectMemberRole.OWNER);
 
 		mockMvc.perform(get("/projects/{projectId}/members", project.getId())
-						.header("X-User-Id", outsider.getUserId()))
+						.header("Authorization", bearer(outsider)))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("PROJECT403_2"));
 	}
@@ -106,7 +105,7 @@ class ProjectMemberListControllerTest extends PostgresTestContainer {
 		User user = saveUser("사용자", "member-list-controller-404@synq.com");
 
 		mockMvc.perform(get("/projects/{projectId}/members", Long.MAX_VALUE)
-						.header("X-User-Id", user.getUserId()))
+						.header("Authorization", bearer(user)))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("PROJECT404_3"));
 	}
@@ -119,7 +118,7 @@ class ProjectMemberListControllerTest extends PostgresTestContainer {
 		project.softDelete();
 
 		mockMvc.perform(get("/projects/{projectId}/members", project.getId())
-						.header("X-User-Id", owner.getUserId()))
+						.header("Authorization", bearer(owner)))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.code").value("PROJECT404_3"));
 	}
@@ -135,7 +134,8 @@ class ProjectMemberListControllerTest extends PostgresTestContainer {
 	void Swagger에_프로젝트_멤버_목록_조회_API가_문서화된다() throws Exception {
 		mockMvc.perform(get("/v3/api-docs"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.paths['/projects/{projectId}/members'].get").exists());
+				.andExpect(jsonPath("$.paths['/projects/{projectId}/members'].get").exists())
+				.andExpect(jsonPath("$.paths['/projects/{projectId}/members'].get.security[0].bearerAuth").exists());
 	}
 
 	private List<String> fieldNames(JsonNode node) {
