@@ -85,8 +85,10 @@ class AiSummaryControllerTest {
 		mockMvc.perform(get("/meetings/{meetingId}/summary", 1L)
 						.header("Authorization", "Bearer test-token"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.result.overallSummary").isNotEmpty())
-				.andExpect(jsonPath("$.result.actionItems[0]").value("API 명세 초안을 작성한다."));
+				.andExpect(jsonPath("$.result.oneLineSummary").isNotEmpty())
+				.andExpect(jsonPath("$.result.discussionSections[0].title").isNotEmpty())
+				.andExpect(jsonPath("$.result.confirmationItems[0]").value("API 명세 초안을 작성한다."))
+				.andExpect(jsonPath("$.result.overallSummary").doesNotExist());
 
 		mockMvc.perform(get("/meetings/{meetingId}/summary/me", 1L)
 						.header("Authorization", "Bearer test-token"))

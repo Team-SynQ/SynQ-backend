@@ -32,7 +32,7 @@ class SummaryJobProcessorTest {
 		processor.process(job.id());
 
 		assertThat(jobStore.findById(job.id()).orElseThrow().status()).isEqualTo(SummaryJobStatus.COMPLETED);
-		assertThat(summaryStore.findLatestByMeetingId(1L).orElseThrow().content().actionItems())
+		assertThat(summaryStore.findLatestByMeetingId(1L).orElseThrow().content().confirmationItems())
 				.contains("API 명세 초안을 작성한다.");
 	}
 

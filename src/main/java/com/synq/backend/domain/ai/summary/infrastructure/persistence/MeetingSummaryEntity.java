@@ -1,6 +1,7 @@
 package com.synq.backend.domain.ai.summary.infrastructure.persistence;
 
 import com.synq.backend.domain.ai.summary.domain.GeneratedSummary;
+import com.synq.backend.domain.ai.summary.domain.DiscussionSection;
 import com.synq.backend.domain.ai.summary.domain.MeetingSummary;
 import com.synq.backend.global.entity.BaseEntity;
 import jakarta.persistence.Column;
@@ -41,9 +42,16 @@ public class MeetingSummaryEntity extends BaseEntity {
 	@Column(name = "overall_summary", nullable = false, columnDefinition = "text")
 	private String overallSummary;
 
+	@Column(name = "one_line_summary", columnDefinition = "text")
+	private String oneLineSummary;
+
 	@JdbcTypeCode(SqlTypes.JSON)
 	@Column(name = "key_topics", nullable = false, columnDefinition = "jsonb")
 	private List<String> keyTopics = new ArrayList<>();
+
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(name = "discussion_sections", columnDefinition = "jsonb")
+	private List<DiscussionSection> discussionSections = new ArrayList<>();
 
 	@JdbcTypeCode(SqlTypes.JSON)
 	@Column(nullable = false, columnDefinition = "jsonb")
@@ -57,6 +65,14 @@ public class MeetingSummaryEntity extends BaseEntity {
 	@Column(name = "open_questions", nullable = false, columnDefinition = "jsonb")
 	private List<String> openQuestions = new ArrayList<>();
 
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(name = "tentative_directions", columnDefinition = "jsonb")
+	private List<String> tentativeDirections = new ArrayList<>();
+
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(name = "confirmation_items", columnDefinition = "jsonb")
+	private List<String> confirmationItems = new ArrayList<>();
+
 	@Column(name = "generated_at", nullable = false)
 	private Instant generatedAt;
 
@@ -65,11 +81,16 @@ public class MeetingSummaryEntity extends BaseEntity {
 		this.meetingId = summary.meetingId();
 		this.jobId = summary.jobId();
 		this.version = summary.version();
-		this.overallSummary = content.overallSummary();
+		// 구버전 애플리케이션이 NOT NULL 기존 컬럼을 읽을 수 있도록 호환 값을 함께 저장한다.
+		this.overallSummary = content.oneLineSummary();
+		this.oneLineSummary = content.oneLineSummary();
 		this.keyTopics = new ArrayList<>(content.keyTopics());
+		this.discussionSections = new ArrayList<>(content.discussionSections());
 		this.decisions = new ArrayList<>(content.decisions());
-		this.actionItems = new ArrayList<>(content.actionItems());
-		this.openQuestions = new ArrayList<>(content.openQuestions());
+		this.actionItems = new ArrayList<>(content.confirmationItems());
+		this.openQuestions = new ArrayList<>(content.tentativeDirections());
+		this.tentativeDirections = new ArrayList<>(content.tentativeDirections());
+		this.confirmationItems = new ArrayList<>(content.confirmationItems());
 		this.generatedAt = summary.generatedAt();
 	}
 
@@ -82,7 +103,14 @@ public class MeetingSummaryEntity extends BaseEntity {
 				meetingId,
 				jobId,
 				version,
-				new GeneratedSummary(overallSummary, keyTopics, decisions, actionItems, openQuestions),
+				new GeneratedSummary(
+						oneLineSummary == null ? overallSummary : oneLineSummary,
+						keyTopics,
+						discussionSections,
+						decisions,
+						tentativeDirections == null ? openQuestions : tentativeDirections,
+						confirmationItems == null ? actionItems : confirmationItems
+				),
 				generatedAt
 		);
 	}

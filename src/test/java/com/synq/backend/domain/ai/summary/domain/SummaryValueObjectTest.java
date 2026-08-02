@@ -9,13 +9,14 @@ class SummaryValueObjectTest {
 
 	@Test
 	void null_리스트는_빈_불변_리스트로_정규화한다() {
-		GeneratedSummary summary = new GeneratedSummary("요약", null, null, null, null);
+		GeneratedSummary summary = new GeneratedSummary("요약", null, null, null, null, null);
 		SummaryContext context = new SummaryContext(1L, "전사", null);
 
 		assertThat(summary.keyTopics()).isEmpty();
 		assertThat(summary.decisions()).isEmpty();
-		assertThat(summary.actionItems()).isEmpty();
-		assertThat(summary.openQuestions()).isEmpty();
+		assertThat(summary.discussionSections()).isEmpty();
+		assertThat(summary.tentativeDirections()).isEmpty();
+		assertThat(summary.confirmationItems()).isEmpty();
 		assertThat(context.referenceContexts()).isEmpty();
 	}
 

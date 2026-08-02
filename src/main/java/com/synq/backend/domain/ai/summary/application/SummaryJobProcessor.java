@@ -192,11 +192,13 @@ public class SummaryJobProcessor {
 
 	private String formatPartialSummary(GeneratedSummary summary) {
 		List<String> parts = new ArrayList<>();
-		parts.add("[요약] " + summary.overallSummary());
+		parts.add("[한 줄 요약] " + summary.oneLineSummary());
 		appendIfPresent(parts, "[주제] ", summary.keyTopics());
+		summary.discussionSections().forEach(section ->
+				parts.add("[주요 논의] " + section.title() + ": " + String.join(", ", section.details())));
 		appendIfPresent(parts, "[결정] ", summary.decisions());
-		appendIfPresent(parts, "[할 일] ", summary.actionItems());
-		appendIfPresent(parts, "[질문] ", summary.openQuestions());
+		appendIfPresent(parts, "[논의 방향] ", summary.tentativeDirections());
+		appendIfPresent(parts, "[확인 필요] ", summary.confirmationItems());
 		return String.join("\n", parts);
 	}
 
