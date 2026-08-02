@@ -21,6 +21,8 @@ public interface TranscriptSegmentRepository extends JpaRepository<TranscriptSeg
 			Integer fromSequenceIndex,
 			Integer toSequenceIndex
 	);
+	// 경로의 meetingId 소속이 맞는지 조회 시점에 함께 확인한다.
+	Optional<TranscriptSegment> findByIdAndMeetingId(Long id, Long meetingId);
 
 	@Query("select max(s.sequenceIndex) from TranscriptSegment s where s.meetingId = :meetingId")
 	Optional<Integer> findMaxSequenceByMeetingId(@Param("meetingId") Long meetingId);
