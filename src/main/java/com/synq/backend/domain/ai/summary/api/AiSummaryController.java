@@ -9,6 +9,10 @@ import com.synq.backend.domain.auth.jwt.CurrentUserIdResolver;
 import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Positive;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -26,6 +30,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequestMapping("/meetings/{meetingId}")
+@Tag(name = "AI Summary", description = "회의 종료 후 AI 요약 API")
+@SecurityRequirement(name = "bearerAuth")
 public class AiSummaryController {
 
 	private final MeetingSummaryService meetingSummaryService;
@@ -43,9 +49,18 @@ public class AiSummaryController {
 	}
 
 	@Operation(summary = "회의 종료 후 AI 요약 생성")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "202", description = "AI 요약 생성 요청 접수", useReturnTypeSchema = true),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "회의 참여자가 아님"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 회의"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "종료되지 않은 회의 또는 이미 처리 중인 요청"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "요약 작업을 접수할 수 없음")
+	})
 	@PostMapping("/ai-summary/generate")
 	public ResponseEntity<ApiResponse<SummaryJobResponse>> generate(
 			@PathVariable @Positive Long meetingId,
+			@Parameter(hidden = true)
 			@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
 	) {
 		Long userId = currentUserIdResolver.resolve(authorization);
@@ -56,10 +71,18 @@ public class AiSummaryController {
 	}
 
 	@Operation(summary = "회의 종료 후 AI 요약 작업 상태 조회")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "AI 요약 작업 상태 조회 성공", useReturnTypeSchema = true),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "jobId 또는 요청값 오류"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "회의 참여자가 아님"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 회의 또는 요약 작업")
+	})
 	@GetMapping("/ai-summary/status")
 	public ApiResponse<SummaryJobResponse> getStatus(
 			@PathVariable @Positive Long meetingId,
 			@RequestParam UUID jobId,
+			@Parameter(hidden = true)
 			@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
 	) {
 		Long userId = currentUserIdResolver.resolve(authorization);
@@ -68,9 +91,16 @@ public class AiSummaryController {
 	}
 
 	@Operation(summary = "회의 종료 후 AI 요약 조회")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "전체 회의 요약 조회 성공", useReturnTypeSchema = true),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "회의 참여자가 아님"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 회의 또는 생성된 요약 없음")
+	})
 	@GetMapping("/summary")
 	public ApiResponse<MeetingSummaryResponse> getSummary(
 			@PathVariable @Positive Long meetingId,
+			@Parameter(hidden = true)
 			@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
 	) {
 		Long userId = currentUserIdResolver.resolve(authorization);
@@ -79,9 +109,16 @@ public class AiSummaryController {
 	}
 
 	@Operation(summary = "회의 종료 후 내 개인 요약 조회")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "내 개인 요약 조회 성공", useReturnTypeSchema = true),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "회의 참여자가 아님"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 회의 또는 생성된 개인 요약 없음")
+	})
 	@GetMapping("/summary/me")
 	public ApiResponse<PersonalSummaryResponse> getMySummary(
 			@PathVariable @Positive Long meetingId,
+			@Parameter(hidden = true)
 			@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
 	) {
 		Long userId = currentUserIdResolver.resolve(authorization);
