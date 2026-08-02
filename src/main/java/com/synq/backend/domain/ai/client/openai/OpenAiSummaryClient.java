@@ -10,6 +10,7 @@ import com.synq.backend.domain.ai.summary.domain.SummaryContext;
 import com.synq.backend.domain.ai.summary.domain.SummaryAiClient;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -166,7 +167,7 @@ public class OpenAiSummaryClient implements SummaryAiClient, PersonalSummaryAiCl
 	private String formatOverallSummary(GeneratedSummary summary) {
 		String sections = summary.discussionSections().stream()
 				.map(section -> "- " + section.title() + ": " + String.join(" / ", section.details()))
-				.reduce("", (left, right) -> left.isEmpty() ? right : left + "\n" + right);
+				.collect(Collectors.joining("\n"));
 		return """
 				한 줄 요약: %s
 				핵심 키워드: %s

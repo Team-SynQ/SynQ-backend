@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.synq.backend.domain.ai.summary.domain.DiscussionSection;
 import com.synq.backend.domain.ai.summary.domain.GeneratedSummary;
 import com.synq.backend.domain.ai.summary.domain.PersonalSummaryTarget;
 import com.synq.backend.domain.ai.summary.domain.SummaryContext;
@@ -63,7 +64,14 @@ class OpenAiSummaryClientTest {
 						}
 						""");
 		var context = new SummaryContext(1L, "전체 전사", List.of());
-		var overall = new GeneratedSummary("한 줄 요약", List.of(), List.of(), List.of(), List.of(), List.of());
+		var overall = new GeneratedSummary(
+				"한 줄 요약",
+				List.of(),
+				List.of(new DiscussionSection("출시 일정", List.of("베타 일정을 검토한다."))),
+				List.of(),
+				List.of(),
+				List.of()
+		);
 
 		client.generate(
 				context,
@@ -76,6 +84,7 @@ class OpenAiSummaryClientTest {
 				prompt.capture(), eq("personal_meeting_summary"), anyMap());
 		assertThat(prompt.getValue())
 				.contains("DEV_TECH - 백엔드", "TECH_RISK")
-				.contains("직접 말했거나 업무를 약속했다고 단정하지 마세요");
+				.contains("직접 말했거나 업무를 약속했다고 단정하지 마세요")
+				.contains("한 줄 요약: 한 줄 요약", "- 출시 일정: 베타 일정을 검토한다.");
 	}
 }

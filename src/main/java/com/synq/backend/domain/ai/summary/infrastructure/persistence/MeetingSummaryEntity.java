@@ -87,7 +87,9 @@ public class MeetingSummaryEntity extends BaseEntity {
 		this.keyTopics = new ArrayList<>(content.keyTopics());
 		this.discussionSections = new ArrayList<>(content.discussionSections());
 		this.decisions = new ArrayList<>(content.decisions());
+		// 새 필드가 없는 기존 행을 읽을 때 action_items를 confirmationItems로 되살릴 수 있게 매핑한다.
 		this.actionItems = new ArrayList<>(content.confirmationItems());
+		// 새 필드가 없는 기존 행을 읽을 때 open_questions를 tentativeDirections로 되살릴 수 있게 매핑한다.
 		this.openQuestions = new ArrayList<>(content.tentativeDirections());
 		this.tentativeDirections = new ArrayList<>(content.tentativeDirections());
 		this.confirmationItems = new ArrayList<>(content.confirmationItems());

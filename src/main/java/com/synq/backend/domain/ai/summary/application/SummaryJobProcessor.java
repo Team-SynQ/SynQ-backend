@@ -133,18 +133,11 @@ public class SummaryJobProcessor {
 			}
 
 			List<String> partialSummaries = split(reducedTranscript, properties.maxInputChars()).stream()
-					.map(chunk -> summaryAiClient.generate(new SummaryContext(
-							context.meetingId(),
-							chunk,
-							List.of()
-					)))
-					.map(this::formatPartialSummary)
+					.map(chunk -> reduceChunk(context.meetingId(), chunk))
 					.toList();
-			String nextTranscript = String.join("\n\n", partialSummaries);
-			if (nextTranscript.length() >= reducedTranscript.length()) {
-				throw new IllegalStateException("회의 전사 축약 결과가 원문보다 짧지 않습니다.");
-			}
-			reducedTranscript = nextTranscript;
+			// 부분 요약은 최종 응답이 아닌 다음 AI 호출을 위한 중간 컨텍스트다. 모델이 길게
+			// 응답하더라도 원문보다 작게 제한해 축약 단계가 실패하거나 무한 반복되지 않게 한다.
+			reducedTranscript = abbreviate(String.join("\n\n", partialSummaries), reducedTranscript.length() - 1);
 		}
 
 		var reducedContext = new SummaryContext(context.meetingId(), reducedTranscript, context.referenceContexts());
@@ -188,6 +181,21 @@ public class SummaryJobProcessor {
 			chunks.add(current.toString());
 			current.setLength(0);
 		}
+	}
+
+	private String reduceChunk(Long meetingId, String chunk) {
+		GeneratedSummary partialSummary = summaryAiClient.generate(new SummaryContext(meetingId, chunk, List.of()));
+		return abbreviate(formatPartialSummary(partialSummary), Math.max(1, chunk.length() / 2));
+	}
+
+	private String abbreviate(String text, int maxChars) {
+		if (text.length() <= maxChars) {
+			return text;
+		}
+		if (maxChars == 1) {
+			return "…";
+		}
+		return text.substring(0, maxChars - 1) + "…";
 	}
 
 	private String formatPartialSummary(GeneratedSummary summary) {
