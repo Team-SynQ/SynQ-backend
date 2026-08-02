@@ -2,10 +2,12 @@ package com.synq.backend.domain.ai.assistant.application;
 
 import com.synq.backend.domain.ai.assistant.code.AiChatErrorCode;
 import com.synq.backend.domain.ai.assistant.domain.AiChatClient;
+import com.synq.backend.domain.ai.assistant.domain.AiChatContext;
 import com.synq.backend.domain.ai.assistant.domain.AiChatMessage;
 import com.synq.backend.domain.ai.assistant.domain.AiChatPrompt;
 import com.synq.backend.domain.ai.assistant.domain.AiChatResult;
 import com.synq.backend.domain.ai.assistant.domain.AiChatStatus;
+import com.synq.backend.domain.ai.assistant.domain.AiChatWelcome;
 import com.synq.backend.domain.meeting.code.MeetingErrorCode;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingStatus;
@@ -25,17 +27,20 @@ public class AiChatService {
 	private final MeetingParticipantRepository meetingParticipantRepository;
 	private final AiChatClient aiChatClient;
 	private final AiChatStore aiChatStore;
+	private final AiChatContextBuilder contextBuilder;
 
 	public AiChatService(
 			MeetingRepository meetingRepository,
 			MeetingParticipantRepository meetingParticipantRepository,
 			AiChatClient aiChatClient,
-			AiChatStore aiChatStore
+			AiChatStore aiChatStore,
+			AiChatContextBuilder contextBuilder
 	) {
 		this.meetingRepository = meetingRepository;
 		this.meetingParticipantRepository = meetingParticipantRepository;
 		this.aiChatClient = aiChatClient;
 		this.aiChatStore = aiChatStore;
+		this.contextBuilder = contextBuilder;
 	}
 
 	public AiChatSendResult send(
@@ -47,6 +52,20 @@ public class AiChatService {
 	) {
 		validateSendAccess(meetingId, userId, linkedSegmentId);
 		String normalizedQuestion = question.trim();
+		AiChatMessage existing = aiChatStore.findByRequestId(meetingId, userId, clientRequestId).orElse(null);
+		if (existing != null) {
+			return existingResult(existing, normalizedQuestion, linkedSegmentId);
+		}
+
+		// 선택 발화 검증과 RAG 검색이 실패하면 메시지를 남기지 않는다.
+		AiChatContext context;
+		try {
+			context = contextBuilder.build(meetingId, userId, normalizedQuestion, linkedSegmentId);
+		} catch (GeneralException exception) {
+			throw exception;
+		} catch (RuntimeException exception) {
+			throw new GeneralException(AiChatErrorCode.AI_GENERATION_FAILED, exception);
+		}
 
 		AiChatMessage message;
 		try {
@@ -55,26 +74,17 @@ public class AiChatService {
 					userId,
 					linkedSegmentId,
 					clientRequestId,
-					normalizedQuestion
-			);
+						normalizedQuestion
+				);
 		} catch (DataIntegrityViolationException duplicateRequest) {
-			AiChatMessage existing = aiChatStore.findByRequestId(meetingId, userId, clientRequestId)
-					.orElseThrow(() -> duplicateRequest);
-			if (!existing.getQuestion().equals(normalizedQuestion)
-					|| !Objects.equals(existing.getLinkedSegmentId(), linkedSegmentId)) {
-				throw new GeneralException(AiChatErrorCode.IDEMPOTENCY_KEY_REUSED);
-			}
-			if (existing.getStatus() == AiChatStatus.FAILED) {
-				throw new GeneralException(AiChatErrorCode.AI_GENERATION_FAILED);
-			}
-			return new AiChatSendResult(existing, false);
+			AiChatMessage raceWinner = aiChatStore.findByRequestId(meetingId, userId, clientRequestId)
+						.orElseThrow(() -> duplicateRequest);
+			return existingResult(raceWinner, normalizedQuestion, linkedSegmentId);
 		}
 
 		AiChatResult result;
 		try {
-			result = aiChatClient.generate(
-					new AiChatPrompt(meetingId, userId, normalizedQuestion, linkedSegmentId)
-			);
+			result = aiChatClient.generate(new AiChatPrompt(normalizedQuestion, context));
 		} catch (RuntimeException exception) {
 			aiChatStore.fail(
 					message.getId(),
@@ -87,9 +97,40 @@ public class AiChatService {
 		return new AiChatSendResult(aiChatStore.complete(message.getId(), result), true);
 	}
 
+	private AiChatSendResult existingResult(
+			AiChatMessage existing,
+			String normalizedQuestion,
+			Long linkedSegmentId
+	) {
+		if (!existing.getQuestion().equals(normalizedQuestion)
+				|| !Objects.equals(existing.getLinkedSegmentId(), linkedSegmentId)) {
+			throw new GeneralException(AiChatErrorCode.IDEMPOTENCY_KEY_REUSED);
+		}
+		if (existing.getStatus() == AiChatStatus.FAILED) {
+			throw new GeneralException(AiChatErrorCode.AI_GENERATION_FAILED);
+		}
+		return new AiChatSendResult(existing, false);
+	}
+
 	public Page<AiChatMessage> getHistory(Long meetingId, Long userId, int page, int size) {
 		validateHistoryAccess(meetingId, userId);
 		return aiChatStore.findHistory(meetingId, userId, page, size);
+	}
+
+	public AiChatWelcome getWelcome(Long meetingId, Long userId) {
+		validateSendAccess(meetingId, userId, null);
+		try {
+			return aiChatClient.generateWelcome(contextBuilder.build(
+					meetingId,
+					userId,
+					"현재 회의의 핵심 논의와 사용자가 확인할 다음 사항",
+					null
+			));
+		} catch (GeneralException exception) {
+			throw exception;
+		} catch (RuntimeException exception) {
+			throw new GeneralException(AiChatErrorCode.AI_GENERATION_FAILED, exception);
+		}
 	}
 
 	private void validateSendAccess(Long meetingId, Long userId, Long linkedSegmentId) {
@@ -99,10 +140,6 @@ public class AiChatService {
 		}
 		if (!meetingParticipantRepository.existsByMeetingIdAndUserIdAndLeftAtIsNull(meetingId, userId)) {
 			throw new GeneralException(AiChatErrorCode.NOT_MEETING_PARTICIPANT);
-		}
-		// transcript_segment 영속 도메인이 main에 아직 없으므로, 소유 관계를 검증할 수 없는 ID는 사용하지 않는다.
-		if (linkedSegmentId != null) {
-			throw new GeneralException(AiChatErrorCode.LINKED_SEGMENT_NOT_AVAILABLE);
 		}
 	}
 

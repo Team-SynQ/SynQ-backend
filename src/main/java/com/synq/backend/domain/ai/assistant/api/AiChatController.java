@@ -3,6 +3,7 @@ package com.synq.backend.domain.ai.assistant.api;
 import com.synq.backend.domain.ai.assistant.api.dto.AiChatHistoryResponse;
 import com.synq.backend.domain.ai.assistant.api.dto.AiChatMessageResponse;
 import com.synq.backend.domain.ai.assistant.api.dto.AiChatSendRequest;
+import com.synq.backend.domain.ai.assistant.api.dto.AiChatWelcomeResponse;
 import com.synq.backend.domain.ai.assistant.application.AiChatService;
 import com.synq.backend.domain.auth.jwt.CurrentUserIdResolver;
 import com.synq.backend.global.apipayload.ApiResponse;
@@ -27,6 +28,15 @@ public class AiChatController implements AiChatControllerDocs {
 	) {
 		this.aiChatService = aiChatService;
 		this.currentUserIdResolver = currentUserIdResolver;
+	}
+
+	@Override
+	public ApiResponse<AiChatWelcomeResponse> getWelcome(Long meetingId, String authorization) {
+		Long userId = currentUserIdResolver.resolve(authorization);
+		return ApiResponse.onSuccess(
+				GeneralSuccessCode.REQUEST_OK,
+				AiChatWelcomeResponse.from(aiChatService.getWelcome(meetingId, userId))
+		);
 	}
 
 	@Override

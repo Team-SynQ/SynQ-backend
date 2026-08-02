@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -12,7 +13,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import com.synq.backend.domain.ai.assistant.repository.AiChatMessageRepository;
 import com.synq.backend.domain.ai.assistant.domain.AiChatStatus;
+import com.synq.backend.domain.ai.assistant.domain.AiChatPrompt;
 import com.synq.backend.domain.ai.assistant.mock.FakeAiChatClient;
+import com.synq.backend.domain.ai.assistant.code.AiChatErrorCode;
+import com.synq.backend.domain.ai.rag.search.ChunkSearcher;
 import com.synq.backend.domain.auth.jwt.AccessTokenBlacklistService;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
 import com.synq.backend.domain.meeting.entity.Meeting;
@@ -20,12 +24,16 @@ import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
+import com.synq.backend.domain.transcript.entity.TranscriptSegment;
+import com.synq.backend.domain.transcript.repository.TranscriptSegmentRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
+import com.synq.backend.global.apipayload.exception.GeneralException;
 import com.synq.backend.support.PostgresTestContainer;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
@@ -54,6 +62,9 @@ class AiChatControllerTest extends PostgresTestContainer {
 	private AiChatMessageRepository aiChatMessageRepository;
 
 	@Autowired
+	private TranscriptSegmentRepository transcriptSegmentRepository;
+
+	@Autowired
 	private JwtProvider jwtProvider;
 
 	@MockitoBean
@@ -62,10 +73,15 @@ class AiChatControllerTest extends PostgresTestContainer {
 	@MockitoSpyBean
 	private FakeAiChatClient fakeAiChatClient;
 
+	@MockitoSpyBean
+	private ChunkSearcher chunkSearcher;
+
 	@BeforeEach
 	void cleanUp() {
 		reset(fakeAiChatClient);
+		reset(chunkSearcher);
 		aiChatMessageRepository.deleteAll();
+		transcriptSegmentRepository.deleteAll();
 		meetingParticipantRepository.deleteAll();
 		meetingRepository.deleteAll();
 		userRepository.deleteAll();
@@ -260,6 +276,100 @@ class AiChatControllerTest extends PostgresTestContainer {
 						.content(requestBody("선택 발화를 설명해줘", 999L, UUID.randomUUID())))
 				.andExpect(status().isUnprocessableEntity())
 				.andExpect(jsonPath("$.code").value("AI_CHAT422_1"));
+
+		assertThat(aiChatMessageRepository.count()).isZero();
+	}
+
+	@Test
+	void 선택_발화를_기반으로_질문할_수_있다() throws Exception {
+		User user = saveUser("선택 발화 사용자", "selected-segment-chat@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(user.getUserId());
+		TranscriptSegment segment = transcriptSegmentRepository.save(
+				TranscriptSegment.of(meeting.getId(), 0, 0, 1000, "이번 주에는 온보딩 개선을 먼저 진행합니다.")
+		);
+
+		mockMvc.perform(post("/meetings/{meetingId}/chat-messages", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody("이 발화의 핵심이 뭐야?", segment.getId(), UUID.randomUUID())))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.result.linkedSegmentId").value(segment.getId()))
+				.andExpect(jsonPath("$.result.status").value("COMPLETED"));
+
+		ArgumentCaptor<AiChatPrompt> promptCaptor = ArgumentCaptor.forClass(AiChatPrompt.class);
+		verify(fakeAiChatClient).generate(promptCaptor.capture());
+		assertThat(promptCaptor.getValue().context().transcripts())
+				.extracting(value -> value.id())
+				.containsExactly(segment.getId());
+	}
+
+	@Test
+	void 일반_질문에는_최근_발화_최대_12개만_전달한다() throws Exception {
+		User user = saveUser("최근 전사 사용자", "recent-transcript-chat@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(user.getUserId());
+		for (int index = 0; index < 13; index++) {
+			transcriptSegmentRepository.save(
+					TranscriptSegment.of(meeting.getId(), index, index * 1000, index * 1000 + 500, "발화 " + index)
+			);
+		}
+
+		mockMvc.perform(post("/meetings/{meetingId}/chat-messages", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody("최근 논의는 무엇인가요?", null, UUID.randomUUID())))
+				.andExpect(status().isCreated());
+
+		ArgumentCaptor<AiChatPrompt> promptCaptor = ArgumentCaptor.forClass(AiChatPrompt.class);
+		verify(fakeAiChatClient).generate(promptCaptor.capture());
+		assertThat(promptCaptor.getValue().context().transcripts())
+				.hasSize(12)
+				.extracting(value -> value.content())
+				.containsExactly("발화 1", "발화 2", "발화 3", "발화 4", "발화 5", "발화 6",
+						"발화 7", "발화 8", "발화 9", "발화 10", "발화 11", "발화 12");
+	}
+
+	@Test
+	void RAG_맥락_구성에_실패하면_GENERATING_메시지를_남기지_않는다() throws Exception {
+		User user = saveUser("RAG 실패 사용자", "rag-failed-chat@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(user.getUserId());
+		doThrow(new IllegalStateException("임베딩 서비스 장애"))
+				.when(chunkSearcher)
+				.search(any());
+
+		mockMvc.perform(post("/meetings/{meetingId}/chat-messages", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody("RAG 검색 실패 질문", null, UUID.randomUUID())))
+				.andExpect(status().isBadGateway())
+				.andExpect(jsonPath("$.code").value("AI_CHAT502_1"));
+
+		assertThat(aiChatMessageRepository.count()).isZero();
+	}
+
+	@Test
+	void 진행_중인_회의_참여자는_초기_안내와_추천_질문을_조회할_수_있다() throws Exception {
+		User user = saveUser("추천 질문 사용자", "chat-welcome@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(user.getUserId());
+
+		mockMvc.perform(get("/meetings/{meetingId}/chat-messages/suggestions", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId())))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result.welcomeMessage").isNotEmpty())
+				.andExpect(jsonPath("$.result.suggestedQuestions.length()").value(2));
+	}
+
+	@Test
+	void 초기_추천_질문_맥락_구성의_도메인_오류는_그대로_반환한다() throws Exception {
+		User user = saveUser("추천 질문 오류 사용자", "chat-welcome-error@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(user.getUserId());
+		doThrow(new GeneralException(AiChatErrorCode.CHAT_NOT_AVAILABLE))
+				.when(chunkSearcher)
+				.search(any());
+
+		mockMvc.perform(get("/meetings/{meetingId}/chat-messages/suggestions", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId())))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("AI_CHAT409_1"));
 	}
 
 	@Test

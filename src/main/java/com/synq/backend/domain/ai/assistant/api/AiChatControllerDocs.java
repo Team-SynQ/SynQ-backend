@@ -3,6 +3,7 @@ package com.synq.backend.domain.ai.assistant.api;
 import com.synq.backend.domain.ai.assistant.api.dto.AiChatHistoryResponse;
 import com.synq.backend.domain.ai.assistant.api.dto.AiChatMessageResponse;
 import com.synq.backend.domain.ai.assistant.api.dto.AiChatSendRequest;
+import com.synq.backend.domain.ai.assistant.api.dto.AiChatWelcomeResponse;
 import com.synq.backend.global.apipayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +22,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "AI Chat", description = "회의 중 AI 채팅 API")
 public interface AiChatControllerDocs {
+
+	@Operation(summary = "AI Chat 초기 안내 및 추천 질문 조회")
+	@GetMapping("/suggestions")
+	ApiResponse<AiChatWelcomeResponse> getWelcome(
+			@PathVariable @Positive Long meetingId,
+			@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
+	);
 
 	@Operation(summary = "AI 채팅 질문 전송")
 	@PostMapping
