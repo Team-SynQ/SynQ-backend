@@ -8,4 +8,6 @@ import java.util.List;
 public interface ReferenceMaterialRepository extends JpaRepository<ReferenceMaterial, Long> {
 
 	List<ReferenceMaterial> findAllByProjectIdOrderByCreatedAtDescIdDesc(Long projectId);
+
+	long countByProjectId(Long projectId);
 }
