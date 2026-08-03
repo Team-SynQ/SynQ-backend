@@ -66,4 +66,8 @@ public class User {
 	public static User ofLocal(String name, String email, String passwordHash) {
 		return new User(name, email, passwordHash, Provider.LOCAL, null);
 	}
+
+	public void updateName(String name) {
+		this.name = name;
+	}
 }
