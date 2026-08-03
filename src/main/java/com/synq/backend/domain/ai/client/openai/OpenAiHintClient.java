@@ -86,9 +86,16 @@ public class OpenAiHintClient implements HintAiClient {
 				String.join(" ", input.windowBefore()),
 				input.focusSegment(),
 				String.join(" ", input.windowAfter()),
-				blankToDash(input.role()),
-				blankToDash(input.perspective()),
+				blankToDash(roleText(input)),
+				input.perspectives().isEmpty() ? "(미입력)" : String.join(", ", input.perspectives()),
 				referencesText(input.references()));
+	}
+
+	private String roleText(HintInput input) {
+		if (input.detailRole().isBlank()) {
+			return input.role();
+		}
+		return input.role() + " - " + input.detailRole();
 	}
 
 	private String blankToDash(String value) {

@@ -28,7 +28,7 @@ class OpenAiHintClientTest {
 		given(openAiClient.createStructuredText(any(), eq("three_hint"), any())).willReturn(json);
 
 		OpenAiHintClient client = new OpenAiHintClient(openAiClient, new ObjectMapper());
-		HintInput input = new HintInput("발화", List.of(), List.of(), "PM", "속도 우선",
+		HintInput input = new HintInput("발화", List.of(), List.of(), "PM", "", List.of("속도 우선"),
 				LiveContextSnapshot.empty(), List.of());
 
 		HintResult result = client.generate(input);

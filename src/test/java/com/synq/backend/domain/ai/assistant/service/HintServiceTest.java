@@ -28,7 +28,7 @@ class HintServiceTest {
 
 	@Test
 	void 조립한_입력으로_힌트를_생성한다() {
-		HintInput input = new HintInput("발화", List.of(), List.of(), "PM", "속도 우선",
+		HintInput input = new HintInput("발화", List.of(), List.of(), "PM", "", List.of("속도 우선"),
 				LiveContextSnapshot.empty(), List.of());
 		given(contextBuilder.build(eq(10L), eq(1L), eq(3L))).willReturn(input);
 

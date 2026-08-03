@@ -16,9 +16,6 @@ import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
 import com.synq.backend.domain.transcript.entity.TranscriptSegment;
 import com.synq.backend.domain.transcript.repository.TranscriptSegmentRepository;
-import com.synq.backend.domain.user.entity.RoleProfile;
-import com.synq.backend.domain.user.repository.RoleProfilePerspectiveRepository;
-import com.synq.backend.domain.user.repository.RoleProfileRepository;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,8 +36,7 @@ public class AiChatContextBuilder {
 	private final TranscriptSegmentRepository transcriptSegmentRepository;
 	private final LiveContextRepository liveContextRepository;
 	private final AiChatStore aiChatStore;
-	private final RoleProfileRepository roleProfileRepository;
-	private final RoleProfilePerspectiveRepository perspectiveRepository;
+	private final MemberProfileReader memberProfileReader;
 	private final ChunkSearcher chunkSearcher;
 	private final AiChatProperties properties;
 
@@ -49,8 +45,7 @@ public class AiChatContextBuilder {
 			TranscriptSegmentRepository transcriptSegmentRepository,
 			LiveContextRepository liveContextRepository,
 			AiChatStore aiChatStore,
-			RoleProfileRepository roleProfileRepository,
-			RoleProfilePerspectiveRepository perspectiveRepository,
+			MemberProfileReader memberProfileReader,
 			ChunkSearcher chunkSearcher,
 			AiChatProperties properties
 	) {
@@ -58,8 +53,7 @@ public class AiChatContextBuilder {
 		this.transcriptSegmentRepository = transcriptSegmentRepository;
 		this.liveContextRepository = liveContextRepository;
 		this.aiChatStore = aiChatStore;
-		this.roleProfileRepository = roleProfileRepository;
-		this.perspectiveRepository = perspectiveRepository;
+		this.memberProfileReader = memberProfileReader;
 		this.chunkSearcher = chunkSearcher;
 		this.properties = properties;
 	}
@@ -75,17 +69,13 @@ public class AiChatContextBuilder {
 				properties.ragMinSimilarity()
 		));
 
-		RoleProfile profile = roleProfileRepository.findByUserIdAndIsDefaultTrue(userId).orElse(null);
-		List<String> perspectives = profile == null ? List.of() : perspectiveRepository
-				.findAllByRoleProfileId(profile.getId()).stream()
-				.map(value -> value.getPerspective().name())
-				.toList();
+		MemberProfile memberProfile = memberProfileReader.find(meeting.getProjectId(), userId);
 
 		return new AiChatContext(
 				meetingId,
 				userId,
-				roleDescription(profile),
-				perspectives,
+				roleDescription(memberProfile),
+				memberProfile.perspectives(),
 				liveContextRepository.findByMeetingId(meetingId)
 						.map(LiveContextSnapshot::from)
 						.orElseGet(LiveContextSnapshot::empty),
@@ -160,13 +150,13 @@ public class AiChatContextBuilder {
 		return new AiChatReference(reference.referenceMaterialId(), reference.chunkId(), reference.content());
 	}
 
-	private String roleDescription(RoleProfile profile) {
-		if (profile == null) {
+	private String roleDescription(MemberProfile profile) {
+		if (profile.role().isBlank()) {
 			return "";
 		}
-		if (profile.getDetailRole() == null || profile.getDetailRole().isBlank()) {
-			return profile.getRole().name();
+		if (profile.detailRole().isBlank()) {
+			return profile.role();
 		}
-		return profile.getRole().name() + " - " + profile.getDetailRole();
+		return profile.role() + " - " + profile.detailRole();
 	}
 }
