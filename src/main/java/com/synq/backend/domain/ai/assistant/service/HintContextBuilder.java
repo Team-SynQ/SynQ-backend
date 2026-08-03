@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 3-hint 전용 입력 조립기.
@@ -37,7 +36,9 @@ public class HintContextBuilder {
 	private final ChunkSearcher chunkSearcher;
 	private final AssistantHintProperties properties;
 
-	@Transactional(readOnly = true)
+	// 트랜잭션으로 묶지 않는다. chunkSearcher 가 임베딩 API 를 호출하므로,
+	// 전체를 감싸면 외부 응답을 기다리는 동안 DB 커넥션을 점유한다(open-in-view=false).
+	// 네 번의 단건 조회는 서로 독립적이라 읽기 일관성이 필요하지 않다.
 	public HintInput build(Long userId, Long meetingId, Long segmentId) {
 		TranscriptSegment focus = transcriptSegmentRepository.findById(segmentId)
 				.orElseThrow(() -> new GeneralException(AssistantErrorCode.SEGMENT_NOT_FOUND));

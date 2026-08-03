@@ -65,6 +65,35 @@ class HintPromptFactoryTest {
 	}
 
 	@Test
+	void 회의_맥락_값이_있으면_그대로_렌더링한다() {
+		HintInput input = new HintInput(
+				"클릭한 발화", List.of("앞 발화"), List.of("뒤 발화"),
+				"DEV_TECH", "백엔드", List.of("TECH_RISK"),
+				new LiveContextSnapshot(
+						"지금까지 배포 일정을 논의했다",
+						"배포 일정",
+						List.of("금요일 배포로 결정"),
+						List.of("QA 일정 공유"),
+						List.of("롤백 기준은?", "담당자는?")),
+				List.of());
+
+		String prompt = factory.create(input);
+
+		assertThat(prompt).contains("누적 요약: 지금까지 배포 일정을 논의했다");
+		assertThat(prompt).contains("현재 주제: 배포 일정");
+		assertThat(prompt).contains("미해결 질문: 롤백 기준은? / 담당자는?");
+	}
+
+	@Test
+	void 회의_맥락이_비면_미입력과_없음으로_쓴다() {
+		String prompt = factory.create(input("DEV_TECH", "", List.of()));
+
+		assertThat(prompt).contains("누적 요약: (미입력)");
+		assertThat(prompt).contains("현재 주제: (미입력)");
+		assertThat(prompt).contains("미해결 질문: (없음)");
+	}
+
+	@Test
 	void 클릭한_발화와_앞뒤_맥락을_담는다() {
 		HintInput input = new HintInput(
 				"클릭한 발화", List.of("앞1", "앞2"), List.of("뒤1"),
