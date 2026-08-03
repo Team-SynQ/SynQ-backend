@@ -263,7 +263,7 @@ class SummaryJobAsyncTest {
 				Thread.currentThread().interrupt();
 				throw new IllegalStateException("요약 작업이 중단되었습니다.", e);
 			}
-			return new GeneratedSummary("요약", List.of(), List.of(), List.of(), List.of());
+			return new GeneratedSummary("요약", List.of(), List.of(), List.of(), List.of(), List.of());
 		}
 
 		boolean awaitStarted() throws InterruptedException {

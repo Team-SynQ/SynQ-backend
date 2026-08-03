@@ -133,18 +133,11 @@ public class SummaryJobProcessor {
 			}
 
 			List<String> partialSummaries = split(reducedTranscript, properties.maxInputChars()).stream()
-					.map(chunk -> summaryAiClient.generate(new SummaryContext(
-							context.meetingId(),
-							chunk,
-							List.of()
-					)))
-					.map(this::formatPartialSummary)
+					.map(chunk -> reduceChunk(context.meetingId(), chunk))
 					.toList();
-			String nextTranscript = String.join("\n\n", partialSummaries);
-			if (nextTranscript.length() >= reducedTranscript.length()) {
-				throw new IllegalStateException("회의 전사 축약 결과가 원문보다 짧지 않습니다.");
-			}
-			reducedTranscript = nextTranscript;
+			// 부분 요약은 최종 응답이 아닌 다음 AI 호출을 위한 중간 컨텍스트다. 모델이 길게
+			// 응답하더라도 원문보다 작게 제한해 축약 단계가 실패하거나 무한 반복되지 않게 한다.
+			reducedTranscript = abbreviate(String.join("\n\n", partialSummaries), reducedTranscript.length() - 1);
 		}
 
 		var reducedContext = new SummaryContext(context.meetingId(), reducedTranscript, context.referenceContexts());
@@ -190,13 +183,30 @@ public class SummaryJobProcessor {
 		}
 	}
 
+	private String reduceChunk(Long meetingId, String chunk) {
+		GeneratedSummary partialSummary = summaryAiClient.generate(new SummaryContext(meetingId, chunk, List.of()));
+		return abbreviate(formatPartialSummary(partialSummary), Math.max(1, chunk.length() / 2));
+	}
+
+	private String abbreviate(String text, int maxChars) {
+		if (text.length() <= maxChars) {
+			return text;
+		}
+		if (maxChars == 1) {
+			return "…";
+		}
+		return text.substring(0, maxChars - 1) + "…";
+	}
+
 	private String formatPartialSummary(GeneratedSummary summary) {
 		List<String> parts = new ArrayList<>();
-		parts.add("[요약] " + summary.overallSummary());
+		parts.add("[한 줄 요약] " + summary.oneLineSummary());
 		appendIfPresent(parts, "[주제] ", summary.keyTopics());
+		summary.discussionSections().forEach(section ->
+				parts.add("[주요 논의] " + section.title() + ": " + String.join(", ", section.details())));
 		appendIfPresent(parts, "[결정] ", summary.decisions());
-		appendIfPresent(parts, "[할 일] ", summary.actionItems());
-		appendIfPresent(parts, "[질문] ", summary.openQuestions());
+		appendIfPresent(parts, "[논의 방향] ", summary.tentativeDirections());
+		appendIfPresent(parts, "[확인 필요] ", summary.confirmationItems());
 		return String.join("\n", parts);
 	}
 

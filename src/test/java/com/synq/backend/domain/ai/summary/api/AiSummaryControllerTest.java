@@ -85,8 +85,17 @@ class AiSummaryControllerTest {
 		mockMvc.perform(get("/meetings/{meetingId}/summary", 1L)
 						.header("Authorization", "Bearer test-token"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.result.overallSummary").isNotEmpty())
-				.andExpect(jsonPath("$.result.actionItems[0]").value("API 명세 초안을 작성한다."));
+				.andExpect(jsonPath("$.result.oneLineSummary").isNotEmpty())
+				.andExpect(jsonPath("$.result.keyTopics").isArray())
+				.andExpect(jsonPath("$.result.discussionSections").isArray())
+				.andExpect(jsonPath("$.result.discussionSections[0].title").isNotEmpty())
+				.andExpect(jsonPath("$.result.decisions").isArray())
+				.andExpect(jsonPath("$.result.tentativeDirections").isArray())
+				.andExpect(jsonPath("$.result.confirmationItems").isArray())
+				.andExpect(jsonPath("$.result.confirmationItems[0]").value("API 명세 초안을 작성한다."))
+				.andExpect(jsonPath("$.result.overallSummary").doesNotExist())
+				.andExpect(jsonPath("$.result.actionItems").doesNotExist())
+				.andExpect(jsonPath("$.result.openQuestions").doesNotExist());
 
 		mockMvc.perform(get("/meetings/{meetingId}/summary/me", 1L)
 						.header("Authorization", "Bearer test-token"))

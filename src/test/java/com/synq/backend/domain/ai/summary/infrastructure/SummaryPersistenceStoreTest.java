@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.synq.backend.domain.ai.summary.domain.GeneratedPersonalSummary;
 import com.synq.backend.domain.ai.summary.domain.GeneratedSummary;
+import com.synq.backend.domain.ai.summary.domain.DiscussionSection;
 import com.synq.backend.domain.ai.summary.domain.MeetingSummary;
 import com.synq.backend.domain.ai.summary.domain.PersonalSummaryTarget;
 import com.synq.backend.domain.ai.summary.domain.SummaryJob;
@@ -14,6 +15,7 @@ import com.synq.backend.domain.ai.summary.infrastructure.persistence.JpaPersonal
 import com.synq.backend.domain.ai.summary.infrastructure.persistence.JpaSummaryJobStore;
 import com.synq.backend.support.PostgresTestContainer;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,7 +63,14 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 		SummaryJob processingJob = jobStore.startIfQueued(job.id()).orElseThrow();
 		assertThat(resultWriter.saveIfJobProcessing(
 				processingJob,
-				new GeneratedSummary("전체 요약", List.of("주제"), List.of(), List.of(), List.of()),
+				new GeneratedSummary(
+						"한 줄 요약",
+						List.of("주제"),
+						List.of(new DiscussionSection("주요 논의", List.of("세부 논의"))),
+						List.of(),
+						List.of(),
+						List.of("확인 항목")
+				),
 				List.of(new SummaryResultWriter.PersonalGeneration(
 						new PersonalSummaryTarget(USER_ID, "DEV_TECH", List.of("TECH_RISK")),
 						new GeneratedPersonalSummary("개인 요약", List.of("핵심"), List.of(), List.of())
@@ -72,6 +81,9 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 		var personal = personalSummaryStore.findLatestByMeetingIdAndUserId(MEETING_ID, USER_ID).orElseThrow();
 		assertThat(jobStore.findById(job.id()).orElseThrow().status()).isEqualTo(SummaryJobStatus.COMPLETED);
 		assertThat(overall.version()).isEqualTo(1);
+		assertThat(overall.content().oneLineSummary()).isEqualTo("한 줄 요약");
+		assertThat(overall.content().discussionSections())
+				.containsExactly(new DiscussionSection("주요 논의", List.of("세부 논의")));
 		assertThat(personal.version()).isEqualTo(overall.version());
 		assertThat(personal.content().personalSummary()).isEqualTo("개인 요약");
 	}
@@ -84,7 +96,7 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 
 		assertThat(resultWriter.saveIfJobProcessing(
 				processingJob,
-				new GeneratedSummary("전체 요약", List.of("주제"), List.of(), List.of(), List.of()),
+				new GeneratedSummary("한 줄 요약", List.of("주제"), List.of(), List.of(), List.of(), List.of("확인 항목")),
 				List.of(new SummaryResultWriter.PersonalGeneration(
 						new PersonalSummaryTarget(USER_ID, "DEV_TECH", List.of("TECH_RISK")),
 						new GeneratedPersonalSummary("개인 요약", List.of("핵심"), List.of(), List.of())
@@ -94,5 +106,28 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 		assertThat(jobStore.findById(job.id()).orElseThrow().status()).isEqualTo(SummaryJobStatus.FAILED);
 		assertThat(meetingSummaryStore.findLatestByMeetingId(MEETING_ID)).isEmpty();
 		assertThat(personalSummaryStore.findLatestByMeetingIdAndUserId(MEETING_ID, USER_ID)).isEmpty();
+	}
+
+	@Test
+	void 신규_컬럼이_없는_기존_요약도_새_응답_구조로_조회한다() {
+		UUID jobId = UUID.randomUUID();
+		jdbcTemplate.update("""
+				INSERT INTO ai_summary_job (id, meeting_id, status, retry_count, prompt_version, created_at)
+				VALUES (?, ?, 'COMPLETED', 0, 'legacy', now())
+				""", jobId, MEETING_ID);
+		jdbcTemplate.update("""
+				INSERT INTO meeting_summary (
+					meeting_id, job_id, version, overall_summary, key_topics, decisions,
+					action_items, open_questions, generated_at
+				) VALUES (?, ?, 99, '기존 전체 요약', '["주제"]'::jsonb, '[]'::jsonb,
+					'["확인 항목"]'::jsonb, '["논의 방향"]'::jsonb, now())
+				""", MEETING_ID, jobId);
+
+		MeetingSummary summary = meetingSummaryStore.findLatestByMeetingId(MEETING_ID).orElseThrow();
+
+		assertThat(summary.content().oneLineSummary()).isEqualTo("기존 전체 요약");
+		assertThat(summary.content().tentativeDirections()).containsExactly("논의 방향");
+		assertThat(summary.content().confirmationItems()).containsExactly("확인 항목");
+		assertThat(summary.content().discussionSections()).isEmpty();
 	}
 }

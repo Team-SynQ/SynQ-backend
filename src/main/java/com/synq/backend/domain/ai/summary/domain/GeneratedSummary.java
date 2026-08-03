@@ -3,18 +3,19 @@ package com.synq.backend.domain.ai.summary.domain;
 import java.util.List;
 
 public record GeneratedSummary(
-		String overallSummary,
+		String oneLineSummary,
 		List<String> keyTopics,
+		List<DiscussionSection> discussionSections,
 		List<String> decisions,
-		List<String> actionItems,
-		List<String> openQuestions
+		List<String> tentativeDirections,
+		List<String> confirmationItems
 ) {
 	public GeneratedSummary {
-		// API 응답과 저장 결과가 외부 리스트 변경의 영향을 받지 않게 한다.
 		keyTopics = immutableListOrEmpty(keyTopics);
+		discussionSections = immutableListOrEmpty(discussionSections);
 		decisions = immutableListOrEmpty(decisions);
-		actionItems = immutableListOrEmpty(actionItems);
-		openQuestions = immutableListOrEmpty(openQuestions);
+		tentativeDirections = immutableListOrEmpty(tentativeDirections);
+		confirmationItems = immutableListOrEmpty(confirmationItems);
 	}
 
 	private static <T> List<T> immutableListOrEmpty(List<T> values) {

@@ -7,10 +7,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.synq.backend.domain.ai.summary.domain.DiscussionSection;
 import com.synq.backend.domain.ai.summary.domain.GeneratedSummary;
 import com.synq.backend.domain.ai.summary.domain.PersonalSummaryTarget;
 import com.synq.backend.domain.ai.summary.domain.SummaryContext;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -21,26 +23,32 @@ class OpenAiSummaryClientTest {
 	private final OpenAiSummaryClient client = new OpenAiSummaryClient(openAiClient, new ObjectMapper());
 
 	@Test
+	@SuppressWarnings("unchecked")
 	void 전체_요약은_전체_전사와_참고자료만_프롬프트에_포함한다() {
 		when(openAiClient.createStructuredText(
 				Mockito.anyString(), eq("meeting_summary"), anyMap()))
 				.thenReturn("""
 						{
-						  "overallSummary": "전체 요약",
+						  "oneLineSummary": "한 줄 요약",
 						  "keyTopics": [],
+						  "discussionSections": [],
 						  "decisions": [],
-						  "actionItems": [],
-						  "openQuestions": []
+						  "tentativeDirections": [],
+						  "confirmationItems": []
 						}
 						""");
 
 		client.generate(new SummaryContext(1L, "실제 전체 전사", List.of("관련 참고자료")));
 
 		ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
-		verify(openAiClient).createStructuredText(prompt.capture(), eq("meeting_summary"), anyMap());
+		ArgumentCaptor<Map<String, Object>> schema = ArgumentCaptor.forClass(Map.class);
+		verify(openAiClient).createStructuredText(prompt.capture(), eq("meeting_summary"), schema.capture());
 		assertThat(prompt.getValue())
 				.contains("실제 전체 전사", "관련 참고자료")
 				.doesNotContain("회의 누적 맥락");
+		assertThat(schema.getValue().get("properties").toString())
+				.contains("oneLineSummary", "discussionSections", "tentativeDirections", "confirmationItems")
+				.doesNotContain("overallSummary", "actionItems", "openQuestions");
 	}
 
 	@Test
@@ -56,7 +64,14 @@ class OpenAiSummaryClientTest {
 						}
 						""");
 		var context = new SummaryContext(1L, "전체 전사", List.of());
-		var overall = new GeneratedSummary("전체 요약", List.of(), List.of(), List.of(), List.of());
+		var overall = new GeneratedSummary(
+				"한 줄 요약",
+				List.of(),
+				List.of(new DiscussionSection("출시 일정", List.of("베타 일정을 검토한다."))),
+				List.of(),
+				List.of(),
+				List.of()
+		);
 
 		client.generate(
 				context,
@@ -69,6 +84,7 @@ class OpenAiSummaryClientTest {
 				prompt.capture(), eq("personal_meeting_summary"), anyMap());
 		assertThat(prompt.getValue())
 				.contains("DEV_TECH - 백엔드", "TECH_RISK")
-				.contains("직접 말했거나 업무를 약속했다고 단정하지 마세요");
+				.contains("직접 말했거나 업무를 약속했다고 단정하지 마세요")
+				.contains("한 줄 요약: 한 줄 요약", "- 출시 일정: 베타 일정을 검토한다.");
 	}
 }

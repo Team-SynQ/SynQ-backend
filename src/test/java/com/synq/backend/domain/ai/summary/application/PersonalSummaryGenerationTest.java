@@ -62,7 +62,7 @@ class PersonalSummaryGenerationTest {
 		var fakeClient = new FakeSummaryAiClient();
 		com.synq.backend.domain.ai.summary.domain.SummaryAiClient compactSummaryClient =
 				context -> new com.synq.backend.domain.ai.summary.domain.GeneratedSummary(
-						"짧은 부분 요약", List.of(), List.of(), List.of(), List.of());
+						"짧은 부분 요약", List.of(), List.of(), List.of(), List.of(), List.of());
 		var contextBuilder = new SummaryContextBuilder(
 				meetingId -> List.of(new com.synq.backend.domain.ai.summary.domain.TranscriptSegment(
 						null,
