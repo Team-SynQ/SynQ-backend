@@ -30,6 +30,11 @@ public abstract class PostgresTestContainer {
 		registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
 		registry.add("spring.datasource.username", POSTGRES::getUsername);
 		registry.add("spring.datasource.password", POSTGRES::getPassword);
+		// @MockitoBean 조합이 다르면 스프링이 컨텍스트를 따로 캐시하고, 컨텍스트마다 커넥션 풀이 생긴다.
+		// 기본 10개로 두면 컨텍스트가 늘어날수록 컨테이너의 max_connections(100)를 넘겨
+		// "too many clients already" 로 뒤늦게 뜨는 컨텍스트부터 기동이 깨진다.
+		registry.add("spring.datasource.hikari.maximum-pool-size", () -> "4");
+		registry.add("spring.datasource.hikari.minimum-idle", () -> "0");
 		// 테스트는 실제 외부 AI API를 호출하지 않는다. 키 검증을 통과할 더미 값을 넣는다.
 		registry.add("gemini.api-key", () -> "test-key");
 		registry.add("openai.api-key", () -> "test-key");
