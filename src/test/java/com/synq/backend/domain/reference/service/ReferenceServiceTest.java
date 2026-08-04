@@ -46,6 +46,155 @@ class ReferenceServiceTest extends PostgresTestContainer {
 	private UserRepository userRepository;
 
 	@Test
+	void 프로젝트_OWNER는_다른_MEMBER의_참고자료를_Soft_Delete한다() {
+		User owner = saveUser("소유자", "reference-delete-owner@synq.com");
+		User member = saveUser("멤버", "reference-delete-owner-member@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		saveMember(project, member, ProjectMemberRole.MEMBER);
+		ReferenceMaterial reference = saveLink(project, member);
+
+		referenceService.delete(project.getId(), reference.getId(), owner.getUserId());
+
+		assertThat(reference.getDeletedAt()).isNotNull();
+		assertThat(referenceMaterialRepository.findByIdAndProjectId(reference.getId(), project.getId()))
+				.isEmpty();
+	}
+
+	@Test
+	void 일반_MEMBER는_자신이_등록한_참고자료를_삭제한다() {
+		User owner = saveUser("소유자", "reference-delete-member-owner@synq.com");
+		User member = saveUser("멤버", "reference-delete-member@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		saveMember(project, member, ProjectMemberRole.MEMBER);
+		ReferenceMaterial reference = saveFile(project, member);
+
+		referenceService.delete(project.getId(), reference.getId(), member.getUserId());
+
+		assertThat(reference.getDeletedAt()).isNotNull();
+	}
+
+	@Test
+	void 일반_MEMBER는_다른_사용자의_참고자료를_삭제할_수_없다() {
+		User owner = saveUser("소유자", "reference-delete-forbidden-owner@synq.com");
+		User member = saveUser("멤버", "reference-delete-forbidden-member@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		saveMember(project, member, ProjectMemberRole.MEMBER);
+		ReferenceMaterial reference = saveFile(project, owner);
+
+		assertThatThrownBy(() -> referenceService.delete(
+				project.getId(), reference.getId(), member.getUserId()))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(ReferenceErrorCode.REFERENCE_DELETE_FORBIDDEN));
+		assertThat(reference.getDeletedAt()).isNull();
+	}
+
+	@Test
+	void 프로젝트_외부_사용자는_참고자료를_삭제할_수_없다() {
+		User owner = saveUser("소유자", "reference-delete-outsider-owner@synq.com");
+		User outsider = saveUser("외부 사용자", "reference-delete-outsider@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		ReferenceMaterial reference = saveFile(project, owner);
+
+		assertThatThrownBy(() -> referenceService.delete(
+				project.getId(), reference.getId(), outsider.getUserId()))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(ProjectErrorCode.NOT_PROJECT_MEMBER));
+		assertThat(reference.getDeletedAt()).isNull();
+	}
+
+	@Test
+	void 사용자나_활성_프로젝트가_없으면_참고자료를_삭제할_수_없다() {
+		User owner = saveUser("소유자", "reference-delete-validation@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		ReferenceMaterial reference = saveFile(project, owner);
+		Project deletedProject = saveProject(owner);
+		saveMember(deletedProject, owner, ProjectMemberRole.OWNER);
+		ReferenceMaterial deletedProjectReference = saveFile(deletedProject, owner);
+		deletedProject.softDelete();
+
+		assertThatThrownBy(() -> referenceService.delete(project.getId(), reference.getId(), Long.MAX_VALUE))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(ProjectErrorCode.USER_NOT_FOUND));
+		assertThatThrownBy(() -> referenceService.delete(Long.MAX_VALUE, reference.getId(), owner.getUserId()))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(ProjectErrorCode.PROJECT_NOT_FOUND));
+		assertThatThrownBy(() -> referenceService.delete(
+				deletedProject.getId(), deletedProjectReference.getId(), owner.getUserId()))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(ProjectErrorCode.PROJECT_NOT_FOUND));
+		assertThat(reference.getDeletedAt()).isNull();
+		assertThat(deletedProjectReference.getDeletedAt()).isNull();
+	}
+
+	@Test
+	void 없거나_삭제됐거나_다른_프로젝트의_참고자료는_404이다() {
+		User owner = saveUser("소유자", "reference-delete-not-found@synq.com");
+		Project project = saveProject(owner);
+		Project otherProject = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		saveMember(otherProject, owner, ProjectMemberRole.OWNER);
+		ReferenceMaterial deleted = saveFile(project, owner);
+		ReferenceMaterial otherReference = saveFile(otherProject, owner);
+		deleted.softDelete();
+
+		assertReferenceNotFound(project.getId(), Long.MAX_VALUE, owner.getUserId());
+		assertReferenceNotFound(project.getId(), deleted.getId(), owner.getUserId());
+		assertReferenceNotFound(project.getId(), otherReference.getId(), owner.getUserId());
+		assertThat(otherReference.getDeletedAt()).isNull();
+	}
+
+	@Test
+	void 모든_처리_상태의_참고자료를_삭제할_수_있다() {
+		User owner = saveUser("소유자", "reference-delete-status@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		ReferenceMaterial uploading = saveLink(project, owner, ReferenceStatus.UPLOADING);
+		ReferenceMaterial available = saveLink(project, owner, ReferenceStatus.AVAILABLE);
+		ReferenceMaterial readFailed = saveLink(project, owner, ReferenceStatus.READ_FAILED);
+
+		referenceService.delete(project.getId(), uploading.getId(), owner.getUserId());
+		referenceService.delete(project.getId(), available.getId(), owner.getUserId());
+		referenceService.delete(project.getId(), readFailed.getId(), owner.getUserId());
+
+		assertThat(uploading.getDeletedAt()).isNotNull();
+		assertThat(available.getDeletedAt()).isNotNull();
+		assertThat(readFailed.getDeletedAt()).isNotNull();
+	}
+
+	@Test
+	void 삭제_후_목록과_개수에서_제외되고_새_링크를_등록할_수_있다() {
+		User owner = saveUser("소유자", "reference-delete-recreate@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		ReferenceMaterial target = null;
+		for (int index = 0; index < 10; index++) {
+			target = saveFile(project, owner);
+		}
+
+		referenceService.delete(project.getId(), target.getId(), owner.getUserId());
+		ReferenceListResponse afterDelete = referenceService.findAll(project.getId(), owner.getUserId());
+		ReferenceLinkCreateResponse created = referenceService.createLink(
+				project.getId(), owner.getUserId(), linkRequest());
+
+		assertThat(afterDelete.currentCount()).isEqualTo(9);
+		assertThat(afterDelete.references())
+				.extracting(ReferenceResponse::referenceId)
+				.doesNotContain(target.getId());
+		assertThat(referenceMaterialRepository.countByProjectId(project.getId())).isEqualTo(10);
+		assertThat(created.referenceId()).isNotNull();
+	}
+
+	@Test
 	void 프로젝트_OWNER가_링크를_UPLOADING_상태로_등록한다() {
 		User owner = saveUser("박서은", "reference-create-owner@synq.com");
 		Project project = saveProject(owner);
@@ -307,6 +456,13 @@ class ReferenceServiceTest extends PostgresTestContainer {
 		return new ReferenceLinkCreateRequest("https://example.com/document");
 	}
 
+	private void assertReferenceNotFound(Long projectId, Long referenceId, Long userId) {
+		assertThatThrownBy(() -> referenceService.delete(projectId, referenceId, userId))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(ReferenceErrorCode.REFERENCE_NOT_FOUND));
+	}
+
 	private Project saveProject(User owner) {
 		return projectRepository.save(Project.of(owner.getUserId(), "SynQ", null));
 	}
@@ -327,12 +483,16 @@ class ReferenceServiceTest extends PostgresTestContainer {
 	}
 
 	private ReferenceMaterial saveLink(Project project, User uploader) {
+		return saveLink(project, uploader, ReferenceStatus.READ_FAILED);
+	}
+
+	private ReferenceMaterial saveLink(Project project, User uploader, ReferenceStatus status) {
 		return referenceMaterialRepository.save(ReferenceMaterial.ofLink(
 				project.getId(),
 				uploader.getUserId(),
 				"SynQ 기획 문서",
 				"https://www.notion.so/example",
-				ReferenceStatus.READ_FAILED
+				status
 		));
 	}
 
