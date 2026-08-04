@@ -38,6 +38,28 @@ public class ReferenceService {
 	private final UserRepository userRepository;
 
 	@Transactional
+	public void delete(Long projectId, Long referenceId, Long userId) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		validateUser(userId);
+
+		Project project = findActiveProjectById(projectId);
+		if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
+			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_MEMBER);
+		}
+
+		ReferenceMaterial reference = referenceMaterialRepository
+				.findByIdAndProjectId(referenceId, projectId)
+				.orElseThrow(() -> new GeneralException(ReferenceErrorCode.REFERENCE_NOT_FOUND));
+		if (!project.getOwnerId().equals(userId) && !reference.getUploaderId().equals(userId)) {
+			throw new GeneralException(ReferenceErrorCode.REFERENCE_DELETE_FORBIDDEN);
+		}
+
+		reference.softDelete();
+	}
+
+	@Transactional
 	public ReferenceLinkCreateResponse createLink(
 			Long projectId,
 			Long userId,

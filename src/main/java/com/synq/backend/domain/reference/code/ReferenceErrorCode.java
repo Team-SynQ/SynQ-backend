@@ -8,6 +8,12 @@ import org.springframework.http.HttpStatus;
 @Getter
 @AllArgsConstructor
 public enum ReferenceErrorCode implements BaseCode {
+	REFERENCE_DELETE_FORBIDDEN(HttpStatus.FORBIDDEN,
+			"REFERENCE403_1",
+			"참고자료 삭제 권한이 없습니다."),
+	REFERENCE_NOT_FOUND(HttpStatus.NOT_FOUND,
+			"REFERENCE404_1",
+			"참고자료를 찾을 수 없습니다."),
 	REFERENCE_LIMIT_EXCEEDED(HttpStatus.CONFLICT,
 			"REFERENCE409_1",
 			"프로젝트별 최대 참고자료 수를 초과했습니다.");

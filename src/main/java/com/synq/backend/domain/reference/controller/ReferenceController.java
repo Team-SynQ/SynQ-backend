@@ -19,6 +19,12 @@ public class ReferenceController implements ReferenceControllerDocs {
 	private final ReferenceService referenceService;
 
 	@Override
+	public ResponseEntity<Void> delete(Long projectId, Long referenceId, Long userId) {
+		referenceService.delete(projectId, referenceId, userId);
+		return ResponseEntity.noContent().build();
+	}
+
+	@Override
 	public ResponseEntity<ApiResponse<ReferenceLinkCreateResponse>> createLink(
 			Long projectId,
 			Long userId,
