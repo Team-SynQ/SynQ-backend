@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Entity
 @Table(name = "reference_material")
@@ -46,6 +47,9 @@ public class ReferenceMaterial extends BaseEntity {
 	@Column(name = "file_size")
 	private Long fileSize;
 
+	@Column(name = "storage_key", length = 512)
+	private String storageKey;
+
 	@Enumerated(EnumType.STRING)
 	@Column(name = "file_extension", length = 10)
 	private ReferenceFileExtension fileExtension;
@@ -64,6 +68,7 @@ public class ReferenceMaterial extends BaseEntity {
 			String name,
 			String url,
 			Long fileSize,
+			String storageKey,
 			ReferenceFileExtension fileExtension,
 			ReferenceStatus status
 	) {
@@ -73,6 +78,7 @@ public class ReferenceMaterial extends BaseEntity {
 		this.name = name;
 		this.url = url;
 		this.fileSize = fileSize;
+		this.storageKey = storageKey;
 		this.fileExtension = fileExtension;
 		this.status = status;
 	}
@@ -82,9 +88,11 @@ public class ReferenceMaterial extends BaseEntity {
 			Long uploaderId,
 			String name,
 			Long fileSize,
+			String storageKey,
 			ReferenceFileExtension fileExtension,
 			ReferenceStatus status
 	) {
+		Objects.requireNonNull(storageKey, "FILE 참고자료의 storageKey는 필수입니다.");
 		return new ReferenceMaterial(
 				projectId,
 				uploaderId,
@@ -92,6 +100,7 @@ public class ReferenceMaterial extends BaseEntity {
 				name,
 				null,
 				fileSize,
+				storageKey,
 				fileExtension,
 				status
 		);
@@ -110,6 +119,7 @@ public class ReferenceMaterial extends BaseEntity {
 				ReferenceType.LINK,
 				name,
 				url,
+				null,
 				null,
 				null,
 				status

@@ -1,5 +1,6 @@
 package com.synq.backend.domain.reference.controller;
 
+import com.synq.backend.domain.reference.dto.ReferenceFileCreateResponse;
 import com.synq.backend.domain.reference.dto.ReferenceListResponse;
 import com.synq.backend.domain.reference.dto.ReferenceLinkCreateRequest;
 import com.synq.backend.domain.reference.dto.ReferenceLinkCreateResponse;
@@ -10,6 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/projects/{projectId}/references")
@@ -17,6 +21,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class ReferenceController implements ReferenceControllerDocs {
 
 	private final ReferenceService referenceService;
+
+	@Override
+	public ResponseEntity<ApiResponse<ReferenceFileCreateResponse>> createFiles(
+			Long projectId,
+			Long userId,
+			List<MultipartFile> files
+	) {
+		ReferenceFileCreateResponse response = referenceService.createFiles(projectId, userId, files);
+		return ResponseEntity.status(GeneralSuccessCode.CREATED.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.CREATED, response));
+	}
 
 	@Override
 	public ResponseEntity<Void> delete(Long projectId, Long referenceId, Long userId) {

@@ -20,6 +20,9 @@ public enum ReferenceErrorCode implements BaseCode {
 	LINK_TOO_LARGE(HttpStatus.BAD_REQUEST,
 			"REFERENCE400_4",
 			"링크 문서가 너무 큽니다."),
+	INVALID_REFERENCE_FILE(HttpStatus.BAD_REQUEST,
+			"REFERENCE400_5",
+			"등록할 파일을 확인해 주세요."),
 	REFERENCE_DELETE_FORBIDDEN(HttpStatus.FORBIDDEN,
 			"REFERENCE403_1",
 			"참고자료 삭제 권한이 없습니다."),
@@ -28,7 +31,16 @@ public enum ReferenceErrorCode implements BaseCode {
 			"참고자료를 찾을 수 없습니다."),
 	REFERENCE_LIMIT_EXCEEDED(HttpStatus.CONFLICT,
 			"REFERENCE409_1",
-			"프로젝트별 최대 참고자료 수를 초과했습니다.");
+			"프로젝트별 최대 참고자료 수를 초과했습니다."),
+	REFERENCE_FILE_SIZE_EXCEEDED(HttpStatus.PAYLOAD_TOO_LARGE,
+			"REFERENCE413_1",
+			"파일 용량 제한을 초과했습니다."),
+	UNSUPPORTED_REFERENCE_FILE(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+			"REFERENCE415_1",
+			"지원하지 않는 파일 형식입니다."),
+	REFERENCE_FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR,
+			"REFERENCE500_1",
+			"참고자료 파일 업로드에 실패했습니다.");
 
 	private final HttpStatus status;
 	private final String code;
