@@ -1,5 +1,6 @@
 package com.synq.backend.domain.transcript.controller;
 
+import com.synq.backend.domain.transcript.dto.TranscriptSegmentListResponse;
 import com.synq.backend.domain.transcript.dto.TranscriptSegmentUpdateRequest;
 import com.synq.backend.domain.transcript.dto.TranscriptSegmentUpdateResponse;
 import com.synq.backend.domain.transcript.entity.TranscriptSegment;
@@ -10,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/meetings/{meetingId}")
@@ -24,5 +27,13 @@ public class TranscriptSegmentController implements TranscriptSegmentControllerD
 		TranscriptSegment segment = transcriptSegmentService.update(meetingId, segmentId, userId, request.content());
 		return ResponseEntity.ok(
 				ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, TranscriptSegmentUpdateResponse.from(segment)));
+	}
+
+	@Override
+	public ResponseEntity<ApiResponse<TranscriptSegmentListResponse>> getSegments(Long meetingId, Long userId) {
+		List<TranscriptSegment> segments = transcriptSegmentService.getSegments(meetingId, userId);
+		return ResponseEntity.ok(
+				ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK,
+						TranscriptSegmentListResponse.from(meetingId, segments)));
 	}
 }

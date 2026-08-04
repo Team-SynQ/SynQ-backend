@@ -18,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -137,6 +138,67 @@ class TranscriptSegmentControllerTest extends PostgresTestContainer {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("""
 								{"content": "수정된 텍스트"}"""))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void 참가자는_전사_목록을_시간순으로_조회하고_수정된_세그먼트는_수정본으로_보인다() throws Exception {
+		Long meetingId = createInProgressMeetingWithParticipants();
+		transcriptSegmentRepository.save(TranscriptSegment.of(meetingId, 1, 1000, 2000, "두번째"));
+		Long firstSegmentId = createSegment(meetingId);
+		TranscriptSegment firstSegment = transcriptSegmentRepository.findById(firstSegmentId).orElseThrow();
+		firstSegment.editContent("수정된 첫번째");
+		transcriptSegmentRepository.save(firstSegment);
+
+		mockMvc.perform(get("/meetings/{meetingId}/transcript-segments", meetingId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(MEMBER_ID)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result.meetingId").value(meetingId))
+				.andExpect(jsonPath("$.result.segments[0].segmentId").value(firstSegmentId))
+				.andExpect(jsonPath("$.result.segments[0].content").value("수정된 첫번째"))
+				.andExpect(jsonPath("$.result.segments[0].isModified").value(true))
+				.andExpect(jsonPath("$.result.segments[1].content").value("두번째"))
+				.andExpect(jsonPath("$.result.segments[1].isModified").value(false));
+	}
+
+	@Test
+	void 회의가_끝난_뒤에도_전사_목록을_조회할_수_있다() throws Exception {
+		Meeting meeting = Meeting.of(1L, "회의");
+		meeting.end();
+		Long meetingId = meetingRepository.save(meeting).getId();
+		meetingParticipantRepository.save(MeetingParticipant.of(meetingId, HOST_ID, ParticipantRole.HOST));
+		createSegment(meetingId);
+
+		mockMvc.perform(get("/meetings/{meetingId}/transcript-segments", meetingId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(HOST_ID)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result.segments.length()").value(1));
+	}
+
+	@Test
+	void 전사_목록_조회시_회의_참가자가_아니면_403과_도메인_에러코드를_반환한다() throws Exception {
+		Long meetingId = createInProgressMeetingWithParticipants();
+		createSegment(meetingId);
+
+		mockMvc.perform(get("/meetings/{meetingId}/transcript-segments", meetingId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(MEMBER_ID + 1)))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("TRANSCRIPT403_2"));
+	}
+
+	@Test
+	void 전사_목록_조회시_존재하지_않는_회의면_404를_반환한다() throws Exception {
+		mockMvc.perform(get("/meetings/{meetingId}/transcript-segments", 999_999L)
+						.header(HttpHeaders.AUTHORIZATION, bearer(HOST_ID)))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("TRANSCRIPT404_1"));
+	}
+
+	@Test
+	void 전사_목록_조회시_토큰_없이_호출하면_401을_반환한다() throws Exception {
+		Long meetingId = createInProgressMeetingWithParticipants();
+
+		mockMvc.perform(get("/meetings/{meetingId}/transcript-segments", meetingId))
 				.andExpect(status().isUnauthorized());
 	}
 
