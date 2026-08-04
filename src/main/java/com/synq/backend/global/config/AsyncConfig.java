@@ -27,6 +27,21 @@ public class AsyncConfig {
 		return executor;
 	}
 
+	/**
+	 * 링크 본문 fetch 전용 풀.
+	 * 느린 외부 페이지가 임베딩 대기용 indexingExecutor 를 점유하면 다른 참고자료의 인덱싱이 밀린다.
+	 */
+	@Bean(name = "linkFetchExecutor")
+	public Executor linkFetchExecutor() {
+		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+		executor.setCorePoolSize(2);
+		executor.setMaxPoolSize(4);
+		executor.setQueueCapacity(50);
+		executor.setThreadNamePrefix("link-fetch-");
+		executor.initialize();
+		return executor;
+	}
+
 	@Bean(name = "summaryExecutor")
 	public Executor summaryExecutor() {
 		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

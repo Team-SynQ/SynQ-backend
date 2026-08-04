@@ -9,6 +9,8 @@ import com.synq.backend.domain.reference.code.ReferenceErrorCode;
 import com.synq.backend.domain.reference.dto.ReferenceLinkCreateRequest;
 import com.synq.backend.domain.reference.entity.ReferenceMaterial;
 import com.synq.backend.domain.reference.entity.ReferenceStatus;
+import com.synq.backend.domain.reference.link.LinkPreflightChecker;
+import com.synq.backend.domain.reference.link.LinkTextExtractor;
 import com.synq.backend.domain.reference.repository.ReferenceMaterialRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
@@ -16,6 +18,7 @@ import com.synq.backend.global.apipayload.exception.GeneralException;
 import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.List;
 import java.util.UUID;
@@ -42,6 +45,14 @@ class ReferenceLinkCreateConcurrencyTest extends PostgresTestContainer {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	// 이 클래스는 @Transactional 이 아니라 실제로 커밋된다. 프리플라이트(동기)뿐 아니라
+	// AFTER_COMMIT 리스너가 부르는 추출기(비동기)까지 막아야 네트워크로 나가지 않는다.
+	@MockitoBean
+	private LinkPreflightChecker linkPreflightChecker;
+
+	@MockitoBean
+	private LinkTextExtractor linkTextExtractor;
 
 	@Test
 	void 활성_자료가_9개일_때_동시_등록은_하나만_성공한다() throws Exception {

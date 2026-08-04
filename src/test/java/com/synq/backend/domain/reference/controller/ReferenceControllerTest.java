@@ -12,6 +12,7 @@ import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.reference.entity.ReferenceFileExtension;
 import com.synq.backend.domain.reference.entity.ReferenceMaterial;
 import com.synq.backend.domain.reference.entity.ReferenceStatus;
+import com.synq.backend.domain.reference.link.LinkPreflightChecker;
 import com.synq.backend.domain.reference.repository.ReferenceMaterialRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
@@ -65,6 +66,11 @@ class ReferenceControllerTest extends PostgresTestContainer {
 
 	@MockitoBean
 	private AccessTokenBlacklistService accessTokenBlacklistService;
+
+	// 링크 등록이 실제 네트워크를 타지 않게 막는다.
+	// 이 클래스는 @Transactional 이라 커밋이 없어 AFTER_COMMIT 리스너는 실행되지 않는다.
+	@MockitoBean
+	private LinkPreflightChecker linkPreflightChecker;
 
 	@Test
 	void 프로젝트_OWNER는_다른_MEMBER의_참고자료를_204로_삭제한다() throws Exception {
