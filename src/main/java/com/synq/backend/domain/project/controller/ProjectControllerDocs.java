@@ -33,6 +33,22 @@ import java.util.List;
 @Tag(name = "Project", description = "프로젝트 API")
 public interface ProjectControllerDocs {
 
+	@Operation(summary = "프로젝트 멤버 삭제", description = "프로젝트 소유자가 일반 멤버를 삭제한다.")
+	@SecurityRequirement(name = "bearerAuth")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "프로젝트 멤버 삭제 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "프로젝트 소유자 삭제 요청"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "멤버 삭제 권한 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "프로젝트, 멤버 또는 사용자를 찾을 수 없음")
+	})
+	@DeleteMapping("/{projectId}/members/{memberId}")
+	ResponseEntity<Void> deleteMember(
+			@PathVariable Long projectId,
+			@PathVariable Long memberId,
+			@AuthenticationPrincipal(expression = "userId") Long userId
+	);
+
 	@Operation(summary = "프로젝트 삭제", description = "프로젝트 소유자가 프로젝트를 Soft Delete한다.")
 	@SecurityRequirement(name = "bearerAuth")
 	@ApiResponses({
