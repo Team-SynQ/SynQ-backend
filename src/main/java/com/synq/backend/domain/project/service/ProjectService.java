@@ -166,6 +166,22 @@ public class ProjectService {
 		projectMemberRepository.delete(member);
 	}
 
+	@Transactional
+	public void leave(Long projectId, Long userId) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		validateUser(userId);
+
+		findActiveProjectById(projectId);
+		ProjectMember member = projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+				.orElseThrow(() -> new GeneralException(ProjectErrorCode.NOT_PROJECT_MEMBER));
+		if (member.getRole() == ProjectMemberRole.OWNER) {
+			throw new GeneralException(ProjectErrorCode.PROJECT_OWNER_CANNOT_LEAVE);
+		}
+		projectMemberRepository.delete(member);
+	}
+
 	@Transactional(readOnly = true)
 	public List<ProjectListResponse> findAll(Long userId) {
 		if (userId == null) {
