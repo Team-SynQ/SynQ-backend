@@ -8,6 +8,9 @@ import org.springframework.http.HttpStatus;
 @Getter
 @AllArgsConstructor
 public enum ProjectErrorCode implements BaseCode {
+	CANNOT_DELETE_PROJECT_OWNER(HttpStatus.BAD_REQUEST,
+			"PROJECT400_1",
+			"프로젝트 소유자는 삭제할 수 없습니다."),
 	NOT_PROJECT_OWNER(HttpStatus.FORBIDDEN,
 			"PROJECT403_1",
 			"프로젝트 소유자만 초대 링크를 생성할 수 있습니다."),
@@ -23,6 +26,9 @@ public enum ProjectErrorCode implements BaseCode {
 	PROJECT_NOT_FOUND(HttpStatus.NOT_FOUND,
 			"PROJECT404_3",
 			"프로젝트를 찾을 수 없습니다."),
+	PROJECT_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND,
+			"PROJECT404_4",
+			"프로젝트 멤버를 찾을 수 없습니다."),
 	USER_PROJECT_LIMIT_EXCEEDED(HttpStatus.CONFLICT,
 			"PROJECT409_1",
 			"사용자별 최대 프로젝트 수를 초과했습니다."),

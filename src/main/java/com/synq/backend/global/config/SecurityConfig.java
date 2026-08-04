@@ -49,7 +49,9 @@ public class SecurityConfig {
 									"/projects/*/invitation").authenticated()
 							.requestMatchers(HttpMethod.POST, "/projects/*/references/links").authenticated()
 							.requestMatchers(HttpMethod.PATCH, "/projects/*").authenticated()
-							.requestMatchers(HttpMethod.DELETE, "/projects/*").authenticated()
+							.requestMatchers(HttpMethod.DELETE,
+									"/projects/*",
+									"/projects/*/members/*").authenticated()
 							.requestMatchers("/users/me", "/users/me/**").authenticated()
 							.requestMatchers("/projects/*/meetings", "/meetings/*/end", "/meetings/*/join").authenticated()
 							.requestMatchers("/meetings/*/ai-summary/**", "/meetings/*/summary/**").authenticated()

@@ -30,6 +30,12 @@ public class ProjectController implements ProjectControllerDocs {
 	private final ProjectService projectService;
 
 	@Override
+	public ResponseEntity<Void> deleteMember(Long projectId, Long memberId, Long userId) {
+		projectService.deleteMember(projectId, memberId, userId);
+		return ResponseEntity.noContent().build();
+	}
+
+	@Override
 	public ResponseEntity<Void> delete(Long projectId, Long userId) {
 		projectService.delete(projectId, userId);
 		return ResponseEntity.noContent().build();
