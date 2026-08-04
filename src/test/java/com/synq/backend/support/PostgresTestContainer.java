@@ -37,5 +37,7 @@ public abstract class PostgresTestContainer {
 		registry.add("ai.rag.reference-material.client", () -> "fake");
 		registry.add("ai.chat.client", () -> "fake");
 		registry.add("ai.summary.client", () -> "fake");
+		// 통합 테스트는 MockWebServer(루프백)를 쓴다. SafeDns 기본 정책이 이를 막는다.
+		registry.add("reference.link.allow-private-network", () -> "true");
 	}
 }
