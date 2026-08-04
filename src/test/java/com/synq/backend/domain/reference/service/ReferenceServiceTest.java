@@ -1,5 +1,7 @@
 package com.synq.backend.domain.reference.service;
 
+import com.synq.backend.domain.ai.rag.entity.DocumentChunk;
+import com.synq.backend.domain.ai.rag.repository.DocumentChunkRepository;
 import com.synq.backend.domain.project.code.ProjectErrorCode;
 import com.synq.backend.domain.project.entity.Project;
 import com.synq.backend.domain.project.entity.ProjectMember;
@@ -44,6 +46,9 @@ class ReferenceServiceTest extends PostgresTestContainer {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	@Autowired
+	private DocumentChunkRepository documentChunkRepository;
 
 	@Test
 	void 프로젝트_OWNER는_다른_MEMBER의_참고자료를_Soft_Delete한다() {
@@ -443,6 +448,25 @@ class ReferenceServiceTest extends PostgresTestContainer {
 				.isInstanceOfSatisfying(GeneralException.class,
 						exception -> assertThat(exception.getCode())
 								.isEqualTo(ProjectErrorCode.USER_NOT_FOUND));
+	}
+
+	@Test
+	void 참고자료를_삭제하면_인덱싱된_청크도_지운다() {
+		// 소프트 삭제라 FK 의 ON DELETE CASCADE 가 동작하지 않는다. 지우지 않으면
+		// 사용자가 삭제한 문서의 내용이 계속 3-hint 와 AI Chat 답변에 실려 나간다.
+		User owner = saveUser("소유자", "reference-chunk-owner@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		ReferenceMaterial reference = saveLink(project, owner);
+		documentChunkRepository.save(DocumentChunk.of(
+				reference.getId(), project.getId(), 0, "지워져야 할 청크",
+				new float[768], "test-model"));
+
+		referenceService.delete(project.getId(), reference.getId(), owner.getUserId());
+
+		assertThat(documentChunkRepository
+				.findByReferenceMaterialIdOrderByChunkIndexAsc(reference.getId()))
+				.isEmpty();
 	}
 
 	private ReferenceResponse findById(ReferenceListResponse response, Long referenceId) {

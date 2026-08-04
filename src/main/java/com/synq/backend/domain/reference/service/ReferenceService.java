@@ -1,5 +1,6 @@
 package com.synq.backend.domain.reference.service;
 
+import com.synq.backend.domain.ai.rag.DocumentIndexer;
 import com.synq.backend.domain.project.code.ProjectErrorCode;
 import com.synq.backend.domain.project.entity.Project;
 import com.synq.backend.domain.project.repository.ProjectMemberRepository;
@@ -36,6 +37,7 @@ public class ReferenceService {
 	private final ProjectRepository projectRepository;
 	private final ProjectMemberRepository projectMemberRepository;
 	private final UserRepository userRepository;
+	private final DocumentIndexer documentIndexer;
 
 	@Transactional
 	public void delete(Long projectId, Long referenceId, Long userId) {
@@ -57,6 +59,7 @@ public class ReferenceService {
 		}
 
 		reference.softDelete();
+		documentIndexer.deleteIndex(referenceId);
 	}
 
 	@Transactional
