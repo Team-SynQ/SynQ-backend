@@ -524,6 +524,7 @@ class ReferenceControllerTest extends PostgresTestContainer {
 				uploader.getUserId(),
 				"프로젝트 요구사항.pdf",
 				1048576L,
+				"references/" + project.getId() + "/test.pdf",
 				ReferenceFileExtension.PDF,
 				ReferenceStatus.AVAILABLE
 		));

@@ -33,6 +33,28 @@ class ReferenceMaterialRepositoryTest extends PostgresTestContainer {
 	private EntityManager entityManager;
 
 	@Test
+	void FILE_메타데이터와_storage_key를_저장한다() {
+		User owner = saveUser("reference-file-storage-owner@synq.com");
+		Project project = projectRepository.save(Project.of(owner.getUserId(), "SynQ", null));
+
+		ReferenceMaterial saved = referenceMaterialRepository.saveAndFlush(ReferenceMaterial.ofFile(
+				project.getId(),
+				owner.getUserId(),
+				"requirements.pdf",
+				1024L,
+				"references/" + project.getId() + "/file.pdf",
+				ReferenceFileExtension.PDF,
+				ReferenceStatus.UPLOADING
+		));
+		entityManager.clear();
+
+		ReferenceMaterial found = referenceMaterialRepository.findById(saved.getId()).orElseThrow();
+		assertThat(found.getStorageKey()).isEqualTo("references/" + project.getId() + "/file.pdf");
+		assertThat(found.getUrl()).isNull();
+		assertThat(found.getType().name()).isEqualTo("FILE");
+	}
+
+	@Test
 	void 삭제되지_않은_참고자료를_최신_등록순으로_조회한다() {
 		User owner = saveUser("reference-repository-owner@synq.com");
 		Project project = projectRepository.save(Project.of(owner.getUserId(), "SynQ", null));
@@ -42,6 +64,7 @@ class ReferenceMaterialRepositoryTest extends PostgresTestContainer {
 						owner.getUserId(),
 						"요구사항.pdf",
 						1024L,
+						"references/" + project.getId() + "/older.pdf",
 						ReferenceFileExtension.PDF,
 						ReferenceStatus.AVAILABLE
 				));
@@ -59,6 +82,7 @@ class ReferenceMaterialRepositoryTest extends PostgresTestContainer {
 						owner.getUserId(),
 						"삭제 자료.txt",
 						512L,
+						"references/" + project.getId() + "/deleted.txt",
 						ReferenceFileExtension.TXT,
 						ReferenceStatus.AVAILABLE
 				));
@@ -82,6 +106,7 @@ class ReferenceMaterialRepositoryTest extends PostgresTestContainer {
 		Project otherProject = projectRepository.save(Project.of(owner.getUserId(), "Other", null));
 		referenceMaterialRepository.save(ReferenceMaterial.ofFile(
 				project.getId(), owner.getUserId(), "요구사항.pdf", 1024L,
+				"references/" + project.getId() + "/count.pdf",
 				ReferenceFileExtension.PDF, ReferenceStatus.AVAILABLE));
 		referenceMaterialRepository.save(ReferenceMaterial.ofLink(
 				project.getId(), owner.getUserId(), "example.com", "https://example.com",
