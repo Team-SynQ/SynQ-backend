@@ -99,6 +99,33 @@ class ReferenceMaterialRepositoryTest extends PostgresTestContainer {
 		assertThat(referenceMaterialRepository.countByProjectId(project.getId())).isEqualTo(2);
 	}
 
+	@Test
+	void 프로젝트와_참고자료_ID가_일치하는_활성_자료만_조회한다() {
+		User owner = saveUser("reference-find-owner@synq.com");
+		Project project = projectRepository.save(Project.of(owner.getUserId(), "SynQ", null));
+		Project otherProject = projectRepository.save(Project.of(owner.getUserId(), "Other", null));
+		ReferenceMaterial active = referenceMaterialRepository.save(ReferenceMaterial.ofLink(
+				project.getId(), owner.getUserId(), "active.example.com", "https://active.example.com",
+				ReferenceStatus.AVAILABLE));
+		ReferenceMaterial deleted = referenceMaterialRepository.save(ReferenceMaterial.ofLink(
+				project.getId(), owner.getUserId(), "deleted.example.com", "https://deleted.example.com",
+				ReferenceStatus.AVAILABLE));
+		deleted.softDelete();
+		referenceMaterialRepository.flush();
+		entityManager.clear();
+
+		assertThat(referenceMaterialRepository.findByIdAndProjectId(active.getId(), project.getId()))
+				.isPresent();
+		assertThat(referenceMaterialRepository.findByIdAndProjectId(active.getId(), otherProject.getId()))
+				.isEmpty();
+		assertThat(referenceMaterialRepository.findByIdAndProjectId(deleted.getId(), project.getId()))
+				.isEmpty();
+		assertThat(referenceMaterialRepository.findAllByProjectIdOrderByCreatedAtDescIdDesc(project.getId()))
+				.extracting(ReferenceMaterial::getId)
+				.containsExactly(active.getId());
+		assertThat(referenceMaterialRepository.countByProjectId(project.getId())).isEqualTo(1);
+	}
+
 	private User saveUser(String email) {
 		return userRepository.save(User.ofLocal("테스트", email, "password-hash"));
 	}

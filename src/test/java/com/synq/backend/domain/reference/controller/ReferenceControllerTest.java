@@ -31,8 +31,10 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -63,6 +65,121 @@ class ReferenceControllerTest extends PostgresTestContainer {
 
 	@MockitoBean
 	private AccessTokenBlacklistService accessTokenBlacklistService;
+
+	@Test
+	void 프로젝트_OWNER는_다른_MEMBER의_참고자료를_204로_삭제한다() throws Exception {
+		User owner = saveUser("소유자", "reference-delete-controller-owner@synq.com");
+		User member = saveUser("멤버", "reference-delete-controller-owner-member@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		saveMember(project, member, ProjectMemberRole.MEMBER);
+		ReferenceMaterial reference = saveLink(project, member);
+
+		mockMvc.perform(delete("/projects/{projectId}/references/{referenceId}",
+						project.getId(), reference.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+				.andExpect(status().isNoContent())
+				.andExpect(content().string(""));
+
+		assertThat(reference.getDeletedAt()).isNotNull();
+	}
+
+	@Test
+	void 일반_MEMBER는_자신이_등록한_참고자료를_삭제한다() throws Exception {
+		User owner = saveUser("소유자", "reference-delete-controller-member-owner@synq.com");
+		User member = saveUser("멤버", "reference-delete-controller-member@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		saveMember(project, member, ProjectMemberRole.MEMBER);
+		ReferenceMaterial reference = saveFile(project, member);
+
+		mockMvc.perform(delete("/projects/{projectId}/references/{referenceId}",
+						project.getId(), reference.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(member)))
+				.andExpect(status().isNoContent())
+				.andExpect(content().string(""));
+	}
+
+	@Test
+	void JWT가_없거나_유효하지_않으면_참고자료_삭제는_401이다() throws Exception {
+		mockMvc.perform(delete("/projects/{projectId}/references/{referenceId}", 1L, 1L))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.code").value("AUTH401_1"));
+		mockMvc.perform(delete("/projects/{projectId}/references/{referenceId}", 1L, 1L)
+						.header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token"))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.code").value("AUTH401_1"));
+		mockMvc.perform(delete("/projects/{projectId}/references/{referenceId}", 1L, 1L)
+						.header("X-User-Id", 1L))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.code").value("AUTH401_1"));
+	}
+
+	@Test
+	void 외부_사용자와_다른_사용자의_자료를_삭제하는_MEMBER는_403이다() throws Exception {
+		User owner = saveUser("소유자", "reference-delete-controller-forbidden-owner@synq.com");
+		User member = saveUser("멤버", "reference-delete-controller-forbidden-member@synq.com");
+		User outsider = saveUser("외부 사용자", "reference-delete-controller-forbidden-outsider@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		saveMember(project, member, ProjectMemberRole.MEMBER);
+		ReferenceMaterial reference = saveFile(project, owner);
+
+		mockMvc.perform(delete("/projects/{projectId}/references/{referenceId}",
+						project.getId(), reference.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(outsider)))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("PROJECT403_2"));
+		mockMvc.perform(delete("/projects/{projectId}/references/{referenceId}",
+						project.getId(), reference.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(member)))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("REFERENCE403_1"));
+	}
+
+	@Test
+	void X_User_Id를_OWNER로_위조해도_JWT_사용자_기준으로_403이다() throws Exception {
+		User owner = saveUser("소유자", "reference-delete-controller-forgery-owner@synq.com");
+		User member = saveUser("멤버", "reference-delete-controller-forgery-member@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		saveMember(project, member, ProjectMemberRole.MEMBER);
+		ReferenceMaterial reference = saveFile(project, owner);
+
+		mockMvc.perform(delete("/projects/{projectId}/references/{referenceId}",
+						project.getId(), reference.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(member))
+						.header("X-User-Id", owner.getUserId()))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("REFERENCE403_1"));
+	}
+
+	@Test
+	void 프로젝트나_참고자료가_없거나_다른_프로젝트_자료이면_404이다() throws Exception {
+		User owner = saveUser("소유자", "reference-delete-controller-not-found@synq.com");
+		Project project = saveProject(owner);
+		Project otherProject = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		saveMember(otherProject, owner, ProjectMemberRole.OWNER);
+		ReferenceMaterial reference = saveFile(project, owner);
+		ReferenceMaterial otherReference = saveFile(otherProject, owner);
+
+		mockMvc.perform(delete("/projects/{projectId}/references/{referenceId}",
+						Long.MAX_VALUE, reference.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("PROJECT404_3"));
+		mockMvc.perform(delete("/projects/{projectId}/references/{referenceId}",
+						project.getId(), Long.MAX_VALUE)
+						.header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("REFERENCE404_1"));
+		mockMvc.perform(delete("/projects/{projectId}/references/{referenceId}",
+						project.getId(), otherReference.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("REFERENCE404_1"));
+	}
 
 	@Test
 	void 참고자료_링크_등록_응답이_201과_명세_필드를_반환한다() throws Exception {
@@ -368,7 +485,9 @@ class ReferenceControllerTest extends PostgresTestContainer {
 				.andExpect(jsonPath("$.paths['/projects/{projectId}/references'].get").exists())
 				.andExpect(jsonPath("$.paths['/projects/{projectId}/references'].get.security[0].bearerAuth").exists())
 				.andExpect(jsonPath("$.paths['/projects/{projectId}/references/links'].post").exists())
-				.andExpect(jsonPath("$.paths['/projects/{projectId}/references/links'].post.security[0].bearerAuth").exists());
+				.andExpect(jsonPath("$.paths['/projects/{projectId}/references/links'].post.security[0].bearerAuth").exists())
+				.andExpect(jsonPath("$.paths['/projects/{projectId}/references/{referenceId}'].delete").exists())
+				.andExpect(jsonPath("$.paths['/projects/{projectId}/references/{referenceId}'].delete.security[0].bearerAuth").exists());
 	}
 
 	private List<String> fieldNames(JsonNode node) {
@@ -393,8 +512,8 @@ class ReferenceControllerTest extends PostgresTestContainer {
 		projectMemberRepository.save(ProjectMember.of(project.getId(), user.getUserId(), role));
 	}
 
-	private void saveFile(Project project, User uploader) {
-		referenceMaterialRepository.save(ReferenceMaterial.ofFile(
+	private ReferenceMaterial saveFile(Project project, User uploader) {
+		return referenceMaterialRepository.save(ReferenceMaterial.ofFile(
 				project.getId(),
 				uploader.getUserId(),
 				"프로젝트 요구사항.pdf",
@@ -404,8 +523,8 @@ class ReferenceControllerTest extends PostgresTestContainer {
 		));
 	}
 
-	private void saveLink(Project project, User uploader) {
-		referenceMaterialRepository.save(ReferenceMaterial.ofLink(
+	private ReferenceMaterial saveLink(Project project, User uploader) {
+		return referenceMaterialRepository.save(ReferenceMaterial.ofLink(
 				project.getId(),
 				uploader.getUserId(),
 				"SynQ 기획 문서",

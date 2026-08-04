@@ -51,7 +51,8 @@ public class SecurityConfig {
 							.requestMatchers(HttpMethod.PATCH, "/projects/*").authenticated()
 							.requestMatchers(HttpMethod.DELETE,
 									"/projects/*",
-									"/projects/*/members/*").authenticated()
+									"/projects/*/members/*",
+									"/projects/*/references/*").authenticated()
 							.requestMatchers("/users/me", "/users/me/**").authenticated()
 							.requestMatchers("/projects/*/meetings", "/meetings/*/end", "/meetings/*/join").authenticated()
 							.requestMatchers("/meetings/*/ai-summary/**", "/meetings/*/summary/**").authenticated()
