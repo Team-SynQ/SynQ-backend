@@ -23,6 +23,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -34,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
@@ -241,10 +243,12 @@ class ReferenceFileCreateServiceTest extends PostgresTestContainer {
 	}
 
 	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	void 여러_파일_중_업로드가_실패하면_시도한_객체를_보상_삭제하고_DB에_남기지_않는다() {
 		User owner = saveUser("소유자", "file-compensation-owner@synq.com");
 		Project project = saveProject(owner);
 		saveMember(project, owner, ProjectMemberRole.OWNER);
+		clearInvocations(referenceStorage);
 		doNothing().doThrow(new ReferenceStorageException("실패", new RuntimeException()))
 				.when(referenceStorage)
 				.upload(anyString(), any(InputStream.class), anyLong(), anyString());

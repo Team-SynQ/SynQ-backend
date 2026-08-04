@@ -147,6 +147,21 @@ class ReferenceFileCreateControllerTest extends PostgresTestContainer {
 	}
 
 	@Test
+	void 실제_파일_등록_경로에서_20MB_초과_파일은_413이다() throws Exception {
+		User owner = saveUser("소유자", "file-controller-size-owner@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+
+		mockMvc.perform(multipart("/projects/{projectId}/references/files", project.getId())
+						.file(new MockMultipartFile(
+								"files", "large.pdf", "application/pdf", new byte[20 * 1024 * 1024 + 1]))
+						.header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+				.andExpect(status().isPayloadTooLarge())
+				.andExpect(jsonPath("$.isSuccess").value(false))
+				.andExpect(jsonPath("$.code").value("REFERENCE413_1"));
+	}
+
+	@Test
 	void 존재하지_않거나_삭제된_프로젝트는_404이다() throws Exception {
 		User owner = saveUser("소유자", "file-controller-project-owner@synq.com");
 		Project deletedProject = saveProject(owner);
