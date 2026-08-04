@@ -34,7 +34,7 @@ public class StubReferenceMaterialPort implements ReferenceMaterialPort {
 	}
 
 	@Override
-	public Optional<String> findExtractedText(Long referenceMaterialId) {
+	public Optional<String> findIndexableText(Long referenceMaterialId) {
 		return Optional.ofNullable(texts.get(referenceMaterialId));
 	}
 

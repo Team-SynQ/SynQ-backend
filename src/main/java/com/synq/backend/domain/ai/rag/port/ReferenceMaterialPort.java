@@ -7,7 +7,13 @@ import java.util.Optional;
  */
 public interface ReferenceMaterialPort {
 
-	Optional<String> findExtractedText(Long referenceMaterialId);
+	/**
+	 * 인덱싱할 텍스트를 조달한다.
+	 *
+	 * <p>추출 결과를 컬럼에 저장하지 않는다. 링크는 원본이 URL 이라 재fetch 로 재현되고,
+	 * 청크 본문은 이미 document_chunk 에 있어 따로 두면 중복 저장이 된다.
+	 */
+	Optional<String> findIndexableText(Long referenceMaterialId);
 
 	/**
 	 * 참고자료가 속한 프로젝트 ID. 검색 스코프이며 재인덱싱 시 필요하다.

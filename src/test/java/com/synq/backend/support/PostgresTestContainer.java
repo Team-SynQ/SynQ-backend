@@ -34,7 +34,6 @@ public abstract class PostgresTestContainer {
 		registry.add("gemini.api-key", () -> "test-key");
 		registry.add("openai.api-key", () -> "test-key");
 		// 개발 셸의 AI 환경변수가 테스트 빈 구성을 바꾸지 않도록 테스트용 구현체를 고정한다.
-		registry.add("ai.rag.reference-material.client", () -> "fake");
 		registry.add("ai.chat.client", () -> "fake");
 		registry.add("ai.summary.client", () -> "fake");
 		// 통합 테스트는 MockWebServer(루프백)를 쓴다. SafeDns 기본 정책이 이를 막는다.

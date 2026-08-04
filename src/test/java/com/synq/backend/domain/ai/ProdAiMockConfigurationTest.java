@@ -47,7 +47,6 @@ class ProdAiMockConfigurationTest {
 		registry.add("spring.datasource.password", POSTGRES::getPassword);
 		registry.add("jwt.secret", () -> "prod-test-jwt-secret-at-least-thirty-two-characters");
 		registry.add("gemini.api-key", () -> "test-key");
-		registry.add("ai.rag.reference-material.client", () -> "fake");
 		registry.add("ai.chat.client", () -> "fake");
 		registry.add("ai.summary.client", () -> "fake");
 		registry.add("ai.live-context.client", () -> "fake");
