@@ -2,15 +2,21 @@ package com.synq.backend.domain.ai.context.api;
 
 import com.synq.backend.domain.ai.context.api.dto.LiveContextResponse;
 import com.synq.backend.domain.ai.context.application.LiveContextService;
+import com.synq.backend.domain.auth.jwt.CurrentUserIdResolver;
+import com.synq.backend.domain.meeting.service.MeetingParticipantAccessValidator;
 import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Positive;
+import org.springframework.http.HttpHeaders;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -18,21 +24,38 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/meetings/{meetingId}/live-context")
 @Tag(name = "Live Context", description = "회의 중 누적 AI 맥락 조회 API")
+@SecurityRequirement(name = "bearerAuth")
 public class LiveContextController {
 
 	private final LiveContextService liveContextService;
+	private final CurrentUserIdResolver currentUserIdResolver;
+	private final MeetingParticipantAccessValidator accessValidator;
 
-	public LiveContextController(LiveContextService liveContextService) {
+	public LiveContextController(
+			LiveContextService liveContextService,
+			CurrentUserIdResolver currentUserIdResolver,
+			MeetingParticipantAccessValidator accessValidator
+	) {
 		this.liveContextService = liveContextService;
+		this.currentUserIdResolver = currentUserIdResolver;
+		this.accessValidator = accessValidator;
 	}
 
 	@Operation(summary = "회의 중 최신 AI 맥락 조회")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "최신 AI 맥락 조회 성공", useReturnTypeSchema = true),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "현재 회의 참여자가 아님"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 회의 맥락")
 	})
 	@GetMapping
-	public ApiResponse<LiveContextResponse> get(@PathVariable @Positive Long meetingId) {
+	public ApiResponse<LiveContextResponse> get(
+			@PathVariable @Positive Long meetingId,
+			@Parameter(hidden = true)
+			@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
+	) {
+		Long userId = currentUserIdResolver.resolve(authorization);
+		accessValidator.validateActiveParticipant(meetingId, userId);
 		return ApiResponse.onSuccess(
 				GeneralSuccessCode.REQUEST_OK,
 				LiveContextResponse.from(liveContextService.get(meetingId))
