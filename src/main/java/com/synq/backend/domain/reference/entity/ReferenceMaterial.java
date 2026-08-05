@@ -119,4 +119,14 @@ public class ReferenceMaterial extends BaseEntity {
 	public void softDelete() {
 		this.deletedAt = LocalDateTime.now();
 	}
+
+	/** 청킹·임베딩까지 끝나 AI 가 참고할 수 있는 상태. */
+	public void markAvailable() {
+		this.status = ReferenceStatus.AVAILABLE;
+	}
+
+	/** 본문을 읽지 못했거나 인덱싱이 실패한 상태. 사용자에게 그대로 노출된다. */
+	public void markReadFailed() {
+		this.status = ReferenceStatus.READ_FAILED;
+	}
 }

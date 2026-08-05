@@ -1,5 +1,7 @@
 package com.synq.backend.domain.reference.service;
 
+import com.synq.backend.domain.ai.rag.entity.DocumentChunk;
+import com.synq.backend.domain.ai.rag.repository.DocumentChunkRepository;
 import com.synq.backend.domain.project.code.ProjectErrorCode;
 import com.synq.backend.domain.project.entity.Project;
 import com.synq.backend.domain.project.entity.ProjectMember;
@@ -14,6 +16,7 @@ import com.synq.backend.domain.reference.dto.ReferenceResponse;
 import com.synq.backend.domain.reference.entity.ReferenceFileExtension;
 import com.synq.backend.domain.reference.entity.ReferenceMaterial;
 import com.synq.backend.domain.reference.entity.ReferenceStatus;
+import com.synq.backend.domain.reference.link.LinkPreflightChecker;
 import com.synq.backend.domain.reference.repository.ReferenceMaterialRepository;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
@@ -22,10 +25,15 @@ import com.synq.backend.global.apipayload.exception.GeneralException;
 import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @Transactional
 class ReferenceServiceTest extends PostgresTestContainer {
@@ -44,6 +52,14 @@ class ReferenceServiceTest extends PostgresTestContainer {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	@Autowired
+	private DocumentChunkRepository documentChunkRepository;
+
+	// 링크 등록이 실제 네트워크를 타지 않게 막는다.
+	// 이 클래스는 @Transactional 이라 커밋이 없어 AFTER_COMMIT 리스너는 실행되지 않는다.
+	@MockitoBean
+	private LinkPreflightChecker linkPreflightChecker;
 
 	@Test
 	void 프로젝트_OWNER는_다른_MEMBER의_참고자료를_Soft_Delete한다() {
@@ -443,6 +459,59 @@ class ReferenceServiceTest extends PostgresTestContainer {
 				.isInstanceOfSatisfying(GeneralException.class,
 						exception -> assertThat(exception.getCode())
 								.isEqualTo(ProjectErrorCode.USER_NOT_FOUND));
+	}
+
+	@Test
+	void 참고자료를_삭제하면_인덱싱된_청크도_지운다() {
+		// 소프트 삭제라 FK 의 ON DELETE CASCADE 가 동작하지 않는다. 지우지 않으면
+		// 사용자가 삭제한 문서의 내용이 계속 3-hint 와 AI Chat 답변에 실려 나간다.
+		User owner = saveUser("소유자", "reference-chunk-owner@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		ReferenceMaterial reference = saveLink(project, owner);
+		documentChunkRepository.save(DocumentChunk.of(
+				reference.getId(), project.getId(), 0, "지워져야 할 청크",
+				new float[768], "test-model"));
+
+		referenceService.delete(project.getId(), reference.getId(), owner.getUserId());
+
+		assertThat(documentChunkRepository
+				.findByReferenceMaterialIdOrderByChunkIndexAsc(reference.getId()))
+				.isEmpty();
+	}
+
+	@Test
+	void 프리플라이트가_실패하면_링크를_저장하지_않는다() {
+		User owner = saveUser("소유자", "reference-preflight-owner@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		willThrow(new GeneralException(ReferenceErrorCode.LINK_UNREACHABLE))
+				.given(linkPreflightChecker).check(anyString());
+
+		assertThatThrownBy(() -> referenceService.createLink(
+				project.getId(), owner.getUserId(), linkRequest()))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(ReferenceErrorCode.LINK_UNREACHABLE));
+
+		assertThat(referenceMaterialRepository.countByProjectId(project.getId())).isZero();
+	}
+
+	@Test
+	void 비멤버는_프리플라이트를_타기_전에_거부된다() {
+		// 비멤버가 URL 도달 여부를 알아내지 못하게 하고, 네트워크도 태우지 않는다.
+		User owner = saveUser("소유자", "reference-preflight-order-owner@synq.com");
+		User outsider = saveUser("외부인", "reference-preflight-order-outsider@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+
+		assertThatThrownBy(() -> referenceService.createLink(
+				project.getId(), outsider.getUserId(), linkRequest()))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(ProjectErrorCode.NOT_PROJECT_MEMBER));
+
+		verify(linkPreflightChecker, never()).check(anyString());
 	}
 
 	private ReferenceResponse findById(ReferenceListResponse response, Long referenceId) {

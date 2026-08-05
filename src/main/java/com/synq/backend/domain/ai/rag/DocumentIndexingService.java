@@ -32,6 +32,12 @@ public class DocumentIndexingService implements DocumentIndexer {
 		}
 	}
 
+	@Override
+	public void deleteIndex(Long referenceMaterialId) {
+		// 호출자의 삭제 트랜잭션에 참여한다. 비동기로 하면 삭제는 성공했는데 청크가 남는 창이 생긴다.
+		chunkWriter.deleteAll(referenceMaterialId);
+	}
+
 	/**
 	 * 청킹 → 임베딩 → 저장. all-or-nothing 이다.
 	 * 실패하면 청크를 하나도 남기지 않고 FAILED 로 표시한 뒤 예외를 다시 던진다

@@ -44,6 +44,9 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 
+	// 링크 참고자료 본문에서 텍스트를 뽑는다.
+	implementation 'org.jsoup:jsoup:1.18.3'
+
 	implementation 'org.springframework.security:spring-security-crypto'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -56,9 +59,22 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 	testImplementation 'org.testcontainers:junit-jupiter'
 	testImplementation 'org.testcontainers:postgresql'
+	// 링크 fetch 테스트용 로컬 HTTP 서버. 이미 쓰는 OkHttp 와 같은 버전으로 맞춘다.
+	testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
+	testImplementation 'org.awaitility:awaitility'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+// lombok.config 는 Lombok 이 생성하는 코드를 바꾸지만 Gradle 은 이 파일을 컴파일 입력으로 보지 않는다.
+// 선언해두지 않으면 설정만 바뀐 경우 compileJava 가 UP-TO-DATE 로 스킵되어,
+// 브랜치를 받은 사람이 clean 없이 빌드하면 낡은 클래스로 앱이 기동한다.
+tasks.withType(JavaCompile).configureEach {
+	// inputs.file 은 파일이 없으면 빌드를 실패시킨다. 컬렉션은 부재를 허용하면서 변경은 그대로 감지한다.
+	inputs.files('lombok.config')
+			.withPropertyName('lombokConfig')
+			.withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 tasks.named('test') {

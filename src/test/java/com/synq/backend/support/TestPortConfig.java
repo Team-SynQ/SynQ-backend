@@ -1,7 +1,6 @@
 package com.synq.backend.support;
 
 import com.synq.backend.domain.ai.client.EmbeddingClient;
-import com.synq.backend.domain.ai.rag.port.ReferenceMaterialPort;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.reference.repository.ReferenceMaterialRepository;
 import com.synq.backend.domain.user.repository.UserRepository;
@@ -10,17 +9,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
 /**
- * ReferenceMaterialPort 구현체를 제공하기 전까지, 통합 테스트에서 컨텍스트가 뜨도록
- * 대역을 빈으로 등록한다. 해당 구현이 들어오면 이 설정은 삭제한다.
+ * 통합 테스트가 실제 외부 API 를 호출하지 않도록 막는 대역 모음이다.
+ * ReferenceMaterialPort 는 ReferenceMaterialAdapter 실구현이 생겨 대역을 두지 않는다.
  */
 @TestConfiguration
 public class TestPortConfig {
-
-	@Bean
-	@Primary
-	public ReferenceMaterialPort referenceMaterialPort() {
-		return new StubReferenceMaterialPort();
-	}
 
 	/**
 	 * 통합 테스트가 실제 Gemini 를 호출하지 않도록 막는다.

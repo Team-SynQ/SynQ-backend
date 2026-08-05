@@ -9,4 +9,12 @@ package com.synq.backend.domain.ai.rag;
 public interface DocumentIndexer {
 
 	void indexAsync(Long referenceMaterialId, Long projectId, String extractedText);
+
+	/**
+	 * 참고자료가 삭제되면 청크도 지운다.
+	 *
+	 * <p>참고자료는 소프트 삭제라 FK 의 ON DELETE CASCADE 가 동작하지 않는다. 지우지 않으면
+	 * 사용자가 삭제한 문서의 내용이 계속 검색되어 3-hint 와 AI Chat 답변에 실려 나간다.
+	 */
+	void deleteIndex(Long referenceMaterialId);
 }

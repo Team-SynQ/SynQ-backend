@@ -130,8 +130,6 @@ ai:
     rag-top-k: ${AI_CHAT_RAG_TOP_K:5}
     rag-min-similarity: ${AI_CHAT_RAG_MIN_SIMILARITY:0.5}
   rag:
-    reference-material:
-      client: ${AI_RAG_REFERENCE_MATERIAL_CLIENT:fake}
     search:
       top-k: ${AI_RAG_SEARCH_TOP_K:5}
       min-similarity: ${AI_RAG_SEARCH_MIN_SIMILARITY:0.5}
@@ -160,6 +158,20 @@ ai:
       heartbeat-interval: ${AI_EVENT_SSE_HEARTBEAT_INTERVAL:20s}
       queue-capacity: ${AI_EVENT_SSE_QUEUE_CAPACITY:100}
 
+reference:
+  link:
+    connect-timeout: ${REFERENCE_LINK_CONNECT_TIMEOUT:3s}
+    read-timeout: ${REFERENCE_LINK_READ_TIMEOUT:10s}
+    # slowloris 방어. connect/read 만으로는 스레드가 영구 점유될 수 있다.
+    call-timeout: ${REFERENCE_LINK_CALL_TIMEOUT:15s}
+    # 프리플라이트는 트랜잭션 안에서 돌아 DB 커넥션을 점유하므로 더 짧게 끊는다.
+    preflight-call-timeout: ${REFERENCE_LINK_PREFLIGHT_CALL_TIMEOUT:5s}
+    max-content-bytes: ${REFERENCE_LINK_MAX_CONTENT_BYTES:5242880}
+    # 정규화 후 이 길이 미만이면 본문이 없는 것으로 본다. JS 렌더링 페이지가 여기서 걸린다.
+    min-text-length: ${REFERENCE_LINK_MIN_TEXT_LENGTH:50}
+    # 사설망 접근 허용. 프로덕션에서 켜면 SSRF 방어가 통째로 무력화된다.
+    allow-private-network: ${REFERENCE_LINK_ALLOW_PRIVATE_NETWORK:false}
+
 ---
 # local(dev) 전용 편의 설정
 spring:
@@ -187,6 +199,11 @@ ai:
   assistant:
     # 3-hint 생성기. 실제 OpenAI 호출 확인 시 openai로 변경한다.
     client: ${AI_ASSISTANT_CLIENT:fake}
+
+reference:
+  link:
+    # local 에서는 localhost 로 띄운 문서 서버로 실험할 수 있어야 한다.
+    allow-private-network: ${REFERENCE_LINK_ALLOW_PRIVATE_NETWORK:true}
 
 jwt:
   secret: ${JWT_SECRET:local-dev-only-secret-please-override-in-production-env}
