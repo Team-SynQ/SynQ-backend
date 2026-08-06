@@ -5,10 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.synq.backend.domain.ai.context.domain.LiveContextAiClient;
 import com.synq.backend.domain.ai.context.domain.LiveContextResult;
 import com.synq.backend.domain.ai.context.domain.LiveContextSnapshot;
+import com.synq.backend.domain.ai.context.application.LiveContextAiProperties;
 import com.synq.backend.domain.transcript.event.TranscriptFinalizedEvent;
 import java.util.List;
 import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -33,10 +35,17 @@ public class OpenAiLiveContextClient implements LiveContextAiClient {
 
 	private final OpenAiClient openAiClient;
 	private final ObjectMapper objectMapper;
+	private final LiveContextAiProperties properties;
 
-	public OpenAiLiveContextClient(OpenAiClient openAiClient, ObjectMapper objectMapper) {
+	@Autowired
+	public OpenAiLiveContextClient(OpenAiClient openAiClient, ObjectMapper objectMapper, LiveContextAiProperties properties) {
 		this.openAiClient = openAiClient;
 		this.objectMapper = objectMapper;
+		this.properties = properties;
+	}
+
+	OpenAiLiveContextClient(OpenAiClient openAiClient, ObjectMapper objectMapper) {
+		this(openAiClient, objectMapper, new LiveContextAiProperties("gpt-5.6-luna", "low", 1_200));
 	}
 
 	@Override
@@ -44,7 +53,8 @@ public class OpenAiLiveContextClient implements LiveContextAiClient {
 		String response = openAiClient.createStructuredText(
 				createPrompt(previousContext, event),
 				"meeting_live_context",
-				LIVE_CONTEXT_SCHEMA
+				LIVE_CONTEXT_SCHEMA,
+				new OpenAiGenerationOptions(properties.model(), properties.reasoningEffort(), properties.maxOutputTokens())
 		);
 		try {
 			return objectMapper.readValue(response, LiveContextResult.class);

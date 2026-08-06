@@ -8,10 +8,12 @@ import com.synq.backend.domain.ai.summary.domain.PersonalSummaryAiClient;
 import com.synq.backend.domain.ai.summary.domain.PersonalSummaryTarget;
 import com.synq.backend.domain.ai.summary.domain.SummaryContext;
 import com.synq.backend.domain.ai.summary.domain.SummaryAiClient;
+import com.synq.backend.domain.ai.summary.application.SummaryProperties;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -48,10 +50,17 @@ public class OpenAiSummaryClient implements SummaryAiClient, PersonalSummaryAiCl
 
 	private final OpenAiClient openAiClient;
 	private final ObjectMapper objectMapper;
+	private final SummaryProperties properties;
 
-	public OpenAiSummaryClient(OpenAiClient openAiClient, ObjectMapper objectMapper) {
+	@Autowired
+	public OpenAiSummaryClient(OpenAiClient openAiClient, ObjectMapper objectMapper, SummaryProperties properties) {
 		this.openAiClient = openAiClient;
 		this.objectMapper = objectMapper;
+		this.properties = properties;
+	}
+
+	OpenAiSummaryClient(OpenAiClient openAiClient, ObjectMapper objectMapper) {
+		this(openAiClient, objectMapper, new SummaryProperties("gpt-5.6-sol", "v1", 250_000));
 	}
 
 	@Override
@@ -62,8 +71,7 @@ public class OpenAiSummaryClient implements SummaryAiClient, PersonalSummaryAiCl
 	) {
 		String response = openAiClient.createStructuredText(
 				createPersonalPrompt(context, overallSummary, target),
-				"personal_meeting_summary",
-				PERSONAL_SUMMARY_SCHEMA
+				"personal_meeting_summary", PERSONAL_SUMMARY_SCHEMA, options()
 		);
 		try {
 			return objectMapper.readValue(response, GeneratedPersonalSummary.class);
@@ -76,8 +84,7 @@ public class OpenAiSummaryClient implements SummaryAiClient, PersonalSummaryAiCl
 	public GeneratedSummary generate(SummaryContext context) {
 		String response = openAiClient.createStructuredText(
 				createPrompt(context),
-				"meeting_summary",
-				SUMMARY_SCHEMA
+				"meeting_summary", SUMMARY_SCHEMA, options()
 		);
 		try {
 			// SummaryAiClient의 반환 형식을 고정해 Controller와 저장소가 제공자별 차이를 몰라도 되게 한다.
@@ -89,6 +96,11 @@ public class OpenAiSummaryClient implements SummaryAiClient, PersonalSummaryAiCl
 
 	private static Map<String, Object> stringSchema() {
 		return Map.of("type", "string");
+	}
+
+	private OpenAiGenerationOptions options() {
+		return new OpenAiGenerationOptions(
+				properties.modelName(), properties.reasoningEffort(), properties.maxOutputTokens());
 	}
 
 	private static Map<String, Object> stringArraySchema() {

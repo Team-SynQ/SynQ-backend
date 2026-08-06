@@ -11,10 +11,12 @@ import com.synq.backend.domain.ai.assistant.domain.AiChatSource;
 import com.synq.backend.domain.ai.assistant.domain.AiChatTranscript;
 import com.synq.backend.domain.ai.assistant.domain.AiChatTurn;
 import com.synq.backend.domain.ai.assistant.domain.AiChatWelcome;
+import com.synq.backend.domain.ai.assistant.application.AiChatProperties;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -48,16 +50,23 @@ public class OpenAiChatClient implements AiChatClient {
 
 	private final OpenAiClient openAiClient;
 	private final ObjectMapper objectMapper;
+	private final AiChatProperties properties;
 
-	public OpenAiChatClient(OpenAiClient openAiClient, ObjectMapper objectMapper) {
+	@Autowired
+	public OpenAiChatClient(OpenAiClient openAiClient, ObjectMapper objectMapper, AiChatProperties properties) {
 		this.openAiClient = openAiClient;
 		this.objectMapper = objectMapper;
+		this.properties = properties;
+	}
+
+	OpenAiChatClient(OpenAiClient openAiClient, ObjectMapper objectMapper) {
+		this(openAiClient, objectMapper, new AiChatProperties("gpt-5.6-terra", "low", 2_000, 12, 2, 5, 5, 0.5));
 	}
 
 	@Override
 	public AiChatResult generate(AiChatPrompt prompt) {
 		ChatResponse response = read(
-				openAiClient.createStructuredText(createChatPrompt(prompt), "meeting_ai_chat", CHAT_SCHEMA),
+				openAiClient.createStructuredText(createChatPrompt(prompt), "meeting_ai_chat", CHAT_SCHEMA, options()),
 				ChatResponse.class
 		);
 		return new AiChatResult(
@@ -123,6 +132,11 @@ public class OpenAiChatClient implements AiChatClient {
 				sourceKeysText(prompt.context().sourceCandidates()),
 				prompt.question()
 		);
+	}
+
+	private OpenAiGenerationOptions options() {
+		return new OpenAiGenerationOptions(
+				properties.model(), properties.reasoningEffort(), properties.maxOutputTokens());
 	}
 
 	private String createWelcomePrompt(AiChatContext context) {

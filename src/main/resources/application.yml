@@ -116,7 +116,8 @@ openai:
   # 실제 키는 OPENAI_API_KEY 환경변수로 주입한다.
   api-key: ${OPENAI_API_KEY:}
   base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
-  model: ${OPENAI_MODEL:gpt-5.4-nano}
+  # 기능별 모델 환경변수가 없을 때만 사용하는 전환용 기본값이다.
+  model: ${OPENAI_MODEL:gpt-5.6-terra}
   timeout: ${OPENAI_TIMEOUT:30s}
 
 # 모든 환경에서 필요한 값이라 프로파일 밖에 둔다.
@@ -124,6 +125,9 @@ openai:
 ai:
   chat:
     client: ${AI_CHAT_CLIENT}
+    model: ${AI_CHAT_MODEL:${OPENAI_MODEL:gpt-5.6-terra}}
+    reasoning-effort: ${AI_CHAT_REASONING_EFFORT:low}
+    max-output-tokens: ${AI_CHAT_MAX_OUTPUT_TOKENS:2000}
     recent-transcript-limit: ${AI_CHAT_RECENT_TRANSCRIPT_LIMIT:12}
     linked-segment-window: ${AI_CHAT_LINKED_SEGMENT_WINDOW:2}
     recent-turn-limit: ${AI_CHAT_RECENT_TURN_LIMIT:5}
@@ -137,6 +141,9 @@ ai:
   assistant:
     # 3-hint 관련 대역(생성기 + 포트) 활성화 스위치. Record/Project 실제 어댑터 전까지 prod 도 fake 로 기동한다.
     client: ${AI_ASSISTANT_CLIENT:fake}
+    model: ${AI_ASSISTANT_MODEL:${OPENAI_MODEL:gpt-5.6-terra}}
+    reasoning-effort: ${AI_ASSISTANT_REASONING_EFFORT:low}
+    max-output-tokens: ${AI_ASSISTANT_MAX_OUTPUT_TOKENS:1200}
     hint:
       window-before: ${AI_ASSISTANT_HINT_WINDOW_BEFORE:2}
       window-after: ${AI_ASSISTANT_HINT_WINDOW_AFTER:2}
@@ -144,7 +151,9 @@ ai:
       min-similarity: ${AI_ASSISTANT_HINT_MIN_SIMILARITY:0.3}
   summary:
     client: ${AI_SUMMARY_CLIENT:fake}
-    model-name: ${OPENAI_MODEL:gpt-5.4-nano}
+    model-name: ${AI_SUMMARY_MODEL:${OPENAI_MODEL:gpt-5.6-sol}}
+    reasoning-effort: ${AI_SUMMARY_REASONING_EFFORT:medium}
+    max-output-tokens: ${AI_SUMMARY_MAX_OUTPUT_TOKENS:8000}
     prompt-version: ${AI_SUMMARY_PROMPT_VERSION:v1}
     # 토큰 수를 정밀 계산하기 전 입력 폭주를 막는 보수적인 문자 수 제한.
     max-input-chars: ${AI_SUMMARY_MAX_INPUT_CHARS:250000}
@@ -152,6 +161,9 @@ ai:
     active-job-timeout: ${AI_SUMMARY_ACTIVE_JOB_TIMEOUT:30m}
   live-context:
     client: ${AI_LIVE_CONTEXT_CLIENT:openai}
+    model: ${AI_LIVE_CONTEXT_MODEL:${OPENAI_MODEL:gpt-5.6-luna}}
+    reasoning-effort: ${AI_LIVE_CONTEXT_REASONING_EFFORT:low}
+    max-output-tokens: ${AI_LIVE_CONTEXT_MAX_OUTPUT_TOKENS:1200}
   event:
     sse:
       timeout: ${AI_EVENT_SSE_TIMEOUT:30m}

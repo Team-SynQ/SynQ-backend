@@ -11,7 +11,7 @@ import org.springframework.web.client.RestClient;
 
 @Configuration
 @EnableConfigurationProperties(OpenAiProperties.class)
-@ConditionalOnExpression("'${ai.summary.client:fake}' == 'openai' or '${ai.live-context.client:fake}' == 'openai'")
+@ConditionalOnExpression("'${ai.summary.client:fake}' == 'openai' or '${ai.live-context.client:fake}' == 'openai' or '${ai.assistant.client:fake}' == 'openai' or '${ai.chat.client:fake}' == 'openai'")
 public class OpenAiClientConfig {
 
 	@Bean
