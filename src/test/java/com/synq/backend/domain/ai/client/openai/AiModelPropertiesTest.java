@@ -44,8 +44,14 @@ class AiModelPropertiesTest {
 			assertThat(context.getBean(AiChatProperties.class))
 				.extracting(AiChatProperties::model, AiChatProperties::reasoningEffort, AiChatProperties::maxOutputTokens)
 				.containsExactly("chat-model", "low", 2_000);
-			assertThat(context.getBean(AssistantAiProperties.class).model()).isEqualTo("hint-model");
-			assertThat(context.getBean(LiveContextAiProperties.class).model()).isEqualTo("context-model");
+			assertThat(context.getBean(AssistantAiProperties.class))
+					.extracting(AssistantAiProperties::model, AssistantAiProperties::reasoningEffort,
+							AssistantAiProperties::maxOutputTokens)
+					.containsExactly("hint-model", "low", 1_200);
+			assertThat(context.getBean(LiveContextAiProperties.class))
+					.extracting(LiveContextAiProperties::model, LiveContextAiProperties::reasoningEffort,
+							LiveContextAiProperties::maxOutputTokens)
+					.containsExactly("context-model", "low", 1_200);
 			assertThat(context.getBean(SummaryProperties.class))
 				.extracting(SummaryProperties::modelName, SummaryProperties::reasoningEffort, SummaryProperties::maxOutputTokens)
 				.containsExactly("summary-model", "medium", 8_000);

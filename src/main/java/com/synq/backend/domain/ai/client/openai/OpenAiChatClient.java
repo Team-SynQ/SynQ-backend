@@ -79,7 +79,7 @@ public class OpenAiChatClient implements AiChatClient {
 	@Override
 	public AiChatWelcome generateWelcome(AiChatContext context) {
 		WelcomeResponse response = read(
-				openAiClient.createStructuredText(createWelcomePrompt(context), "meeting_ai_chat_welcome", WELCOME_SCHEMA, options()),
+				openAiClient.createStructuredText(createWelcomePrompt(context), "meeting_ai_chat_welcome", WELCOME_SCHEMA),
 				WelcomeResponse.class
 		);
 		return new AiChatWelcome(response.welcomeMessage(), response.suggestedQuestions());

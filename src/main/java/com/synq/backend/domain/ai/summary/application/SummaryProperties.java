@@ -1,6 +1,8 @@
 package com.synq.backend.domain.ai.summary.application;
 
+import com.synq.backend.domain.ai.client.openai.OpenAiGenerationOptions;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.AssertTrue;
@@ -17,7 +19,7 @@ public record SummaryProperties(
 		@NotBlank String promptVersion,
 		@Positive int maxInputChars,
 		@NotNull @DefaultValue("30m") Duration activeJobTimeout,
-		@NotBlank String reasoningEffort,
+		@NotBlank @Pattern(regexp = OpenAiGenerationOptions.REASONING_EFFORT_PATTERN) String reasoningEffort,
 		@Positive int maxOutputTokens
 ) {
 	@ConstructorBinding

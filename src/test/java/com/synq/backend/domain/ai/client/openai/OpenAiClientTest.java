@@ -91,6 +91,13 @@ class OpenAiClientTest {
 	}
 
 	@Test
+	void rejectsUnsupportedReasoningEffort() {
+		assertThatThrownBy(() -> new OpenAiGenerationOptions("summary-model", "fast", 8_000))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessage("지원하지 않는 OpenAI 추론 강도입니다.");
+	}
+
+	@Test
 	void throwsExceptionWhenApiKeyMissing() {
 		OpenAiClient client = new OpenAiClient(
 				RestClient.builder().build(),

@@ -8,6 +8,7 @@ public record OpenAiGenerationOptions(
 		String reasoningEffort,
 		int maxOutputTokens
 ) {
+	public static final String REASONING_EFFORT_PATTERN = "none|minimal|low|medium|high|xhigh|max";
 
 	public OpenAiGenerationOptions {
 		if (!StringUtils.hasText(model)) {
@@ -15,6 +16,9 @@ public record OpenAiGenerationOptions(
 		}
 		if (!StringUtils.hasText(reasoningEffort)) {
 			throw new IllegalArgumentException("OpenAI 추론 강도는 비어 있을 수 없습니다.");
+		}
+		if (!reasoningEffort.matches(REASONING_EFFORT_PATTERN)) {
+			throw new IllegalArgumentException("지원하지 않는 OpenAI 추론 강도입니다.");
 		}
 		if (maxOutputTokens <= 0) {
 			throw new IllegalArgumentException("OpenAI 최대 출력 토큰은 양수여야 합니다.");

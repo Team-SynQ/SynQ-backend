@@ -58,7 +58,7 @@ class OpenAiChatClientTest {
 
 	@Test
 	void 최초_진입_응답은_안내와_추천_질문을_읽는다() {
-		when(openAiClient.createStructuredText(anyString(), eq("meeting_ai_chat_welcome"), anyMap(), Mockito.any()))
+		when(openAiClient.createStructuredText(anyString(), eq("meeting_ai_chat_welcome"), anyMap()))
 				.thenReturn("""
 						{
 						  "welcomeMessage": "회의가 시작되었습니다.",
@@ -70,6 +70,7 @@ class OpenAiChatClientTest {
 
 		assertThat(welcome.welcomeMessage()).isEqualTo("회의가 시작되었습니다.");
 		assertThat(welcome.suggestedQuestions()).hasSize(2);
+		verify(openAiClient).createStructuredText(anyString(), eq("meeting_ai_chat_welcome"), anyMap());
 	}
 
 	private AiChatContext context() {

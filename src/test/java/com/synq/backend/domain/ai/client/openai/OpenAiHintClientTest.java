@@ -40,5 +40,8 @@ class OpenAiHintClientTest {
 		assertThat(result.meaning()).isEqualTo("의미다");
 		assertThat(result.myImpact()).isEqualTo("영향이다");
 		assertThat(result.teamQuestion()).isEqualTo("질문이다");
+		org.mockito.Mockito.verify(openAiClient).createStructuredText(
+				any(), eq("three_hint"), any(),
+				eq(new OpenAiGenerationOptions("hint-model", "low", 1_200)));
 	}
 }
