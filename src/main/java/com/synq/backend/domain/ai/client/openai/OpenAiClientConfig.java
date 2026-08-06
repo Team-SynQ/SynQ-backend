@@ -11,7 +11,8 @@ import org.springframework.web.client.RestClient;
 
 @Configuration
 @EnableConfigurationProperties(OpenAiProperties.class)
-@ConditionalOnExpression("'${ai.summary.client:fake}' == 'openai' or '${ai.live-context.client:fake}' == 'openai'")
+// OpenAiClient 의 조건과 반드시 같아야 한다. 어긋나면 클라이언트만 만들어지고 RestClient 가 없어 기동이 깨진다.
+@ConditionalOnExpression("'${ai.summary.client:fake}' == 'openai' or '${ai.live-context.client:fake}' == 'openai' or '${ai.assistant.client:fake}' == 'openai' or '${ai.chat.client:fake}' == 'openai'")
 public class OpenAiClientConfig {
 
 	@Bean

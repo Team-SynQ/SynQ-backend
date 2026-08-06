@@ -142,7 +142,9 @@ ai:
       window-before: ${AI_ASSISTANT_HINT_WINDOW_BEFORE:2}
       window-after: ${AI_ASSISTANT_HINT_WINDOW_AFTER:2}
       top-k: ${AI_ASSISTANT_HINT_TOP_K:3}
-      min-similarity: ${AI_ASSISTANT_HINT_MIN_SIMILARITY:0.3}
+      # 실측값.
+      # 관련 문서 0.640~0.645 / 무관 문서 0.522~0.540 사이에 둔다.
+      min-similarity: ${AI_ASSISTANT_HINT_MIN_SIMILARITY:0.6}
   summary:
     client: ${AI_SUMMARY_CLIENT:fake}
     model-name: ${OPENAI_MODEL:gpt-5.4-nano}
