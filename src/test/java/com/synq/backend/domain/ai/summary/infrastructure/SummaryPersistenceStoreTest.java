@@ -74,7 +74,8 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 				List.of(new SummaryResultWriter.PersonalGeneration(
 						new PersonalSummaryTarget(USER_ID, "DEV_TECH", List.of("TECH_RISK")),
 						new GeneratedPersonalSummary("개인 요약", List.of("핵심"), List.of(), List.of())
-				))
+				)),
+				0
 		)).isTrue();
 
 		MeetingSummary overall = meetingSummaryStore.findLatestByMeetingId(MEETING_ID).orElseThrow();
@@ -100,12 +101,31 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 				List.of(new SummaryResultWriter.PersonalGeneration(
 						new PersonalSummaryTarget(USER_ID, "DEV_TECH", List.of("TECH_RISK")),
 						new GeneratedPersonalSummary("개인 요약", List.of("핵심"), List.of(), List.of())
-				))
+				)),
+				0
 		)).isFalse();
 
 		assertThat(jobStore.findById(job.id()).orElseThrow().status()).isEqualTo(SummaryJobStatus.FAILED);
 		assertThat(meetingSummaryStore.findLatestByMeetingId(MEETING_ID)).isEmpty();
 		assertThat(personalSummaryStore.findLatestByMeetingIdAndUserId(MEETING_ID, USER_ID)).isEmpty();
+	}
+
+	@Test
+	void 개인_요약이_일부_실패하면_부분_완료_상태와_실패_건수를_저장한다() {
+		SummaryJob job = jobStore.save(SummaryJob.queued(MEETING_ID, "test-model", "test-v1"));
+		SummaryJob processingJob = jobStore.startIfQueued(job.id()).orElseThrow();
+
+		assertThat(resultWriter.saveIfJobProcessing(
+				processingJob,
+				new GeneratedSummary("한 줄 요약", List.of("주제"), List.of(), List.of(), List.of(), List.of()),
+				List.of(),
+				2
+		)).isTrue();
+
+		SummaryJob completedJob = jobStore.findById(job.id()).orElseThrow();
+		assertThat(completedJob.status()).isEqualTo(SummaryJobStatus.COMPLETED_WITH_ERRORS);
+		assertThat(completedJob.failedPersonalSummaryCount()).isEqualTo(2);
+		assertThat(meetingSummaryStore.findLatestByMeetingId(MEETING_ID)).isPresent();
 	}
 
 	@Test

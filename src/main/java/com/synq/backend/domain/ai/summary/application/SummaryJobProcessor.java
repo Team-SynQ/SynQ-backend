@@ -2,8 +2,10 @@ package com.synq.backend.domain.ai.summary.application;
 
 import com.synq.backend.domain.ai.event.SummaryCompletedEvent;
 import com.synq.backend.domain.ai.event.SummaryFailedEvent;
+import com.synq.backend.domain.ai.summary.domain.GeneratedPersonalSummary;
 import com.synq.backend.domain.ai.summary.domain.GeneratedSummary;
 import com.synq.backend.domain.ai.summary.domain.PersonalSummaryAiClient;
+import com.synq.backend.domain.ai.summary.domain.PersonalSummaryTarget;
 import com.synq.backend.domain.ai.summary.domain.PersonalSummaryTargetReader;
 import com.synq.backend.domain.ai.summary.domain.SummaryAiClient;
 import com.synq.backend.domain.ai.summary.domain.SummaryContext;
@@ -11,6 +13,7 @@ import com.synq.backend.domain.ai.summary.domain.SummaryJob;
 import com.synq.backend.domain.ai.summary.domain.SummaryJobStore;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,20 +81,27 @@ public class SummaryJobProcessor {
 			var generated = generation.summary();
 			var targets = personalSummaryTargetReader.findByMeetingId(startedJob.meetingId());
 			var generatedPersonalSummaries = new ArrayList<SummaryResultWriter.PersonalGeneration>();
+			var failedPersonalSummaryUserIds = new ArrayList<Long>();
 			for (var target : targets) {
-				try {
-					generatedPersonalSummaries.add(new SummaryResultWriter.PersonalGeneration(
-							target,
-							personalSummaryAiClient.generate(generation.personalContext(), generated, target)
-					));
-				} catch (Exception e) {
-					// 한 참여자의 개인 요약 실패는 전체 회의 요약 결과를 폐기하지 않는다.
-					log.warn("개인 요약 생성에 실패해 해당 참여자를 제외합니다. meetingId={}, userId={}",
-							startedJob.meetingId(), target.userId(), e);
-				}
+				generatePersonalSummary(generation.personalContext(), generated, target)
+						.ifPresentOrElse(
+								content -> generatedPersonalSummaries.add(
+										new SummaryResultWriter.PersonalGeneration(target, content)),
+								() -> failedPersonalSummaryUserIds.add(target.userId())
+						);
+			}
+			if (!failedPersonalSummaryUserIds.isEmpty()) {
+				// 재시도 후에도 실패한 대상은 로그로만 남긴다. 상태 조회 응답에는 개인 식별자 대신 건수만 제공한다.
+				log.warn("개인 요약 생성이 최종 실패했습니다. meetingId={}, failedUserIds={}",
+						startedJob.meetingId(), failedPersonalSummaryUserIds);
 			}
 
-			succeeded = resultWriter.saveIfJobProcessing(startedJob, generated, generatedPersonalSummaries);
+			succeeded = resultWriter.saveIfJobProcessing(
+					startedJob,
+					generated,
+					generatedPersonalSummaries,
+					failedPersonalSummaryUserIds.size()
+			);
 			if (!succeeded) {
 				log.info("요약 작업 결과를 저장하지 않습니다. 이미 종료된 Job입니다. jobId={}", startedJob.id());
 			}
@@ -118,6 +128,25 @@ public class SummaryJobProcessor {
 					SUMMARY_GENERATION_FAILED_MESSAGE
 			));
 		}
+	}
+
+	private Optional<GeneratedPersonalSummary> generatePersonalSummary(
+			SummaryContext context,
+			GeneratedSummary overall,
+			PersonalSummaryTarget target
+	) {
+		for (int attempt = 1; attempt <= 2; attempt++) {
+			try {
+				return Optional.of(personalSummaryAiClient.generate(context, overall, target));
+			} catch (Exception e) {
+				if (attempt == 2) {
+					log.warn("개인 요약 생성 재시도까지 실패했습니다. userId={}", target.userId(), e);
+				} else {
+					log.warn("개인 요약 생성에 실패해 재시도합니다. userId={}", target.userId(), e);
+				}
+			}
+		}
+		return Optional.empty();
 	}
 
 	private OverallGeneration generateOverall(SummaryContext context) {

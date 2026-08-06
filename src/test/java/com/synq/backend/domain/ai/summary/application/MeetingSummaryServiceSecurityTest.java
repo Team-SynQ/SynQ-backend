@@ -2,11 +2,13 @@ package com.synq.backend.domain.ai.summary.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.synq.backend.domain.ai.summary.code.SummaryErrorCode;
+import com.synq.backend.domain.ai.event.SummaryFailedEvent;
 import com.synq.backend.domain.ai.summary.domain.SummaryJob;
 import com.synq.backend.domain.ai.summary.domain.SummaryJobStatus;
 import com.synq.backend.domain.ai.summary.mock.InMemoryMeetingSummaryStore;
@@ -17,6 +19,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.task.TaskRejectedException;
 
 class MeetingSummaryServiceSecurityTest {
 
@@ -42,6 +46,7 @@ class MeetingSummaryServiceSecurityTest {
 				1L,
 				SummaryJobStatus.PROCESSING,
 				0,
+				0,
 				"test-model",
 				"test-v1",
 				null,
@@ -57,6 +62,36 @@ class MeetingSummaryServiceSecurityTest {
 		assertThat(newJob.status()).isEqualTo(SummaryJobStatus.QUEUED);
 	}
 
+	@Test
+	void 요약_대기열이_거절되면_Job을_실패로_전환하고_회의_실패_이벤트를_발행한다() {
+		var jobStore = new InMemorySummaryJobStore();
+		SummaryJobProcessor processor = mock(SummaryJobProcessor.class);
+		doThrow(new TaskRejectedException("queue full"))
+				.when(processor).processAsync(org.mockito.ArgumentMatchers.any());
+		ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+		MeetingSummaryService service = new MeetingSummaryService(
+				jobStore,
+				new InMemoryMeetingSummaryStore(),
+				processor,
+				meetingId -> true,
+				new SummaryProperties("test-model", "test-v1", 600_000),
+				accessValidator,
+				eventPublisher
+		);
+
+		assertThatThrownBy(() -> service.requestAfterMeetingEnd(1L))
+				.isInstanceOf(GeneralException.class)
+				.extracting("code")
+				.isEqualTo(com.synq.backend.global.apipayload.code.GeneralErrorCode.SERVICE_UNAVAILABLE);
+		assertThat(jobStore.findActiveByMeetingId(1L)).isEmpty();
+
+		org.mockito.ArgumentCaptor<Object> eventCaptor = org.mockito.ArgumentCaptor.forClass(Object.class);
+		verify(eventPublisher).publishEvent(eventCaptor.capture());
+		SummaryFailedEvent event = (SummaryFailedEvent) eventCaptor.getValue();
+		assertThat(event.meetingId()).isEqualTo(1L);
+		assertThat(event.reason()).contains("대기열이 가득");
+	}
+
 	private MeetingSummaryService service(InMemorySummaryJobStore jobStore) {
 		SummaryJobProcessor processor = mock(SummaryJobProcessor.class);
 		MeetingSummaryService service = new MeetingSummaryService(
@@ -65,7 +100,9 @@ class MeetingSummaryServiceSecurityTest {
 				processor,
 				meetingId -> true,
 				new SummaryProperties("test-model", "test-v1", 600_000, Duration.ofMinutes(30)),
-				accessValidator
+				accessValidator,
+				event -> {
+				}
 		);
 		return service;
 	}

@@ -31,4 +31,13 @@ class SummaryValueObjectTest {
 		SummaryJob completed = processing.complete();
 		assertThatThrownBy(() -> completed.fail("실패")).isInstanceOf(IllegalStateException.class);
 	}
+
+	@Test
+	void 개인_요약_실패_건수가_있으면_부분_완료로_전이한다() {
+		SummaryJob partiallyCompleted = SummaryJob.queued(1L).start().complete(2);
+
+		assertThat(partiallyCompleted.status()).isEqualTo(SummaryJobStatus.COMPLETED_WITH_ERRORS);
+		assertThat(partiallyCompleted.failedPersonalSummaryCount()).isEqualTo(2);
+		assertThat(partiallyCompleted.isStale(java.time.Instant.now(), java.time.Duration.ofMinutes(1))).isFalse();
+	}
 }
