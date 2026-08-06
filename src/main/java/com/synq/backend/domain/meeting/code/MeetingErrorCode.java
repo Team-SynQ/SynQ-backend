@@ -25,7 +25,10 @@ public enum MeetingErrorCode implements BaseCode {
 			"이미 종료된 회의입니다."),
 	NOT_PROJECT_MEMBER_TO_JOIN(HttpStatus.FORBIDDEN,
 			"MEETING403_3",
-			"프로젝트 멤버만 회의에 참여할 수 있습니다.");
+			"프로젝트 멤버만 회의에 참여할 수 있습니다."),
+	NOT_MEETING_PARTICIPANT(HttpStatus.FORBIDDEN,
+			"MEETING403_4",
+			"현재 회의 참여자만 이용할 수 있습니다.");
 
 	private final HttpStatus status;
 	private final String code;

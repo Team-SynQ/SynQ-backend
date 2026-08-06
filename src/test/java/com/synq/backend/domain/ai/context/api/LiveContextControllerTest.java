@@ -1,6 +1,7 @@
 package com.synq.backend.domain.ai.context.api;
 
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -8,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.synq.backend.domain.ai.context.application.LiveContextService;
 import com.synq.backend.domain.ai.context.domain.LiveContext;
 import com.synq.backend.domain.ai.context.domain.LiveContextResult;
+import com.synq.backend.domain.auth.jwt.CurrentUserIdResolver;
+import com.synq.backend.domain.meeting.service.MeetingParticipantAccessValidator;
 import com.synq.backend.domain.transcript.event.TranscriptFinalizedEvent;
 import com.synq.backend.global.apipayload.handler.GeneralExceptionAdvice;
 import java.util.List;
@@ -20,12 +23,17 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 class LiveContextControllerTest {
 
 	private LiveContextService liveContextService;
+	private CurrentUserIdResolver currentUserIdResolver;
+	private MeetingParticipantAccessValidator accessValidator;
 	private MockMvc mockMvc;
 
 	@BeforeEach
 	void setUp() {
 		liveContextService = Mockito.mock(LiveContextService.class);
-		mockMvc = MockMvcBuilders.standaloneSetup(new LiveContextController(liveContextService))
+		currentUserIdResolver = Mockito.mock(CurrentUserIdResolver.class);
+		accessValidator = Mockito.mock(MeetingParticipantAccessValidator.class);
+		mockMvc = MockMvcBuilders.standaloneSetup(new LiveContextController(
+				liveContextService, currentUserIdResolver, accessValidator))
 				.setControllerAdvice(new GeneralExceptionAdvice())
 				.build();
 	}
@@ -39,11 +47,15 @@ class LiveContextControllerTest {
 				event
 		);
 		given(liveContextService.get(1L)).willReturn(context);
+		given(currentUserIdResolver.resolve("Bearer test-token")).willReturn(10L);
 
-		mockMvc.perform(get("/meetings/{meetingId}/live-context", 1L))
+		mockMvc.perform(get("/meetings/{meetingId}/live-context", 1L)
+						.header("Authorization", "Bearer test-token"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.result.rollingSummary").value("현재까지 요약"))
 				.andExpect(jsonPath("$.result.currentTopic").value("AI 기능"))
 				.andExpect(jsonPath("$.result.lastSequenceIndex").value(3));
+
+		verify(accessValidator).validateActiveParticipant(1L, 10L);
 	}
 }

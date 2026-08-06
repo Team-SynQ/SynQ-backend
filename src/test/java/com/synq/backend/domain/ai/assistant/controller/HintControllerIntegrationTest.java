@@ -97,7 +97,7 @@ class HintControllerIntegrationTest extends PostgresTestContainer {
 								meeting.getId(), segmentId)
 						.header(HttpHeaders.AUTHORIZATION, bearer(outsider.getUserId())))
 				.andExpect(status().isForbidden())
-				.andExpect(jsonPath("$.code").value("ASSISTANT403_1"));
+				.andExpect(jsonPath("$.code").value("MEETING403_4"));
 	}
 
 	@Test
@@ -116,7 +116,7 @@ class HintControllerIntegrationTest extends PostgresTestContainer {
 								meeting.getId(), segmentId)
 						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId())))
 				.andExpect(status().isForbidden())
-				.andExpect(jsonPath("$.code").value("ASSISTANT403_1"));
+				.andExpect(jsonPath("$.code").value("MEETING403_4"));
 	}
 
 	@Test
@@ -131,7 +131,7 @@ class HintControllerIntegrationTest extends PostgresTestContainer {
 								meeting.getId(), 999_999L)
 						.header(HttpHeaders.AUTHORIZATION, bearer(outsider.getUserId())))
 				.andExpect(status().isForbidden())
-				.andExpect(jsonPath("$.code").value("ASSISTANT403_1"));
+				.andExpect(jsonPath("$.code").value("MEETING403_4"));
 	}
 
 	private User saveUser(String name, String email) {

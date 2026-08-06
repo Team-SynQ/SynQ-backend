@@ -23,7 +23,7 @@ public interface HintControllerDocs {
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "3-hint 생성 성공", useReturnTypeSchema = true),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "회의와 세그먼트 연결이 올바르지 않음"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
-			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "회의 참가자가 아님"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "현재 회의 참여자가 아님"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 회의 또는 세그먼트")
 	})
 	@PostMapping("/hints")
