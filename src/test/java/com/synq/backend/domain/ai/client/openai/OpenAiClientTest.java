@@ -77,6 +77,20 @@ class OpenAiClientTest {
 	}
 
 	@Test
+	void createsFeatureSpecificStructuredRequestBody() {
+		Map<String, Object> request = OpenAiClient.structuredRequestBody(
+				"회의를 정리해줘.",
+				new OpenAiGenerationOptions("summary-model", "medium", 8_000),
+				"meeting_summary",
+				Map.of("type", "object")
+		);
+
+		assertThat(request).containsEntry("model", "summary-model")
+				.containsEntry("max_output_tokens", 8_000)
+				.containsEntry("reasoning", Map.of("effort", "medium"));
+	}
+
+	@Test
 	void throwsExceptionWhenApiKeyMissing() {
 		OpenAiClient client = new OpenAiClient(
 				RestClient.builder().build(),

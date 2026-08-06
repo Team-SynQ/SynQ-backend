@@ -16,14 +16,20 @@ public record SummaryProperties(
 		@NotBlank String modelName,
 		@NotBlank String promptVersion,
 		@Positive int maxInputChars,
-		@NotNull @DefaultValue("30m") Duration activeJobTimeout
+		@NotNull @DefaultValue("30m") Duration activeJobTimeout,
+		@NotBlank String reasoningEffort,
+		@Positive int maxOutputTokens
 ) {
 	@ConstructorBinding
 	public SummaryProperties {
 	}
 
 	public SummaryProperties(String modelName, String promptVersion, int maxInputChars) {
-		this(modelName, promptVersion, maxInputChars, Duration.ofMinutes(30));
+		this(modelName, promptVersion, maxInputChars, Duration.ofMinutes(30), "medium", 8_000);
+	}
+
+	public SummaryProperties(String modelName, String promptVersion, int maxInputChars, Duration activeJobTimeout) {
+		this(modelName, promptVersion, maxInputChars, activeJobTimeout, "medium", 8_000);
 	}
 
 	@AssertTrue(message = "활성 요약 Job timeout은 양수여야 합니다.")

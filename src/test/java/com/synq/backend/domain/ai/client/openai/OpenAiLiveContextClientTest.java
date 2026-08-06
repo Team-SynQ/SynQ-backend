@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.synq.backend.domain.ai.context.application.LiveContextAiProperties;
 import com.synq.backend.domain.ai.context.domain.LiveContextSnapshot;
 import com.synq.backend.domain.transcript.event.TranscriptFinalizedEvent;
 import java.util.List;
@@ -20,7 +21,7 @@ class OpenAiLiveContextClientTest {
 	@Test
 	void 구조화된_OpenAI_응답을_회의_맥락으로_변환한다() {
 		OpenAiClient openAiClient = Mockito.mock(OpenAiClient.class);
-		given(openAiClient.createStructuredText(any(), eq("meeting_live_context"), org.mockito.ArgumentMatchers.<Map<String, Object>>any()))
+		given(openAiClient.createStructuredText(any(), eq("meeting_live_context"), org.mockito.ArgumentMatchers.<Map<String, Object>>any(), any()))
 				.willReturn("""
 						{
 						  "rollingSummary": "회의 후 AI 기능을 먼저 구현하기로 했다.",
@@ -31,7 +32,8 @@ class OpenAiLiveContextClientTest {
 						}
 						""");
 
-		OpenAiLiveContextClient client = new OpenAiLiveContextClient(openAiClient, new ObjectMapper());
+		OpenAiLiveContextClient client = new OpenAiLiveContextClient(
+				openAiClient, new ObjectMapper(), new LiveContextAiProperties("context-model", "low", 1_200));
 		var result = client.refresh(
 				new LiveContextSnapshot("기존 요약", null, List.of(), List.of(), List.of()),
 				new TranscriptFinalizedEvent(1L, 1L, 0, 0, 1000, "확정 전사", null)
@@ -45,7 +47,8 @@ class OpenAiLiveContextClientTest {
 		verify(openAiClient).createStructuredText(
 				promptCaptor.capture(),
 				eq("meeting_live_context"),
-				org.mockito.ArgumentMatchers.<Map<String, Object>>any()
+				org.mockito.ArgumentMatchers.<Map<String, Object>>any(),
+				eq(new OpenAiGenerationOptions("context-model", "low", 1_200))
 		);
 		assertThat(promptCaptor.getValue())
 				.contains("[기존 현재 주제]\n없음")

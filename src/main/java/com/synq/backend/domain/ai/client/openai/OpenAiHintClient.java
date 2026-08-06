@@ -6,9 +6,11 @@ import com.synq.backend.domain.ai.assistant.domain.HintAiClient;
 import com.synq.backend.domain.ai.assistant.domain.HintInput;
 import com.synq.backend.domain.ai.assistant.domain.HintResult;
 import com.synq.backend.domain.ai.prompt.HintPromptFactory;
+import com.synq.backend.domain.ai.assistant.service.AssistantAiProperties;
 import java.util.List;
 import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -33,21 +35,31 @@ public class OpenAiHintClient implements HintAiClient {
 	private final OpenAiClient openAiClient;
 	private final ObjectMapper objectMapper;
 	private final HintPromptFactory promptFactory;
+	private final AssistantAiProperties properties;
 
+	@Autowired
 	public OpenAiHintClient(
 			OpenAiClient openAiClient,
 			ObjectMapper objectMapper,
-			HintPromptFactory promptFactory
+			HintPromptFactory promptFactory,
+			AssistantAiProperties properties
 	) {
 		this.openAiClient = openAiClient;
 		this.objectMapper = objectMapper;
 		this.promptFactory = promptFactory;
+		this.properties = properties;
+	}
+
+	OpenAiHintClient(OpenAiClient openAiClient, ObjectMapper objectMapper) {
+		this(openAiClient, objectMapper, new HintPromptFactory(),
+				new AssistantAiProperties("gpt-5.6-terra", "low", 1_200));
 	}
 
 	@Override
 	public HintResult generate(HintInput input) {
 		String response = openAiClient.createStructuredText(
-				promptFactory.create(input), "three_hint", HINT_SCHEMA);
+				promptFactory.create(input), "three_hint", HINT_SCHEMA,
+				new OpenAiGenerationOptions(properties.model(), properties.reasoningEffort(), properties.maxOutputTokens()));
 		try {
 			return objectMapper.readValue(response, HintResult.class);
 		} catch (JsonProcessingException e) {
