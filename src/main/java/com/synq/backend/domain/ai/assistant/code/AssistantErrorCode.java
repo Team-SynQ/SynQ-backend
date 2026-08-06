@@ -16,7 +16,10 @@ public enum AssistantErrorCode implements BaseCode {
 			"회의를 찾을 수 없습니다."),
 	SEGMENT_MEETING_MISMATCH(HttpStatus.BAD_REQUEST,
 			"ASSISTANT400_1",
-			"세그먼트가 요청한 회의에 속하지 않습니다.");
+			"세그먼트가 요청한 회의에 속하지 않습니다."),
+	NOT_MEETING_PARTICIPANT(HttpStatus.FORBIDDEN,
+			"ASSISTANT403_1",
+			"회의 참여자만 힌트를 생성할 수 있습니다.");
 
 	private final HttpStatus status;
 	private final String code;
