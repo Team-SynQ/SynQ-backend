@@ -81,26 +81,27 @@ public class SummaryJobProcessor {
 			var generated = generation.summary();
 			var targets = personalSummaryTargetReader.findByMeetingId(startedJob.meetingId());
 			var generatedPersonalSummaries = new ArrayList<SummaryResultWriter.PersonalGeneration>();
-			var failedPersonalSummaryUserIds = new ArrayList<Long>();
+			int failedPersonalSummaryCount = 0;
 			for (var target : targets) {
-				generatePersonalSummary(generation.personalContext(), generated, target)
-						.ifPresentOrElse(
-								content -> generatedPersonalSummaries.add(
-										new SummaryResultWriter.PersonalGeneration(target, content)),
-								() -> failedPersonalSummaryUserIds.add(target.userId())
-						);
+				Optional<GeneratedPersonalSummary> personalSummary = generatePersonalSummary(
+						generation.personalContext(), generated, target, startedJob.meetingId(), startedJob.id());
+				if (personalSummary.isPresent()) {
+					generatedPersonalSummaries.add(
+							new SummaryResultWriter.PersonalGeneration(target, personalSummary.orElseThrow()));
+				} else {
+					failedPersonalSummaryCount++;
+				}
 			}
-			if (!failedPersonalSummaryUserIds.isEmpty()) {
-				// 재시도 후에도 실패한 대상은 로그로만 남긴다. 상태 조회 응답에는 개인 식별자 대신 건수만 제공한다.
-				log.warn("개인 요약 생성이 최종 실패했습니다. meetingId={}, failedUserIds={}",
-						startedJob.meetingId(), failedPersonalSummaryUserIds);
+			if (failedPersonalSummaryCount > 0) {
+				log.warn("개인 요약 생성이 최종 실패했습니다. meetingId={}, jobId={}, failedPersonalSummaryCount={}",
+						startedJob.meetingId(), startedJob.id(), failedPersonalSummaryCount);
 			}
 
 			succeeded = resultWriter.saveIfJobProcessing(
 					startedJob,
 					generated,
 					generatedPersonalSummaries,
-					failedPersonalSummaryUserIds.size()
+					failedPersonalSummaryCount
 			);
 			if (!succeeded) {
 				log.info("요약 작업 결과를 저장하지 않습니다. 이미 종료된 Job입니다. jobId={}", startedJob.id());
@@ -133,16 +134,20 @@ public class SummaryJobProcessor {
 	private Optional<GeneratedPersonalSummary> generatePersonalSummary(
 			SummaryContext context,
 			GeneratedSummary overall,
-			PersonalSummaryTarget target
+			PersonalSummaryTarget target,
+			Long meetingId,
+			UUID jobId
 	) {
 		for (int attempt = 1; attempt <= 2; attempt++) {
 			try {
 				return Optional.of(personalSummaryAiClient.generate(context, overall, target));
 			} catch (Exception e) {
 				if (attempt == 2) {
-					log.warn("개인 요약 생성 재시도까지 실패했습니다. userId={}", target.userId(), e);
+					log.warn("개인 요약 생성 재시도까지 실패했습니다. meetingId={}, jobId={}, retryCount={}",
+							meetingId, jobId, attempt, e);
 				} else {
-					log.warn("개인 요약 생성에 실패해 재시도합니다. userId={}", target.userId(), e);
+					log.warn("개인 요약 생성에 실패해 재시도합니다. meetingId={}, jobId={}, retryCount={}",
+							meetingId, jobId, attempt, e);
 				}
 			}
 		}

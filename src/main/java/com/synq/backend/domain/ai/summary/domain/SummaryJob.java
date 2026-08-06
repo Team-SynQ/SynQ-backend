@@ -17,6 +17,11 @@ public record SummaryJob(
 		Instant startedAt,
 		Instant completedAt
 ) {
+	public SummaryJob {
+		if (failedPersonalSummaryCount < 0) {
+			throw new IllegalArgumentException("개인 요약 실패 건수는 음수일 수 없습니다.");
+		}
+	}
 
 	/** 요약 생성 요청 직후의 상태. 실제 처리는 SummaryJobProcessor가 시작한다. */
 	public static SummaryJob queued(Long meetingId) {
@@ -39,9 +44,6 @@ public record SummaryJob(
 	public SummaryJob complete(int failedPersonalSummaryCount) {
 		if (status != SummaryJobStatus.PROCESSING) {
 			throw new IllegalStateException("실행 중인 요약 작업만 완료할 수 있습니다.");
-		}
-		if (failedPersonalSummaryCount < 0) {
-			throw new IllegalArgumentException("개인 요약 실패 건수는 음수일 수 없습니다.");
 		}
 		SummaryJobStatus completedStatus = failedPersonalSummaryCount == 0
 				? SummaryJobStatus.COMPLETED

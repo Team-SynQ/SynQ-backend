@@ -40,4 +40,12 @@ class SummaryValueObjectTest {
 		assertThat(partiallyCompleted.failedPersonalSummaryCount()).isEqualTo(2);
 		assertThat(partiallyCompleted.isStale(java.time.Instant.now(), java.time.Duration.ofMinutes(1))).isFalse();
 	}
+
+	@Test
+	void 개인_요약_실패_건수는_음수일_수_없다() {
+		assertThatThrownBy(() -> new SummaryJob(
+				java.util.UUID.randomUUID(), 1L, SummaryJobStatus.QUEUED, 0, -1,
+				"model", "v1", null, java.time.Instant.now(), null, null
+		)).isInstanceOf(IllegalArgumentException.class);
+	}
 }

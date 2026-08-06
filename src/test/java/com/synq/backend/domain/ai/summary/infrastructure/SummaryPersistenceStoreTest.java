@@ -1,6 +1,7 @@
 package com.synq.backend.domain.ai.summary.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.synq.backend.domain.ai.summary.domain.GeneratedPersonalSummary;
 import com.synq.backend.domain.ai.summary.domain.GeneratedSummary;
@@ -126,6 +127,14 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 		assertThat(completedJob.status()).isEqualTo(SummaryJobStatus.COMPLETED_WITH_ERRORS);
 		assertThat(completedJob.failedPersonalSummaryCount()).isEqualTo(2);
 		assertThat(meetingSummaryStore.findLatestByMeetingId(MEETING_ID)).isPresent();
+	}
+
+	@Test
+	void 개인_요약_실패_건수가_음수면_저장소가_거부한다() {
+		SummaryJob job = jobStore.save(SummaryJob.queued(MEETING_ID, "test-model", "test-v1"));
+
+		assertThatThrownBy(() -> jobStore.completeIfProcessing(job.id(), -1))
+				.isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test
