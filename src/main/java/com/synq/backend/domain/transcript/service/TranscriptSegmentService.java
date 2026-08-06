@@ -14,6 +14,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class TranscriptSegmentService {
@@ -61,11 +63,7 @@ public class TranscriptSegmentService {
 	// 회의가 끝나면(IN_PROGRESS 가 아니면) 더 이상 수정할 수 없다 — summary retry 로 우회 반영하는 방식은 채택하지 않았다.
 	@Transactional
 	public TranscriptSegment update(Long meetingId, Long segmentId, Long userId, String content) {
-		Meeting meeting = meetingRepository.findById(meetingId)
-				.orElseThrow(() -> new GeneralException(TranscriptErrorCode.MEETING_NOT_FOUND));
-		if (!meetingParticipantRepository.existsByMeetingIdAndUserIdAndLeftAtIsNull(meetingId, userId)) {
-			throw new GeneralException(TranscriptErrorCode.NOT_PARTICIPANT);
-		}
+		Meeting meeting = requireParticipant(meetingId, userId);
 		if (meeting.getStatus() != MeetingStatus.IN_PROGRESS) {
 			throw new GeneralException(TranscriptErrorCode.SEGMENT_EDIT_NOT_ALLOWED);
 		}
@@ -74,5 +72,22 @@ public class TranscriptSegmentService {
 				.orElseThrow(() -> new GeneralException(TranscriptErrorCode.SEGMENT_NOT_FOUND));
 		segment.editContent(content);
 		return segment;
+	}
+
+	// 조회는 회의 상태와 무관하게 가능하다 — 회의가 끝난 뒤에도 전사는 계속 봐야 한다.
+	// editContent() 가 세그먼트를 in-place 로 덮어쓰므로, 그냥 최신 row 를 읽으면 수정본이 그대로 반영된다.
+	@Transactional(readOnly = true)
+	public List<TranscriptSegment> getSegments(Long meetingId, Long userId) {
+		requireParticipant(meetingId, userId);
+		return transcriptSegmentRepository.findByMeetingIdOrderByStartMsAscSequenceIndexAsc(meetingId);
+	}
+
+	private Meeting requireParticipant(Long meetingId, Long userId) {
+		Meeting meeting = meetingRepository.findById(meetingId)
+				.orElseThrow(() -> new GeneralException(TranscriptErrorCode.MEETING_NOT_FOUND));
+		if (!meetingParticipantRepository.existsByMeetingIdAndUserIdAndLeftAtIsNull(meetingId, userId)) {
+			throw new GeneralException(TranscriptErrorCode.NOT_PARTICIPANT);
+		}
+		return meeting;
 	}
 }
