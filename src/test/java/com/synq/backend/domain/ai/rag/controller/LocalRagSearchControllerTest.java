@@ -75,7 +75,8 @@ class LocalRagSearchControllerTest extends PostgresTestContainer {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.isSuccess").value(true))
 				.andExpect(jsonPath("$.result[0].content").value("인증은 JWT 로 처리한다"))
-				.andExpect(jsonPath("$.result[0].referenceMaterialId")
+				.andExpect(jsonPath("$.result[0].source").value("REFERENCE_MATERIAL"))
+				.andExpect(jsonPath("$.result[0].sourceId")
 						.value(referenceFixture.referenceMaterialId()));
 	}
 

@@ -136,7 +136,7 @@ public class AiChatContextBuilder {
 		transcripts.forEach(segment -> sources.add(new AiChatSource(
 				"TRANSCRIPT_SEGMENT", segment.getId(), "현재 회의 발화 " + segment.getSequenceIndex())));
 		references.forEach(reference -> sources.add(new AiChatSource(
-				"REFERENCE_MATERIAL", reference.referenceMaterialId(), "참고자료 " + reference.referenceMaterialId())));
+				reference.source().name(), reference.sourceId(), sourceLabel(reference))));
 		Map<String, AiChatSource> uniqueSources = new LinkedHashMap<>();
 		sources.forEach(source -> uniqueSources.putIfAbsent(source.type() + ":" + source.id(), source));
 		return List.copyOf(uniqueSources.values());
@@ -146,8 +146,16 @@ public class AiChatContextBuilder {
 		return new AiChatTranscript(segment.getId(), segment.getSpeakerLabel(), segment.getContent());
 	}
 
+	private String sourceLabel(ChunkMatch reference) {
+		return switch (reference.source()) {
+			case REFERENCE_MATERIAL -> "참고자료 " + reference.sourceId();
+			case MEETING_TRANSCRIPT -> "과거 회의 " + reference.sourceId();
+		};
+	}
+
 	private AiChatReference toReference(ChunkMatch reference) {
-		return new AiChatReference(reference.referenceMaterialId(), reference.chunkId(), reference.content());
+		return new AiChatReference(
+				reference.source(), reference.sourceId(), reference.chunkId(), reference.content());
 	}
 
 	private String roleDescription(MemberProfile profile) {

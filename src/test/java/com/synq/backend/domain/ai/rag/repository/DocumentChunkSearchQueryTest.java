@@ -84,7 +84,7 @@ class DocumentChunkSearchQueryTest extends PostgresTestContainer {
 
 		assertThat(rows).hasSize(1);
 		assertThat(rows.get(0).getContent()).isEqualTo("A 프로젝트 문서");
-		assertThat(rows.get(0).getReferenceMaterialId()).isEqualTo(referenceA.referenceMaterialId());
+		assertThat(rows.get(0).getSourceId()).isEqualTo(referenceA.referenceMaterialId());
 	}
 
 	@Test
@@ -180,7 +180,7 @@ class DocumentChunkSearchQueryTest extends PostgresTestContainer {
 		ChunkSearchRow row = repository.searchByProject(
 				referenceA.projectId(), queryVector(), -1.0, 10).get(0);
 
-		assertThat(row.getReferenceMaterialId()).isEqualTo(referenceA.referenceMaterialId());
+		assertThat(row.getSourceId()).isEqualTo(referenceA.referenceMaterialId());
 		assertThat(row.getChunkIndex()).isEqualTo(7);
 		assertThat(row.getChunkId()).isNotNull();
 	}

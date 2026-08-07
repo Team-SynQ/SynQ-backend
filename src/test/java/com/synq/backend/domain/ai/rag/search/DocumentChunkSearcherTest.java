@@ -71,7 +71,8 @@ class DocumentChunkSearcherTest extends PostgresTestContainer {
 		assertThat(matches).hasSize(1);
 		ChunkMatch match = matches.get(0);
 		assertThat(match.content()).isEqualTo("일치하는 청크");
-		assertThat(match.referenceMaterialId()).isEqualTo(referenceFixture.referenceMaterialId());
+		assertThat(match.source()).isEqualTo(ChunkSource.REFERENCE_MATERIAL);
+		assertThat(match.sourceId()).isEqualTo(referenceFixture.referenceMaterialId());
 		assertThat(match.chunkIndex()).isEqualTo(3);
 		assertThat(match.similarity()).isCloseTo(1.0, Offset.offset(0.0001));
 		assertThat(match.chunkId()).isNotNull();

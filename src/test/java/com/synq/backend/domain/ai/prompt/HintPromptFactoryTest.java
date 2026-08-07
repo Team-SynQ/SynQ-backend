@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.synq.backend.domain.ai.assistant.domain.HintInput;
 import com.synq.backend.domain.ai.context.domain.LiveContextSnapshot;
 import com.synq.backend.domain.ai.rag.search.ChunkMatch;
+import com.synq.backend.domain.ai.rag.search.ChunkSource;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -57,7 +58,7 @@ class HintPromptFactoryTest {
 				"클릭한 발화", List.of("앞 발화"), List.of("뒤 발화"),
 				"DEV_TECH", "백엔드", List.of("TECH_RISK"),
 				LiveContextSnapshot.empty(),
-				List.of(new ChunkMatch(1L, 10L, 0, "설계 문서 조각", 0.9)));
+				List.of(new ChunkMatch(1L, ChunkSource.REFERENCE_MATERIAL, 10L, 0, "설계 문서 조각", 0.9)));
 
 		String prompt = factory.create(input);
 

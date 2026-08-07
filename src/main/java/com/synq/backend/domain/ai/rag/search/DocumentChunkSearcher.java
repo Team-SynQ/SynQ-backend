@@ -10,7 +10,8 @@ import java.util.List;
 
 /**
  * 참고자료 청크(document_chunk)를 대상으로 검색한다.
- * 회의 전사 청크 검색은 별도 구현체로 추가한다.
+ * 회의 전사 청크 검색은 MeetingTranscriptChunkSearcher 가 맡고,
+ * 둘을 합치는 것은 CompositeChunkSearcher 다.
  */
 @Component
 @RequiredArgsConstructor
@@ -34,7 +35,8 @@ public class DocumentChunkSearcher implements ChunkSearcher {
 		return rows.stream()
 				.map(row -> new ChunkMatch(
 						row.getChunkId(),
-						row.getReferenceMaterialId(),
+						ChunkSource.REFERENCE_MATERIAL,
+						row.getSourceId(),
 						row.getChunkIndex(),
 						row.getContent(),
 						row.getSimilarity()))
