@@ -27,11 +27,14 @@ public class AiSummaryJobEntity {
 	private Long meetingId;
 
 	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 20)
+	@Column(nullable = false, length = 30)
 	private SummaryJobStatus status;
 
 	@Column(name = "retry_count", nullable = false)
 	private int retryCount;
+
+	@Column(name = "failed_personal_summary_count", nullable = false)
+	private int failedPersonalSummaryCount;
 
 	@Column(name = "model_name", length = 100)
 	private String modelName;
@@ -64,6 +67,7 @@ public class AiSummaryJobEntity {
 		this.meetingId = job.meetingId();
 		this.status = job.status();
 		this.retryCount = job.retryCount();
+		this.failedPersonalSummaryCount = job.failedPersonalSummaryCount();
 		this.modelName = job.modelName();
 		this.promptVersion = job.promptVersion();
 		this.errorMessage = job.errorMessage();
@@ -78,6 +82,7 @@ public class AiSummaryJobEntity {
 				meetingId,
 				status,
 				retryCount,
+				failedPersonalSummaryCount,
 				modelName,
 				promptVersion,
 				errorMessage,

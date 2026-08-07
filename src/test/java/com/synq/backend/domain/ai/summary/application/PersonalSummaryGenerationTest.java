@@ -13,6 +13,7 @@ import com.synq.backend.domain.ai.summary.mock.InMemorySummaryJobStore;
 import com.synq.backend.domain.ai.summary.mock.MockRagContextReader;
 import com.synq.backend.domain.ai.summary.mock.MockTranscriptReader;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 class PersonalSummaryGenerationTest {
@@ -96,8 +97,10 @@ class PersonalSummaryGenerationTest {
 		var meetingSummaryStore = new InMemoryMeetingSummaryStore();
 		var personalSummaryStore = new InMemoryPersonalSummaryStore();
 		var fakeClient = new FakeSummaryAiClient();
+		var failedUserAttempts = new AtomicInteger();
 		PersonalSummaryAiClient personalSummaryAiClient = (context, overall, target) -> {
 			if (target.userId().equals(8L)) {
+				failedUserAttempts.incrementAndGet();
 				throw new IllegalStateException("개인 요약 생성 실패");
 			}
 			return new GeneratedPersonalSummary("성공한 개인 요약", List.of(), List.of(), List.of());
@@ -125,9 +128,48 @@ class PersonalSummaryGenerationTest {
 
 		processor.process(job.id());
 
-		assertThat(jobStore.findById(job.id()).orElseThrow().status().name()).isEqualTo("COMPLETED");
+		var completedJob = jobStore.findById(job.id()).orElseThrow();
+		assertThat(completedJob.status().name()).isEqualTo("COMPLETED_WITH_ERRORS");
+		assertThat(completedJob.failedPersonalSummaryCount()).isEqualTo(1);
+		assertThat(failedUserAttempts).hasValue(2);
 		assertThat(meetingSummaryStore.findLatestByMeetingId(1L)).isPresent();
 		assertThat(personalSummaryStore.findLatestByMeetingIdAndUserId(1L, 7L)).isPresent();
 		assertThat(personalSummaryStore.findLatestByMeetingIdAndUserId(1L, 8L)).isEmpty();
+	}
+
+	@Test
+	void 개인_요약이_재시도에서_성공하면_정상_완료로_처리한다() {
+		var jobStore = new InMemorySummaryJobStore();
+		var meetingSummaryStore = new InMemoryMeetingSummaryStore();
+		var personalSummaryStore = new InMemoryPersonalSummaryStore();
+		var fakeClient = new FakeSummaryAiClient();
+		var attempts = new AtomicInteger();
+		PersonalSummaryAiClient personalSummaryAiClient = (context, overall, target) -> {
+			if (attempts.incrementAndGet() == 1) {
+				throw new IllegalStateException("일시적인 제공자 오류");
+			}
+			return new GeneratedPersonalSummary("재시도 성공", List.of(), List.of(), List.of());
+		};
+		var processor = new SummaryJobProcessor(
+				jobStore,
+				new SummaryContextBuilder(new MockTranscriptReader(), new MockRagContextReader(),
+						new SummaryProperties("test-model", "test-v1", 600_000)),
+				fakeClient,
+				personalSummaryAiClient,
+				meetingId -> List.of(new PersonalSummaryTarget(7L, "DEV_TECH", List.of())),
+				new SummaryResultWriter(meetingSummaryStore, personalSummaryStore, jobStore),
+				new SummaryProperties("test-model", "test-v1", 600_000),
+				event -> {
+				}
+		);
+		SummaryJob job = jobStore.save(SummaryJob.queued(1L));
+
+		processor.process(job.id());
+
+		var completedJob = jobStore.findById(job.id()).orElseThrow();
+		assertThat(completedJob.status().name()).isEqualTo("COMPLETED");
+		assertThat(completedJob.failedPersonalSummaryCount()).isZero();
+		assertThat(attempts).hasValue(2);
+		assertThat(personalSummaryStore.findLatestByMeetingIdAndUserId(1L, 7L)).isPresent();
 	}
 }

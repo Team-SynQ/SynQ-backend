@@ -1,6 +1,7 @@
 package com.synq.backend.domain.ai.summary.application;
 
 import com.synq.backend.domain.ai.summary.code.SummaryErrorCode;
+import com.synq.backend.domain.ai.event.SummaryFailedEvent;
 import com.synq.backend.domain.ai.summary.domain.MeetingStatusReader;
 import com.synq.backend.domain.ai.summary.domain.MeetingSummary;
 import com.synq.backend.domain.ai.summary.domain.SummaryJob;
@@ -10,6 +11,7 @@ import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ public class MeetingSummaryService {
 	private final MeetingStatusReader meetingStatusReader;
 	private final SummaryProperties properties;
 	private final SummaryAccessValidator accessValidator;
+	private final ApplicationEventPublisher eventPublisher;
 
 	public MeetingSummaryService(
 			SummaryJobStore jobStore,
@@ -32,7 +35,8 @@ public class MeetingSummaryService {
 			SummaryJobProcessor processor,
 			MeetingStatusReader meetingStatusReader,
 			SummaryProperties properties,
-			SummaryAccessValidator accessValidator
+			SummaryAccessValidator accessValidator,
+			ApplicationEventPublisher eventPublisher
 	) {
 		this.jobStore = jobStore;
 		this.summaryStore = summaryStore;
@@ -40,6 +44,7 @@ public class MeetingSummaryService {
 		this.meetingStatusReader = meetingStatusReader;
 		this.properties = properties;
 		this.accessValidator = accessValidator;
+		this.eventPublisher = eventPublisher;
 	}
 
 	public SummaryJob request(Long meetingId, Long userId) {
@@ -82,7 +87,12 @@ public class MeetingSummaryService {
 		try {
 			processor.processAsync(job.id());
 		} catch (TaskRejectedException e) {
-			jobStore.failIfActive(job.id(), "요약 작업 대기열이 가득 찼습니다.");
+			String errorMessage = "요약 작업 대기열이 가득 찼습니다.";
+			if (jobStore.failIfActive(job.id(), errorMessage)) {
+				// 대기열 거절은 Processor가 이벤트를 발행할 기회가 없으므로 여기서 회의 실패 전이를 알린다.
+				eventPublisher.publishEvent(new SummaryFailedEvent(
+						meetingId, job.id(), errorMessage));
+			}
 			throw new GeneralException(GeneralErrorCode.SERVICE_UNAVAILABLE);
 		}
 		return job;

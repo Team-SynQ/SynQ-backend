@@ -4,5 +4,6 @@ public enum SummaryJobStatus {
 	QUEUED,
 	PROCESSING,
 	COMPLETED,
+	COMPLETED_WITH_ERRORS,
 	FAILED
 }

@@ -90,7 +90,9 @@ class SummaryJobAsyncTest {
 	private SummaryJobStatus waitForStatus(java.util.UUID jobId) throws InterruptedException {
 		for (int attempt = 0; attempt < 100; attempt++) {
 			SummaryJobStatus status = jobStore.findById(jobId).orElseThrow().status();
-			if (status == SummaryJobStatus.COMPLETED || status == SummaryJobStatus.FAILED) {
+			if (status == SummaryJobStatus.COMPLETED
+					|| status == SummaryJobStatus.COMPLETED_WITH_ERRORS
+					|| status == SummaryJobStatus.FAILED) {
 				return status;
 			}
 			Thread.sleep(10);
@@ -220,7 +222,9 @@ class SummaryJobAsyncTest {
 					processor,
 					meetingId -> true,
 					properties,
-					org.mockito.Mockito.mock(SummaryAccessValidator.class)
+					org.mockito.Mockito.mock(SummaryAccessValidator.class),
+					event -> {
+					}
 			);
 		}
 	}
