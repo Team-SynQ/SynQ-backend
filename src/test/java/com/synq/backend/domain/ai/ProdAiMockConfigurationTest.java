@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.synq.backend.BackendApplication;
 import com.synq.backend.domain.ai.assistant.domain.AiChatClient;
+import com.synq.backend.domain.ai.assistant.domain.HintAiClient;
 import com.synq.backend.domain.ai.rag.port.ReferenceMaterialPort;
 import com.synq.backend.domain.ai.summary.domain.MeetingSummaryStore;
 import com.synq.backend.domain.ai.summary.domain.RagContextReader;
@@ -50,6 +51,7 @@ class ProdAiMockConfigurationTest {
 		registry.add("ai.chat.client", () -> "fake");
 		registry.add("ai.summary.client", () -> "fake");
 		registry.add("ai.live-context.client", () -> "fake");
+		registry.add("ai.assistant.client", () -> "fake");
 		registry.add("kakao.client-id", () -> "test");
 		registry.add("kakao.redirect-uri", () -> "http://localhost/callback");
 		registry.add("google.client-id", () -> "test");
@@ -63,6 +65,7 @@ class ProdAiMockConfigurationTest {
 	void prod_부트_설정에서_fake_mock_AI_포트가_각각_하나씩_등록된다() {
 		assertThat(applicationContext.getBeansOfType(ReferenceMaterialPort.class)).hasSize(1);
 		assertThat(applicationContext.getBeansOfType(AiChatClient.class)).hasSize(1);
+		assertThat(applicationContext.getBeansOfType(HintAiClient.class)).hasSize(1);
 		assertThat(applicationContext.getBeansOfType(SummaryAiClient.class)).hasSize(1);
 		assertThat(applicationContext.getBeansOfType(SummaryJobStore.class)).hasSize(1);
 		assertThat(applicationContext.getBeansOfType(MeetingSummaryStore.class)).hasSize(1);

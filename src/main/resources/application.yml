@@ -139,8 +139,9 @@ ai:
       min-similarity: ${AI_RAG_SEARCH_MIN_SIMILARITY:0.5}
   # 3-hint 는 속도 우선이라 rag.search 기본값과 별도로 더 타이트하게 잡는다.
   assistant:
-    # 3-hint 관련 대역(생성기 + 포트) 활성화 스위치. Record/Project 실제 어댑터 전까지 prod 도 fake 로 기동한다.
-    client: ${AI_ASSISTANT_CLIENT:fake}
+    # 3-hint 생성기 선택. 값을 빠뜨리면 조용히 Fake 로 떨어지는 대신 기동이 실패한다.
+    # (local 프로파일에서만 fake 로 폴백한다.)
+    client: ${AI_ASSISTANT_CLIENT}
     model: ${AI_ASSISTANT_MODEL:${OPENAI_MODEL:gpt-5.6-terra}}
     reasoning-effort: ${AI_ASSISTANT_REASONING_EFFORT:low}
     max-output-tokens: ${AI_ASSISTANT_MAX_OUTPUT_TOKENS:1200}
@@ -148,7 +149,9 @@ ai:
       window-before: ${AI_ASSISTANT_HINT_WINDOW_BEFORE:2}
       window-after: ${AI_ASSISTANT_HINT_WINDOW_AFTER:2}
       top-k: ${AI_ASSISTANT_HINT_TOP_K:3}
-      min-similarity: ${AI_ASSISTANT_HINT_MIN_SIMILARITY:0.3}
+      # 실측값.
+      # 관련 문서 0.640~0.645 / 무관 문서 0.522~0.540 사이에 둔다.
+      min-similarity: ${AI_ASSISTANT_HINT_MIN_SIMILARITY:0.6}
   summary:
     client: ${AI_SUMMARY_CLIENT:fake}
     model-name: ${AI_SUMMARY_MODEL:${OPENAI_MODEL:gpt-5.6-sol}}

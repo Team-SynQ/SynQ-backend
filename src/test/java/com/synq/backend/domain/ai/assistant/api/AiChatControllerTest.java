@@ -16,6 +16,7 @@ import com.synq.backend.domain.ai.assistant.domain.AiChatStatus;
 import com.synq.backend.domain.ai.assistant.domain.AiChatPrompt;
 import com.synq.backend.domain.ai.assistant.mock.FakeAiChatClient;
 import com.synq.backend.domain.ai.assistant.code.AiChatErrorCode;
+import com.synq.backend.domain.ai.context.repository.LiveContextRepository;
 import com.synq.backend.domain.ai.rag.search.ChunkSearcher;
 import com.synq.backend.domain.auth.jwt.AccessTokenBlacklistService;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
@@ -65,6 +66,9 @@ class AiChatControllerTest extends PostgresTestContainer {
 	private TranscriptSegmentRepository transcriptSegmentRepository;
 
 	@Autowired
+	private LiveContextRepository liveContextRepository;
+
+	@Autowired
 	private JwtProvider jwtProvider;
 
 	@MockitoBean
@@ -82,6 +86,8 @@ class AiChatControllerTest extends PostgresTestContainer {
 		reset(chunkSearcher);
 		aiChatMessageRepository.deleteAll();
 		transcriptSegmentRepository.deleteAll();
+		// 다른 테스트가 남긴 Live Context 가 meeting 삭제의 FK 제약에 걸린다.
+		liveContextRepository.deleteAll();
 		meetingParticipantRepository.deleteAll();
 		meetingRepository.deleteAll();
 		userRepository.deleteAll();
