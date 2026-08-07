@@ -81,6 +81,11 @@ naver:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS}
 
+image:
+  profile:
+    max-size-bytes: ${IMAGE_PROFILE_MAX_SIZE_BYTES:5242880}
+    cloudfront-domain: ${CLOUDFRONT_DOMAIN:}
+
 gemini:
   api-key: ${GEMINI_API_KEY}
   base-url: https://generativelanguage.googleapis.com/v1beta

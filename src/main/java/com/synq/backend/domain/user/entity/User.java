@@ -44,6 +44,9 @@ public class User {
 	@Column(name = "provider_id")
 	private String providerId;
 
+	@Column(name = "profile_image_key")
+	private String profileImageKey;
+
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private OffsetDateTime createdAt;
 
@@ -69,5 +72,9 @@ public class User {
 
 	public void updateName(String name) {
 		this.name = name;
+	}
+
+	public void updateProfileImageKey(String profileImageKey) {
+		this.profileImageKey = profileImageKey;
 	}
 }

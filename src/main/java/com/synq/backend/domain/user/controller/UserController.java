@@ -4,6 +4,7 @@ import com.synq.backend.domain.user.dto.UserMeResponse;
 import com.synq.backend.domain.user.dto.UserNameUpdateRequest;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
+import com.synq.backend.domain.user.service.ProfileImageService;
 import com.synq.backend.domain.user.service.UserService;
 import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
@@ -21,10 +22,12 @@ public class UserController implements UserControllerDocs {
 
 	private final UserRepository userRepository;
 	private final UserService userService;
+	private final ProfileImageService profileImageService;
 
-	public UserController(UserRepository userRepository, UserService userService) {
+	public UserController(UserRepository userRepository, UserService userService, ProfileImageService profileImageService) {
 		this.userRepository = userRepository;
 		this.userService = userService;
+		this.profileImageService = profileImageService;
 	}
 
 	@Override
@@ -32,8 +35,9 @@ public class UserController implements UserControllerDocs {
 	public ResponseEntity<ApiResponse<UserMeResponse>> me(Long userId) {
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
+		String profileImageUrl = profileImageService.toUrl(user.getProfileImageKey());
 		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
-				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, UserMeResponse.from(user)));
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, UserMeResponse.from(user, profileImageUrl)));
 	}
 
 	@Override
