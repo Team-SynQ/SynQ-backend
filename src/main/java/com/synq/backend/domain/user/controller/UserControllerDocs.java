@@ -17,8 +17,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 public interface UserControllerDocs {
 
 	@Operation(summary = "마이페이지 기본 정보 조회",
-			description = "로그인한 사용자의 기본 정보(userId, name, email, provider)를 조회한다. "
+			description = "로그인한 사용자의 기본 정보(userId, name, email, provider, profileImageUrl)를 조회한다. "
 					+ "email은 소셜 로그인 사용자의 경우 없을 수 있다(null). "
+					+ "profileImageUrl은 프로필 이미지를 등록한 적이 없으면 null이다. "
 					+ "마이페이지에서 역할·관점 프로필까지 함께 보여줘야 한다면 "
 					+ "GET /users/me/role-profiles를 별도로 호출해서 조합해야 한다(하나의 응답으로 합쳐서 제공하지 않는다).")
 	@ApiResponses({

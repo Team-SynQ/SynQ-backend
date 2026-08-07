@@ -13,9 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
 	private final UserRepository userRepository;
+	private final ProfileImageService profileImageService;
 
-	public UserService(UserRepository userRepository) {
+	public UserService(UserRepository userRepository, ProfileImageService profileImageService) {
 		this.userRepository = userRepository;
+		this.profileImageService = profileImageService;
 	}
 
 	@Transactional
@@ -23,6 +25,6 @@ public class UserService {
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
 		user.updateName(name);
-		return UserMeResponse.from(user);
+		return UserMeResponse.from(user, profileImageService.toUrl(user.getProfileImageKey()));
 	}
 }

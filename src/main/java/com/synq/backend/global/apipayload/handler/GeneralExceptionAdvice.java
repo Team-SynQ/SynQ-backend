@@ -4,6 +4,8 @@ import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MissingRequestHeaderException;
@@ -16,6 +18,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 public class GeneralExceptionAdvice {
+
+	private static final Logger log = LoggerFactory.getLogger(GeneralExceptionAdvice.class);
 
 	@ExceptionHandler(GeneralException.class)
 	public ResponseEntity<ApiResponse<Void>> handleGeneralException(GeneralException e) {
@@ -48,6 +52,7 @@ public class GeneralExceptionAdvice {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
+		log.error("예기치 않은 서버 에러가 발생했습니다.", e);
 		return ResponseEntity.status(GeneralErrorCode.INTERNAL_SERVER_ERROR.getStatus())
 				.body(ApiResponse.onFailure(GeneralErrorCode.INTERNAL_SERVER_ERROR, null));
 	}
