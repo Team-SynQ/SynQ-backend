@@ -11,6 +11,7 @@ import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/meetings")
 @RequiredArgsConstructor
 @Tag(name = "RAG", description = "참고자료·회의 전사 AI 인덱싱 API")
+@SecurityRequirement(name = "bearerAuth")
 public class TranscriptReindexController {
 
 	private final MeetingRepository meetingRepository;
@@ -36,7 +38,9 @@ public class TranscriptReindexController {
 					+ "회의 종료 후 전사는 수정할 수 없으므로 몇 번을 돌려도 결과가 같다.")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "재인덱싱 성공", useReturnTypeSchema = true),
-			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 회의")
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 회의"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "이미 인덱싱이 진행 중인 회의")
 	})
 	@PostMapping("/{meetingId}/transcript-reindex")
 	public ApiResponse<Void> reindex(@PathVariable Long meetingId) {

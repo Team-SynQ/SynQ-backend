@@ -52,6 +52,14 @@ public class MeetingEndedTranscriptIndexTrigger {
 				.map(TranscriptSegment::getContent)
 				.collect(Collectors.joining("\n"));
 
-		indexingService.indexAsync(event.meetingId(), projectId, transcriptText);
+		try {
+			// indexAsync 가 아니라 index 를 부른다. 이미 indexingExecutor 위에 있으므로
+			// indexAsync 를 부르면 같은 풀(코어 2)에 작업을 다시 제출해 스레드 하나를
+			// 제출 용도로만 쓰게 되고, 실패 처리도 이쪽과 분리된다.
+			indexingService.index(event.meetingId(), projectId, transcriptText);
+		} catch (RuntimeException e) {
+			// 비동기라 호출자에게 전달할 곳이 없다. 상태는 index() 안에서 FAILED 로 기록됐다.
+			log.error("회의 종료 후 전사 인덱싱에 실패했습니다. meetingId={}", event.meetingId(), e);
+		}
 	}
 }

@@ -55,7 +55,7 @@ class MeetingEndedTranscriptIndexTriggerTest extends PostgresTestContainer {
 		trigger.handle(new MeetingEndedEvent(meeting.meetingId()));
 
 		ArgumentCaptor<String> text = ArgumentCaptor.forClass(String.class);
-		verify(indexingService).indexAsync(
+		verify(indexingService).index(
 				eq(meeting.meetingId()), eq(meeting.projectId()), text.capture());
 
 		// 화자 라벨을 넣지 않는다. speaker_label 은 항상 NULL 이다.
@@ -66,13 +66,13 @@ class MeetingEndedTranscriptIndexTriggerTest extends PostgresTestContainer {
 	void 세그먼트가_없으면_빈_문자열로_넘겨_SKIPPED_판정을_서비스에_맡긴다() {
 		trigger.handle(new MeetingEndedEvent(meeting.meetingId()));
 
-		verify(indexingService).indexAsync(meeting.meetingId(), meeting.projectId(), "");
+		verify(indexingService).index(meeting.meetingId(), meeting.projectId(), "");
 	}
 
 	@Test
 	void 존재하지_않는_회의는_인덱싱하지_않는다() {
 		trigger.handle(new MeetingEndedEvent(-1L));
 
-		verify(indexingService, never()).indexAsync(any(), any(), any());
+		verify(indexingService, never()).index(any(), any(), any());
 	}
 }

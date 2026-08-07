@@ -8,11 +8,13 @@ import com.synq.backend.domain.ai.rag.repository.MeetingTranscriptChunkRepositor
 import com.synq.backend.domain.ai.rag.repository.MeetingTranscriptIndexStatusRepository;
 import com.synq.backend.support.MeetingTranscriptTestFixture;
 import com.synq.backend.support.PostgresTestContainer;
+import com.synq.backend.global.apipayload.exception.GeneralException;
 import com.synq.backend.support.StubEmbeddingClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 
@@ -37,6 +39,10 @@ class TranscriptIndexingServiceTest extends PostgresTestContainer {
 
 	@Autowired
 	private MeetingTranscriptTestFixture fixture;
+
+	// updated_at 을 과거로 돌려야 stale 인계를 검증할 수 있다. 엔티티에는 setter 가 없다.
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
 
 	private StubEmbeddingClient embeddingClient;
 	private TranscriptIndexingService service;
@@ -126,6 +132,33 @@ class TranscriptIndexingServiceTest extends PostgresTestContainer {
 
 		// 멱등: 두 번 돌려도 청크 수가 같고 UNIQUE(meeting_id, chunk_index) 위반이 나지 않는다.
 		assertThat(chunks).hasSize(firstCount);
+		assertThat(statusOf(meeting.meetingId()).getStatus()).isEqualTo(TranscriptIndexStatus.COMPLETED);
+	}
+
+	@Test
+	void 인덱싱이_진행_중이면_중복_실행을_거부한다() {
+		// 회의 종료 이벤트 인덱싱이 도는 중에 수동 재인덱싱이 들어오는 상황이다.
+		// 막지 않으면 두 파이프라인이 같은 meeting_id 의 청크를 동시에 replace 한다.
+		statusWriter.markProcessing(meeting.meetingId(), meeting.projectId());
+
+		assertThatThrownBy(() -> service.index(
+				meeting.meetingId(), meeting.projectId(), longTranscript()))
+				.isInstanceOf(GeneralException.class);
+
+		// 진행 중이던 쪽의 상태를 건드리지 않는다.
+		assertThat(statusOf(meeting.meetingId()).getStatus()).isEqualTo(TranscriptIndexStatus.PROCESSING);
+	}
+
+	@Test
+	void 오래_PROCESSING_에_머문_회의는_인계받는다() {
+		// 서버가 인덱싱 도중 죽으면 PROCESSING 행이 남는다. 인계하지 않으면 영영 복구할 수 없다.
+		statusWriter.markProcessing(meeting.meetingId(), meeting.projectId());
+		jdbcTemplate.update(
+				"UPDATE meeting_transcript_index_status SET updated_at = now() - interval '1 hour' "
+						+ "WHERE meeting_id = ?", meeting.meetingId());
+
+		service.index(meeting.meetingId(), meeting.projectId(), longTranscript());
+
 		assertThat(statusOf(meeting.meetingId()).getStatus()).isEqualTo(TranscriptIndexStatus.COMPLETED);
 	}
 
