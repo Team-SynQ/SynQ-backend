@@ -1,8 +1,10 @@
 package com.synq.backend.support;
 
 import com.synq.backend.domain.ai.client.EmbeddingClient;
+import com.synq.backend.domain.meeting.repository.MeetingRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.reference.repository.ReferenceMaterialRepository;
+import com.synq.backend.domain.transcript.repository.TranscriptSegmentRepository;
 import com.synq.backend.domain.user.repository.UserRepository;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -35,6 +37,21 @@ public class TestPortConfig {
 				userRepository,
 				projectRepository,
 				referenceMaterialRepository
+		);
+	}
+
+	@Bean
+	public MeetingTranscriptTestFixture meetingTranscriptTestFixture(
+			UserRepository userRepository,
+			ProjectRepository projectRepository,
+			MeetingRepository meetingRepository,
+			TranscriptSegmentRepository transcriptSegmentRepository
+	) {
+		return new MeetingTranscriptTestFixture(
+				userRepository,
+				projectRepository,
+				meetingRepository,
+				transcriptSegmentRepository
 		);
 	}
 }

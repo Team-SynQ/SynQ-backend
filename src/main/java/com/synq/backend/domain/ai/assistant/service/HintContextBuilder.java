@@ -8,7 +8,7 @@ import com.synq.backend.domain.ai.context.domain.LiveContextSnapshot;
 import com.synq.backend.domain.ai.context.repository.LiveContextRepository;
 import com.synq.backend.domain.ai.rag.search.ChunkMatch;
 import com.synq.backend.domain.ai.rag.search.ChunkSearchQuery;
-import com.synq.backend.domain.ai.rag.search.ChunkSearcher;
+import com.synq.backend.domain.ai.rag.search.DocumentChunkSearcher;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
 import com.synq.backend.domain.transcript.entity.TranscriptSegment;
@@ -33,7 +33,9 @@ public class HintContextBuilder {
 	private final MeetingRepository meetingRepository;
 	private final MemberProfileReader memberProfileReader;
 	private final LiveContextRepository liveContextRepository;
-	private final ChunkSearcher chunkSearcher;
+	// 3-hint 는 클릭 직후 떠야 하므로 검색 경로를 늘리지 않는다. 과거 회의 전사를 섞지 않고
+	// 참고자료만 본다. 실측으로 맞춘 임계값이 전사 청크에도 맞는지 아직 검증되지 않았다.
+	private final DocumentChunkSearcher chunkSearcher;
 	private final AssistantHintProperties properties;
 
 	// 트랜잭션으로 묶지 않는다. chunkSearcher 가 임베딩 API 를 호출하므로,

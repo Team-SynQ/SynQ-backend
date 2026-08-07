@@ -12,6 +12,7 @@ import com.synq.backend.domain.ai.assistant.application.AiChatProperties;
 import com.synq.backend.domain.ai.assistant.domain.AiChatContext;
 import com.synq.backend.domain.ai.assistant.domain.AiChatPrompt;
 import com.synq.backend.domain.ai.assistant.domain.AiChatReference;
+import com.synq.backend.domain.ai.rag.search.ChunkSource;
 import com.synq.backend.domain.ai.assistant.domain.AiChatSource;
 import com.synq.backend.domain.ai.assistant.domain.AiChatTranscript;
 import com.synq.backend.domain.ai.context.domain.LiveContextSnapshot;
@@ -82,7 +83,7 @@ class OpenAiChatClientTest {
 				new LiveContextSnapshot("온보딩 개선은 이번 주 우선순위입니다.", "일정", List.of(), List.of(), List.of()),
 				List.of(new AiChatTranscript(11L, null, "온보딩 개선을 먼저 진행합시다.")),
 				List.of(),
-				List.of(new AiChatReference(7L, 70L, "PRD의 온보딩 개선 계획")),
+				List.of(new AiChatReference(ChunkSource.REFERENCE_MATERIAL, 7L, 70L, "PRD의 온보딩 개선 계획")),
 				List.of(
 						new AiChatSource("TRANSCRIPT_SEGMENT", 11L, "현재 회의 발화 0"),
 						new AiChatSource("REFERENCE_MATERIAL", 7L, "참고자료 7")

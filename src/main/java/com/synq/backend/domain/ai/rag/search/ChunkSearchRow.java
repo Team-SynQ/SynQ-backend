@@ -8,7 +8,8 @@ public interface ChunkSearchRow {
 
 	Long getChunkId();
 
-	Long getReferenceMaterialId();
+	/** 출처 식별자. */
+	Long getSourceId();
 
 	Integer getChunkIndex();
 

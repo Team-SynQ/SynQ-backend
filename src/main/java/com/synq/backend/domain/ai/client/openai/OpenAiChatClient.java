@@ -228,8 +228,10 @@ public class OpenAiChatClient implements AiChatClient {
 		if (references.isEmpty()) {
 			return "(관련 참고자료 없음)";
 		}
+		// 라벨은 sourceKeysText 가 만드는 근거 키와 형식이 같아야 한다.
+		// 어긋나면 LLM 이 인용한 근거를 호출자가 되짚지 못한다.
 		return references.stream()
-				.map(value -> "[REFERENCE_MATERIAL:" + value.referenceMaterialId() + "] " + value.content())
+				.map(value -> "[" + value.source().name() + ":" + value.sourceId() + "] " + value.content())
 				.collect(Collectors.joining("\n"));
 	}
 

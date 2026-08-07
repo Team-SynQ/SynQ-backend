@@ -29,7 +29,7 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, Lo
 	 */
 	@Query(value = """
 			SELECT id                    AS "chunkId",
-			       reference_material_id AS "referenceMaterialId",
+			       reference_material_id AS "sourceId",
 			       chunk_index           AS "chunkIndex",
 			       content               AS "content",
 			       1 - (embedding <=> CAST(:embedding AS vector)) AS "similarity"
