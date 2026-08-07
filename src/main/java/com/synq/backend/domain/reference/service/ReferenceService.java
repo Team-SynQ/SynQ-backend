@@ -8,17 +8,22 @@ import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.reference.code.ReferenceErrorCode;
 import com.synq.backend.domain.reference.dto.ReferenceLinkCreateRequest;
 import com.synq.backend.domain.reference.dto.ReferenceLinkCreateResponse;
+import com.synq.backend.domain.reference.ReferenceLimits;
 import com.synq.backend.domain.reference.dto.ReferenceFileCreateResponse;
-import com.synq.backend.domain.reference.dto.ReferenceFileResponse;
+import com.synq.backend.domain.reference.dto.ReferenceFileExtractionFailure;
 import com.synq.backend.domain.reference.dto.ReferenceListResponse;
 import com.synq.backend.domain.reference.dto.ReferenceResponse;
 import com.synq.backend.domain.reference.entity.ReferenceMaterial;
 import com.synq.backend.domain.reference.entity.ReferenceFileExtension;
 import com.synq.backend.domain.reference.entity.ReferenceStatus;
 import com.synq.backend.domain.reference.event.ReferenceLinkCreatedEvent;
+import com.synq.backend.domain.reference.file.ExtractedFile;
+import com.synq.backend.domain.reference.file.FileExtractionFailureReason;
+import com.synq.backend.domain.reference.file.FileTextExtractionException;
+import com.synq.backend.domain.reference.file.FileTextExtractor;
+import com.synq.backend.domain.reference.file.ReferenceFileExtractionException;
 import com.synq.backend.domain.reference.link.LinkPreflightChecker;
 import com.synq.backend.domain.reference.repository.ReferenceMaterialRepository;
-import com.synq.backend.domain.reference.storage.ReferenceStorage;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
@@ -29,10 +34,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
@@ -40,8 +44,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,7 +51,6 @@ import java.util.stream.Collectors;
 public class ReferenceService {
 
 	private static final Logger log = LoggerFactory.getLogger(ReferenceService.class);
-	private static final int MAX_REFERENCES = 10;
 	private static final int MAX_FILES_PER_REQUEST = 5;
 	private static final long MAX_FILE_SIZE = 20L * 1024 * 1024;
 	private static final int MAX_FILE_NAME_LENGTH = 255;
@@ -67,9 +68,11 @@ public class ReferenceService {
 	private final DocumentIndexer documentIndexer;
 	private final LinkPreflightChecker linkPreflightChecker;
 	private final ApplicationEventPublisher eventPublisher;
-	private final ReferenceStorage referenceStorage;
+	private final ReferenceFileRegistrar referenceFileRegistrar;
+	private final FileTextExtractor fileTextExtractor;
 
-	@Transactional
+	// @Transactional 을 붙이지 않는다. 텍스트 추출이 상한 없는 CPU 작업이라
+	// 트랜잭션 안에 두면 파싱 내내 DB 커넥션을 쥐게 된다. 저장은 ReferenceFileRegistrar 가 맡는다.
 	public ReferenceFileCreateResponse createFiles(
 			Long projectId,
 			Long userId,
@@ -81,51 +84,47 @@ public class ReferenceService {
 		User uploader = validateUser(userId);
 		List<ValidatedFile> validatedFiles = validateFiles(files);
 
-		findActiveProjectByIdForUpdate(projectId);
+		// 멤버십을 추출보다 먼저 본다. 비멤버가 파싱을 유발할 수 없어야 한다.
+		findActiveProjectById(projectId);
 		if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
 			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_MEMBER);
 		}
-		if (referenceMaterialRepository.countByProjectId(projectId) + validatedFiles.size() > MAX_REFERENCES) {
-			throw new GeneralException(ReferenceErrorCode.REFERENCE_LIMIT_EXCEEDED);
-		}
 
-		List<String> uploadedStorageKeys = new ArrayList<>();
-		AtomicBoolean compensated = new AtomicBoolean();
-		boolean rollbackCompensationRegistered = registerRollbackCompensation(uploadedStorageKeys, compensated);
-		try {
-			List<ReferenceMaterial> references = new ArrayList<>();
-			for (ValidatedFile validatedFile : validatedFiles) {
-				String storageKey = createStorageKey(projectId, validatedFile.extension());
-				uploadedStorageKeys.add(storageKey);
-				try (InputStream inputStream = validatedFile.file().getInputStream()) {
-					referenceStorage.upload(
-							storageKey,
-							inputStream,
-							validatedFile.file().getSize(),
-							validatedFile.contentType()
-					);
-				}
-				references.add(ReferenceMaterial.ofFile(
-						projectId,
-						userId,
+		List<ExtractedFile> extractedFiles = extractAll(validatedFiles);
+		return referenceFileRegistrar.register(projectId, userId, uploader, extractedFiles);
+	}
+
+	/**
+	 * 전부 추출한 뒤 실패가 하나라도 있으면 통째로 거절한다.
+	 *
+	 * <p>첫 실패에서 멈추지 않는 이유는, 5개를 올렸을 때 문제 파일을 한 번에 다 알려주기 위해서다.
+	 * 나머지를 마저 파싱하는 비용을 치르지만 사용자가 왕복을 반복하지 않아도 된다.
+	 */
+	private List<ExtractedFile> extractAll(List<ValidatedFile> validatedFiles) {
+		List<ExtractedFile> extracted = new ArrayList<>(validatedFiles.size());
+		List<ReferenceFileExtractionFailure> failures = new ArrayList<>();
+		for (ValidatedFile validatedFile : validatedFiles) {
+			try (InputStream inputStream = validatedFile.file().getInputStream()) {
+				String text = fileTextExtractor.extract(inputStream, validatedFile.name());
+				extracted.add(new ExtractedFile(
+						validatedFile.file(),
 						validatedFile.name(),
-						validatedFile.file().getSize(),
-						storageKey,
 						validatedFile.extension(),
-						ReferenceStatus.UPLOADING
-				));
+						validatedFile.contentType(),
+						text));
+			} catch (FileTextExtractionException exception) {
+				failures.add(new ReferenceFileExtractionFailure(
+						validatedFile.name(), exception.getReason().name()));
+			} catch (IOException exception) {
+				log.warn("파일 스트림을 열지 못했습니다. fileName={}", validatedFile.name(), exception);
+				failures.add(new ReferenceFileExtractionFailure(
+						validatedFile.name(), FileExtractionFailureReason.CORRUPTED.name()));
 			}
-
-			List<ReferenceMaterial> savedReferences = referenceMaterialRepository.saveAllAndFlush(references);
-			return new ReferenceFileCreateResponse(savedReferences.stream()
-					.map(reference -> ReferenceFileResponse.from(reference, uploader))
-					.toList());
-		} catch (Exception exception) {
-			if (!rollbackCompensationRegistered) {
-				compensateOnce(uploadedStorageKeys, compensated);
-			}
-			throw new GeneralException(ReferenceErrorCode.REFERENCE_FILE_UPLOAD_FAILED, exception);
 		}
+		if (!failures.isEmpty()) {
+			throw new ReferenceFileExtractionException(failures);
+		}
+		return extracted;
 	}
 
 	@Transactional
@@ -172,7 +171,7 @@ public class ReferenceService {
 		linkPreflightChecker.check(request.url());
 
 		findActiveProjectByIdForUpdate(projectId);
-		if (referenceMaterialRepository.countByProjectId(projectId) >= MAX_REFERENCES) {
+		if (referenceMaterialRepository.countByProjectId(projectId) >= ReferenceLimits.MAX_REFERENCES) {
 			throw new GeneralException(ReferenceErrorCode.REFERENCE_LIMIT_EXCEEDED);
 		}
 
@@ -221,7 +220,7 @@ public class ReferenceService {
 				))
 				.toList();
 
-		return ReferenceListResponse.from(MAX_REFERENCES, responses);
+		return ReferenceListResponse.from(ReferenceLimits.MAX_REFERENCES, responses);
 	}
 
 	private User validateUser(Long userId) {
@@ -310,43 +309,6 @@ public class ReferenceService {
 			throw new GeneralException(ReferenceErrorCode.UNSUPPORTED_REFERENCE_FILE);
 		}
 		return normalized;
-	}
-
-	private String createStorageKey(Long projectId, ReferenceFileExtension extension) {
-		return "references/" + projectId + "/" + UUID.randomUUID()
-				+ "." + extension.name().toLowerCase(Locale.ROOT);
-	}
-
-	private void compensateUploads(List<String> storageKeys) {
-		for (int index = storageKeys.size() - 1; index >= 0; index--) {
-			String storageKey = storageKeys.get(index);
-			try {
-				referenceStorage.delete(storageKey);
-			} catch (RuntimeException compensationFailure) {
-				log.warn("참고자료 파일 보상 삭제 실패: storageKey={}", storageKey, compensationFailure);
-			}
-		}
-	}
-
-	private boolean registerRollbackCompensation(List<String> storageKeys, AtomicBoolean compensated) {
-		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-			return false;
-		}
-		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-			@Override
-			public void afterCompletion(int status) {
-				if (status != TransactionSynchronization.STATUS_COMMITTED) {
-					compensateOnce(storageKeys, compensated);
-				}
-			}
-		});
-		return true;
-	}
-
-	private void compensateOnce(List<String> storageKeys, AtomicBoolean compensated) {
-		if (compensated.compareAndSet(false, true)) {
-			compensateUploads(storageKeys);
-		}
 	}
 
 	private record ValidatedFile(

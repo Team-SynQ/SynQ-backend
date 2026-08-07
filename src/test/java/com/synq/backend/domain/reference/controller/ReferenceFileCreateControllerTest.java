@@ -1,5 +1,13 @@
 package com.synq.backend.domain.reference.controller;
 
+import com.synq.backend.domain.reference.file.FileExtractionFailureReason;
+import com.synq.backend.domain.reference.file.FileTextExtractionException;
+import com.synq.backend.domain.reference.file.FileTextExtractor;
+import org.junit.jupiter.api.BeforeEach;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.synq.backend.domain.auth.jwt.AccessTokenBlacklistService;
@@ -65,6 +73,17 @@ class ReferenceFileCreateControllerTest extends PostgresTestContainer {
 
 	@MockitoBean
 	private ReferenceStorage referenceStorage;
+
+	// 기존 픽스처는 "content" 7바이트를 .pdf 로 위장해서 쓴다. 실제 Tika 파싱은 이를 거절하므로
+	// 등록 흐름을 검증하는 테스트에서는 추출기를 대역으로 세운다.
+	@MockitoBean
+	private FileTextExtractor fileTextExtractor;
+
+	@BeforeEach
+	void stubFileTextExtractor() {
+		given(fileTextExtractor.extract(any(), anyString()))
+				.willReturn("추출된 본문입니다. 최소 길이 조건을 넘기기 위한 충분히 긴 문장입니다.");
+	}
 
 	@Test
 	void MEMBER가_multipart_파일을_등록하면_201과_명세_응답을_반환한다() throws Exception {
@@ -215,6 +234,25 @@ class ReferenceFileCreateControllerTest extends PostgresTestContainer {
 		List<String> fieldNames = new ArrayList<>();
 		node.fieldNames().forEachRemaining(fieldNames::add);
 		return fieldNames;
+	}
+
+	@Test
+	void 추출에_실패하면_400과_실패_파일_목록을_반환한다() throws Exception {
+		User owner = saveUser("소유자", "file-extract-fail-owner@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		given(fileTextExtractor.extract(any(), anyString()))
+				.willThrow(new FileTextExtractionException(
+						FileExtractionFailureReason.NO_TEXT_LAYER, null));
+
+		mockMvc.perform(multipart("/projects/{projectId}/references/files", project.getId())
+						.file(file("scan.pdf", "application/pdf"))
+						.header(HttpHeaders.AUTHORIZATION, bearer(owner)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.isSuccess").value(false))
+				.andExpect(jsonPath("$.code").value("REFERENCE400_6"))
+				.andExpect(jsonPath("$.result[0].fileName").value("scan.pdf"))
+				.andExpect(jsonPath("$.result[0].reason").value("NO_TEXT_LAYER"));
 	}
 
 	private MockMultipartFile file(String name, String contentType) {
