@@ -107,9 +107,11 @@ class ReferenceMaterialAdapterTest extends PostgresTestContainer {
 	@Test
 	void 파일_참고자료는_비어_있다() {
 		// 파일 업로드와 텍스트 추출은 아직 구현되지 않았다.
+		Project project = saveProject();
 		ReferenceMaterial file = referenceMaterialRepository.save(ReferenceMaterial.ofFile(
-				saveProject().getId(), saveUser().getUserId(), "설계.pdf",
-				1024L, ReferenceFileExtension.PDF, ReferenceStatus.UPLOADING));
+				project.getId(), saveUser().getUserId(), "설계.pdf", 1024L,
+				"references/" + project.getId() + "/" + UUID.randomUUID() + ".pdf",
+				ReferenceFileExtension.PDF, ReferenceStatus.UPLOADING));
 
 		assertThat(port.findIndexableText(file.getId())).isEmpty();
 	}

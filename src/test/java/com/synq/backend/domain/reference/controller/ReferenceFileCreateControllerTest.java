@@ -138,7 +138,7 @@ class ReferenceFileCreateControllerTest extends PostgresTestContainer {
 		mockMvc.perform(multipart("/projects/{projectId}/references/files", project.getId())
 						.header(HttpHeaders.AUTHORIZATION, bearer(owner)))
 				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.code").value("REFERENCE400_1"));
+				.andExpect(jsonPath("$.code").value("REFERENCE400_5"));
 		mockMvc.perform(multipart("/projects/{projectId}/references/files", project.getId())
 						.file(file("image.png", "image/png"))
 						.header(HttpHeaders.AUTHORIZATION, bearer(owner)))

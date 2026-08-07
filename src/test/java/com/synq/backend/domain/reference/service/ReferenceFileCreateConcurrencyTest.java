@@ -9,6 +9,7 @@ import com.synq.backend.domain.reference.code.ReferenceErrorCode;
 import com.synq.backend.domain.reference.dto.ReferenceLinkCreateRequest;
 import com.synq.backend.domain.reference.entity.ReferenceMaterial;
 import com.synq.backend.domain.reference.entity.ReferenceStatus;
+import com.synq.backend.domain.reference.link.LinkPreflightChecker;
 import com.synq.backend.domain.reference.repository.ReferenceMaterialRepository;
 import com.synq.backend.domain.reference.storage.ReferenceStorage;
 import com.synq.backend.domain.user.entity.User;
@@ -52,6 +53,9 @@ class ReferenceFileCreateConcurrencyTest extends PostgresTestContainer {
 
 	@MockitoBean
 	private ReferenceStorage referenceStorage;
+
+	@MockitoBean
+	private LinkPreflightChecker linkPreflightChecker;
 
 	@Test
 	void 활성_자료가_9개일_때_파일과_링크_동시_등록은_하나만_성공한다() throws Exception {
