@@ -8,7 +8,7 @@ import static org.mockito.BDDMockito.given;
 import com.synq.backend.domain.ai.assistant.code.AssistantErrorCode;
 import com.synq.backend.domain.ai.assistant.domain.HintInput;
 import com.synq.backend.domain.ai.rag.search.ChunkSearchQuery;
-import com.synq.backend.domain.ai.rag.search.ChunkSearcher;
+import com.synq.backend.domain.ai.rag.search.DocumentChunkSearcher;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
 import com.synq.backend.domain.transcript.entity.TranscriptSegment;
@@ -35,8 +35,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * ChunkSearcher 만 대역으로 둔다. 실제 검색은 임베딩 호출과 비어 있는 document_chunk 에 의존해
- * 항상 0 건이라 질의문이 무엇이었는지 검증할 수 없기 때문이다.
+ * DocumentChunkSearcher 만 대역으로 둔다. 실제 검색은 임베딩 호출과 비어 있는 document_chunk 에
+ * 의존해 항상 0 건이라 질의문이 무엇이었는지 검증할 수 없기 때문이다.
+ *
+ * <p>ChunkSearcher 타입으로 두면 @Primary 인 CompositeChunkSearcher 가 대체되어
+ * 3-hint 가 실제로 쓰는 구현체와 어긋난다.
  */
 @Transactional
 class HintContextBuilderTest extends PostgresTestContainer {
@@ -63,7 +66,7 @@ class HintContextBuilderTest extends PostgresTestContainer {
 	RoleProfilePerspectiveRepository perspectiveRepository;
 
 	@MockitoBean
-	ChunkSearcher chunkSearcher;
+	DocumentChunkSearcher chunkSearcher;
 
 	private Long meetingId;
 	private Long userId;
