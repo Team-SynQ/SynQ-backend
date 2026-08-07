@@ -10,6 +10,7 @@ import com.synq.backend.domain.reference.dto.ReferenceFileResponse;
 import com.synq.backend.domain.reference.entity.ReferenceFileExtension;
 import com.synq.backend.domain.reference.entity.ReferenceMaterial;
 import com.synq.backend.domain.reference.entity.ReferenceStatus;
+import com.synq.backend.domain.reference.event.ReferenceFileCreatedEvent;
 import com.synq.backend.domain.reference.file.ExtractedFile;
 import com.synq.backend.domain.reference.repository.ReferenceMaterialRepository;
 import com.synq.backend.domain.reference.storage.ReferenceStorage;
@@ -24,6 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -44,6 +46,7 @@ public class ReferenceFileRegistrar {
 	private final ReferenceMaterialRepository referenceMaterialRepository;
 	private final ProjectRepository projectRepository;
 	private final ReferenceStorage referenceStorage;
+	private final ApplicationEventPublisher eventPublisher;
 
 	@Transactional
 	public ReferenceFileCreateResponse register(
@@ -88,6 +91,12 @@ public class ReferenceFileRegistrar {
 
 			List<ReferenceMaterial> savedReferences =
 					referenceMaterialRepository.saveAllAndFlush(references);
+			// 파일마다 하나씩 발행한다. 리스트 하나로 묶으면 한 파일의 임베딩 실패가
+			// 나머지 파일 처리에 얽힌다. 커밋 이후 FileIndexingListener 가 받는다.
+			for (int index = 0; index < savedReferences.size(); index++) {
+				eventPublisher.publishEvent(new ReferenceFileCreatedEvent(
+						savedReferences.get(index).getId(), projectId, files.get(index).text()));
+			}
 			return new ReferenceFileCreateResponse(savedReferences.stream()
 					.map(reference -> ReferenceFileResponse.from(reference, uploader))
 					.toList());
