@@ -31,14 +31,14 @@ public class S3ProfileImageStorageClient implements ProfileImageStorageClient {
 	}
 
 	@Override
-	public String upload(Long userId, MultipartFile file) {
-		String key = "img/profile/" + userId + "/" + UUID.randomUUID() + extensionOf(file.getContentType());
+	public String upload(Long userId, MultipartFile file, String contentType) {
+		String key = "img/profile/" + userId + "/" + UUID.randomUUID() + extensionOf(contentType);
 		try {
 			s3Client.putObject(
 					PutObjectRequest.builder()
 							.bucket(s3Properties.bucket())
 							.key(key)
-							.contentType(file.getContentType())
+							.contentType(contentType)
 							.build(),
 					RequestBody.fromInputStream(file.getInputStream(), file.getSize())
 			);

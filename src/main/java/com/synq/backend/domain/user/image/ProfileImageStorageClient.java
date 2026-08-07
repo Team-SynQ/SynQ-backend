@@ -4,7 +4,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface ProfileImageStorageClient {
 
-	String upload(Long userId, MultipartFile file);
+	String upload(Long userId, MultipartFile file, String contentType);
 
 	void delete(String key);
 }

@@ -84,7 +84,7 @@ cors:
 image:
   profile:
     max-size-bytes: ${IMAGE_PROFILE_MAX_SIZE_BYTES:5242880}
-    cloudfront-domain: ${CLOUDFRONT_DOMAIN:}
+    cloudfront-domain: ${CLOUDFRONT_DOMAIN}
 
 gemini:
   api-key: ${GEMINI_API_KEY}
@@ -240,6 +240,10 @@ reference:
 
 jwt:
   secret: ${JWT_SECRET:local-dev-only-secret-please-override-in-production-env}
+
+image:
+  profile:
+    cloudfront-domain: ${CLOUDFRONT_DOMAIN:http://localhost-cloudfront-not-configured}
 
 kakao:
   client-id: ${KAKAO_CLIENT_ID:local-dev-placeholder-kakao-client-id}

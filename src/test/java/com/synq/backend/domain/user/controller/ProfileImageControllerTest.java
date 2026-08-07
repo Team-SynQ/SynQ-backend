@@ -25,6 +25,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class ProfileImageControllerTest extends PostgresTestContainer {
 
+	// 매직바이트 검증만 통과하면 되므로, 실제로 디코딩 가능한 이미지일 필요는 없다.
+	private static final byte[] JPEG_BYTES = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00, 0x00, 0x00};
+	private static final byte[] PNG_BYTES =
+			{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x00};
+
 	@Autowired
 	private MockMvc mockMvc;
 
@@ -39,9 +44,9 @@ class ProfileImageControllerTest extends PostgresTestContainer {
 
 	@Test
 	void 이미지를_업로드하면_URL을_반환한다() throws Exception {
-		when(profileImageStorageClient.upload(any(), any())).thenReturn("img/profile/1/test-key.jpg");
+		when(profileImageStorageClient.upload(any(), any(), any())).thenReturn("img/profile/1/test-key.jpg");
 		User user = userRepository.save(User.ofLocal("테스트", "upload@synq.com", "password-hash"));
-		MockMultipartFile file = new MockMultipartFile("file", "profile.jpg", "image/jpeg", "fake-image-bytes".getBytes());
+		MockMultipartFile file = new MockMultipartFile("file", "profile.jpg", "image/jpeg", JPEG_BYTES);
 
 		mockMvc.perform(multipart("/users/me/profile-image")
 						.file(file)
@@ -65,7 +70,21 @@ class ProfileImageControllerTest extends PostgresTestContainer {
 	@Test
 	void 허용되지_않는_형식이면_400을_반환한다() throws Exception {
 		User user = userRepository.save(User.ofLocal("테스트", "badtype@synq.com", "password-hash"));
-		MockMultipartFile file = new MockMultipartFile("file", "profile.gif", "image/gif", "gif-bytes".getBytes());
+		byte[] gifBytes = "GIF89a".getBytes();
+		MockMultipartFile file = new MockMultipartFile("file", "profile.gif", "image/gif", gifBytes);
+
+		mockMvc.perform(multipart("/users/me/profile-image")
+						.file(file)
+						.header("Authorization", bearerToken(user)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("USER400_6"));
+	}
+
+	@Test
+	void content_type_헤더를_속여도_실제_바이트로_검증해_400을_반환한다() throws Exception {
+		User user = userRepository.save(User.ofLocal("테스트", "spoofed@synq.com", "password-hash"));
+		// Content-Type은 image/jpeg 라고 주장하지만 실제 바이트는 이미지 시그니처가 아니다.
+		MockMultipartFile file = new MockMultipartFile("file", "profile.jpg", "image/jpeg", "not-an-image".getBytes());
 
 		mockMvc.perform(multipart("/users/me/profile-image")
 						.file(file)
@@ -76,9 +95,9 @@ class ProfileImageControllerTest extends PostgresTestContainer {
 
 	@Test
 	void 이미지를_삭제하면_profileImageKey가_null이_된다() throws Exception {
-		when(profileImageStorageClient.upload(any(), any())).thenReturn("img/profile/1/test-key.png");
+		when(profileImageStorageClient.upload(any(), any(), any())).thenReturn("img/profile/1/test-key.png");
 		User user = userRepository.save(User.ofLocal("테스트", "delete@synq.com", "password-hash"));
-		MockMultipartFile file = new MockMultipartFile("file", "profile.png", "image/png", "png-bytes".getBytes());
+		MockMultipartFile file = new MockMultipartFile("file", "profile.png", "image/png", PNG_BYTES);
 		mockMvc.perform(multipart("/users/me/profile-image")
 						.file(file)
 						.header("Authorization", bearerToken(user)))

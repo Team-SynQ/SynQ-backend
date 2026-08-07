@@ -59,6 +59,7 @@ class ProdAiMockConfigurationTest {
 		registry.add("naver.client-id", () -> "test");
 		registry.add("naver.redirect-uri", () -> "http://localhost/callback");
 		registry.add("cors.allowed-origins", () -> "http://localhost:3000");
+		registry.add("image.profile.cloudfront-domain", () -> "https://test-cdn.example.com");
 	}
 
 	@Test

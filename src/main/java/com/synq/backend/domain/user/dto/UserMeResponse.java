@@ -8,7 +8,7 @@ public record UserMeResponse(
 		String name,
 		@JsonInclude(JsonInclude.Include.ALWAYS) String email,
 		String provider,
-		String profileImageUrl
+		@JsonInclude(JsonInclude.Include.ALWAYS) String profileImageUrl
 ) {
 	public static UserMeResponse from(User user, String profileImageUrl) {
 		return new UserMeResponse(user.getUserId(), user.getName(), user.getEmail(), user.getProvider().name(), profileImageUrl);
