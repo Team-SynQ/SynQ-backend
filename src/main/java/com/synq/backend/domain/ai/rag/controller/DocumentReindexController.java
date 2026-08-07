@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/reference-materials")
 @RequiredArgsConstructor
-@Tag(name = "RAG", description = "참고자료 AI 인덱싱 API")
+@Tag(name = "RAG", description = "참고자료·회의 전사 AI 인덱싱 API")
 public class DocumentReindexController {
 
 	private final ReferenceMaterialPort referenceMaterialPort;
