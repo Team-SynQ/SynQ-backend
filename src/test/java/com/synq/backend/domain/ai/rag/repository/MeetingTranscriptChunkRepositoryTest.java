@@ -8,6 +8,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -68,7 +69,10 @@ class MeetingTranscriptChunkRepositoryTest extends PostgresTestContainer {
 		assertThat(chunks.get(0).getEmbeddingModel()).isEqualTo(MODEL);
 	}
 
+	// 파생 삭제 쿼리는 트랜잭션을 요구한다. 운영에서도 TranscriptChunkWriter 가 @Transactional 로
+	// 감싸 호출하므로, 이 메서드에만 붙이는 것이 실제 사용 방식과 같다.
 	@Test
+	@Transactional
 	void 회의_단위로_청크를_지운다() {
 		repository.save(MeetingTranscriptChunk.of(
 				meeting.meetingId(), meeting.projectId(), 0, "지울 청크", vector(1.0f, 0.0f), MODEL));
