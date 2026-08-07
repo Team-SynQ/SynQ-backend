@@ -199,6 +199,12 @@ reference:
     min-text-length: ${REFERENCE_LINK_MIN_TEXT_LENGTH:50}
     # 사설망 접근 허용. 프로덕션에서 켜면 SSRF 방어가 통째로 무력화된다.
     allow-private-network: ${REFERENCE_LINK_ALLOW_PRIVATE_NETWORK:false}
+  file:
+    # strip() 후 이 길이 미만이면 텍스트가 없는 것으로 보고 등록을 거절한다.
+    # 스캔 PDF 가 여기서 걸린다. 링크의 min-text-length 와 같은 값이다.
+    min-text-length: ${REFERENCE_FILE_MIN_TEXT_LENGTH:50}
+    # 추출 상한. 초과분은 버리고 앞부분만 인덱싱한다. 약 285청크 / 임베딩 3회 분량이다.
+    max-text-chars: ${REFERENCE_FILE_MAX_TEXT_CHARS:200000}
 
 ---
 # local(dev) 전용 편의 설정
