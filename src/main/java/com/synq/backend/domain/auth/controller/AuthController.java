@@ -11,20 +11,15 @@ import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import io.jsonwebtoken.JwtException;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Auth", description = "인증")
 @RestController
 @RequestMapping("/auth")
-public class AuthController {
+public class AuthController implements AuthControllerDocs {
 
 	private final AuthTokenService authTokenService;
 	private final JwtProvider jwtProvider;
@@ -37,14 +32,15 @@ public class AuthController {
 		this.blacklistService = blacklistService;
 	}
 
+	@Override
 	@PostMapping("/refresh")
-	public ResponseEntity<ApiResponse<TokenResponse>> refresh(@Valid @RequestBody RefreshRequest request) {
+	public ResponseEntity<ApiResponse<TokenResponse>> refresh(RefreshRequest request) {
 		TokenResponse response = authTokenService.refresh(request.refreshToken());
 		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
 	}
 
-	@SecurityRequirement(name = "bearerAuth")
+	@Override
 	@PostMapping("/logout")
 	public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
 		String rawAccessToken = extractBearerToken(request.getHeader("Authorization"));
