@@ -11,11 +11,14 @@ import com.synq.backend.support.PostgresTestContainer;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Transactional
 class ReferenceMaterialRepositoryTest extends PostgresTestContainer {
@@ -32,6 +35,98 @@ class ReferenceMaterialRepositoryTest extends PostgresTestContainer {
 	@Autowired
 	private EntityManager entityManager;
 
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+
+	@Test
+	void FILE_LINK_저장_위치_CHECK_제약은_기존_행까지_검증된_상태이다() {
+		Boolean validated = jdbcTemplate.queryForObject("""
+				SELECT convalidated
+				FROM pg_constraint
+				WHERE conname = 'chk_reference_material_storage_location'
+				""", Boolean.class);
+
+		assertThat(validated).isTrue();
+	}
+
+	@Test
+	void FILE_메타데이터와_storage_key를_저장한다() {
+		User owner = saveUser("reference-file-storage-owner@synq.com");
+		Project project = projectRepository.save(Project.of(owner.getUserId(), "SynQ", null));
+
+		ReferenceMaterial saved = referenceMaterialRepository.saveAndFlush(ReferenceMaterial.ofFile(
+				project.getId(),
+				owner.getUserId(),
+				"requirements.pdf",
+				1024L,
+				"references/" + project.getId() + "/file.pdf",
+				ReferenceFileExtension.PDF,
+				ReferenceStatus.UPLOADING
+		));
+		entityManager.clear();
+
+		ReferenceMaterial found = referenceMaterialRepository.findById(saved.getId()).orElseThrow();
+		assertThat(found.getStorageKey()).isEqualTo("references/" + project.getId() + "/file.pdf");
+		assertThat(found.getUrl()).isNull();
+		assertThat(found.getType().name()).isEqualTo("FILE");
+	}
+
+	@Test
+	void FILE은_storage_key가_없으면_DB_제약으로_저장할_수_없다() {
+		User owner = saveUser("reference-file-null-storage@synq.com");
+		Project project = projectRepository.save(Project.of(owner.getUserId(), "SynQ", null));
+
+		assertThatThrownBy(() -> jdbcTemplate.update("""
+				INSERT INTO reference_material (
+				    project_id, uploader_id, type, name, file_size, file_extension, status
+				) VALUES (?, ?, 'FILE', 'invalid.pdf', 1024, 'PDF', 'UPLOADING')
+				""", project.getId(), owner.getUserId()))
+				.isInstanceOf(DataIntegrityViolationException.class);
+	}
+
+	@Test
+	void FILE은_url만으로_DB에_저장할_수_없다() {
+		User owner = saveUser("reference-file-url-only@synq.com");
+		Project project = projectRepository.save(Project.of(owner.getUserId(), "SynQ", null));
+
+		assertThatThrownBy(() -> jdbcTemplate.update("""
+				INSERT INTO reference_material (
+				    project_id, uploader_id, type, name, url, file_size, file_extension, status
+				) VALUES (?, ?, 'FILE', 'invalid.pdf', 'https://example.com/file.pdf', 1024, 'PDF', 'UPLOADING')
+				""", project.getId(), owner.getUserId()))
+				.isInstanceOf(DataIntegrityViolationException.class);
+	}
+
+	@Test
+	void LINK는_storage_key가_있으면_DB_제약으로_저장할_수_없다() {
+		User owner = saveUser("reference-link-storage@synq.com");
+		Project project = projectRepository.save(Project.of(owner.getUserId(), "SynQ", null));
+
+		assertThatThrownBy(() -> jdbcTemplate.update("""
+				INSERT INTO reference_material (
+				    project_id, uploader_id, type, name, url, storage_key, status
+				) VALUES (?, ?, 'LINK', 'invalid link', 'https://example.com', 'references/1/file.pdf', 'UPLOADING')
+				""", project.getId(), owner.getUserId()))
+				.isInstanceOf(DataIntegrityViolationException.class);
+	}
+
+	@Test
+	void LINK는_url이_있고_storage_key가_없으면_저장할_수_있다() {
+		User owner = saveUser("reference-link-valid-storage@synq.com");
+		Project project = projectRepository.save(Project.of(owner.getUserId(), "SynQ", null));
+
+		ReferenceMaterial saved = referenceMaterialRepository.saveAndFlush(ReferenceMaterial.ofLink(
+				project.getId(),
+				owner.getUserId(),
+				"example.com",
+				"https://example.com",
+				ReferenceStatus.UPLOADING
+		));
+
+		assertThat(saved.getUrl()).isEqualTo("https://example.com");
+		assertThat(saved.getStorageKey()).isNull();
+	}
+
 	@Test
 	void 삭제되지_않은_참고자료를_최신_등록순으로_조회한다() {
 		User owner = saveUser("reference-repository-owner@synq.com");
@@ -42,6 +137,7 @@ class ReferenceMaterialRepositoryTest extends PostgresTestContainer {
 						owner.getUserId(),
 						"요구사항.pdf",
 						1024L,
+						"references/" + project.getId() + "/older.pdf",
 						ReferenceFileExtension.PDF,
 						ReferenceStatus.AVAILABLE
 				));
@@ -59,6 +155,7 @@ class ReferenceMaterialRepositoryTest extends PostgresTestContainer {
 						owner.getUserId(),
 						"삭제 자료.txt",
 						512L,
+						"references/" + project.getId() + "/deleted.txt",
 						ReferenceFileExtension.TXT,
 						ReferenceStatus.AVAILABLE
 				));
@@ -82,6 +179,7 @@ class ReferenceMaterialRepositoryTest extends PostgresTestContainer {
 		Project otherProject = projectRepository.save(Project.of(owner.getUserId(), "Other", null));
 		referenceMaterialRepository.save(ReferenceMaterial.ofFile(
 				project.getId(), owner.getUserId(), "요구사항.pdf", 1024L,
+				"references/" + project.getId() + "/count.pdf",
 				ReferenceFileExtension.PDF, ReferenceStatus.AVAILABLE));
 		referenceMaterialRepository.save(ReferenceMaterial.ofLink(
 				project.getId(), owner.getUserId(), "example.com", "https://example.com",

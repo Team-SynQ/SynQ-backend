@@ -8,33 +8,57 @@ import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.reference.code.ReferenceErrorCode;
 import com.synq.backend.domain.reference.dto.ReferenceLinkCreateRequest;
 import com.synq.backend.domain.reference.dto.ReferenceLinkCreateResponse;
+import com.synq.backend.domain.reference.dto.ReferenceFileCreateResponse;
+import com.synq.backend.domain.reference.dto.ReferenceFileResponse;
 import com.synq.backend.domain.reference.dto.ReferenceListResponse;
 import com.synq.backend.domain.reference.dto.ReferenceResponse;
 import com.synq.backend.domain.reference.entity.ReferenceMaterial;
+import com.synq.backend.domain.reference.entity.ReferenceFileExtension;
 import com.synq.backend.domain.reference.entity.ReferenceStatus;
 import com.synq.backend.domain.reference.event.ReferenceLinkCreatedEvent;
 import com.synq.backend.domain.reference.link.LinkPreflightChecker;
 import com.synq.backend.domain.reference.repository.ReferenceMaterialRepository;
+import com.synq.backend.domain.reference.storage.ReferenceStorage;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ReferenceService {
 
+	private static final Logger log = LoggerFactory.getLogger(ReferenceService.class);
 	private static final int MAX_REFERENCES = 10;
+	private static final int MAX_FILES_PER_REQUEST = 5;
+	private static final long MAX_FILE_SIZE = 20L * 1024 * 1024;
+	private static final int MAX_FILE_NAME_LENGTH = 255;
+	private static final Map<ReferenceFileExtension, Set<String>> CONTENT_TYPES = Map.of(
+			ReferenceFileExtension.PDF, Set.of("application/pdf"),
+			ReferenceFileExtension.DOCX, Set.of("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+			ReferenceFileExtension.PPTX, Set.of("application/vnd.openxmlformats-officedocument.presentationml.presentation"),
+			ReferenceFileExtension.TXT, Set.of("text/plain")
+	);
 
 	private final ReferenceMaterialRepository referenceMaterialRepository;
 	private final ProjectRepository projectRepository;
@@ -43,6 +67,66 @@ public class ReferenceService {
 	private final DocumentIndexer documentIndexer;
 	private final LinkPreflightChecker linkPreflightChecker;
 	private final ApplicationEventPublisher eventPublisher;
+	private final ReferenceStorage referenceStorage;
+
+	@Transactional
+	public ReferenceFileCreateResponse createFiles(
+			Long projectId,
+			Long userId,
+			List<MultipartFile> files
+	) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		User uploader = validateUser(userId);
+		List<ValidatedFile> validatedFiles = validateFiles(files);
+
+		findActiveProjectByIdForUpdate(projectId);
+		if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
+			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_MEMBER);
+		}
+		if (referenceMaterialRepository.countByProjectId(projectId) + validatedFiles.size() > MAX_REFERENCES) {
+			throw new GeneralException(ReferenceErrorCode.REFERENCE_LIMIT_EXCEEDED);
+		}
+
+		List<String> uploadedStorageKeys = new ArrayList<>();
+		AtomicBoolean compensated = new AtomicBoolean();
+		boolean rollbackCompensationRegistered = registerRollbackCompensation(uploadedStorageKeys, compensated);
+		try {
+			List<ReferenceMaterial> references = new ArrayList<>();
+			for (ValidatedFile validatedFile : validatedFiles) {
+				String storageKey = createStorageKey(projectId, validatedFile.extension());
+				uploadedStorageKeys.add(storageKey);
+				try (InputStream inputStream = validatedFile.file().getInputStream()) {
+					referenceStorage.upload(
+							storageKey,
+							inputStream,
+							validatedFile.file().getSize(),
+							validatedFile.contentType()
+					);
+				}
+				references.add(ReferenceMaterial.ofFile(
+						projectId,
+						userId,
+						validatedFile.name(),
+						validatedFile.file().getSize(),
+						storageKey,
+						validatedFile.extension(),
+						ReferenceStatus.UPLOADING
+				));
+			}
+
+			List<ReferenceMaterial> savedReferences = referenceMaterialRepository.saveAllAndFlush(references);
+			return new ReferenceFileCreateResponse(savedReferences.stream()
+					.map(reference -> ReferenceFileResponse.from(reference, uploader))
+					.toList());
+		} catch (Exception exception) {
+			if (!rollbackCompensationRegistered) {
+				compensateOnce(uploadedStorageKeys, compensated);
+			}
+			throw new GeneralException(ReferenceErrorCode.REFERENCE_FILE_UPLOAD_FAILED, exception);
+		}
+	}
 
 	@Transactional
 	public void delete(Long projectId, Long referenceId, Long userId) {
@@ -160,5 +244,116 @@ public class ReferenceService {
 	private String extractDomainName(String url) {
 		String host = URI.create(url).getHost().toLowerCase(Locale.ROOT);
 		return host.startsWith("www.") ? host.substring(4) : host;
+	}
+
+	private List<ValidatedFile> validateFiles(List<MultipartFile> files) {
+		if (files == null || files.isEmpty() || files.size() > MAX_FILES_PER_REQUEST) {
+			throw new GeneralException(ReferenceErrorCode.INVALID_REFERENCE_FILE);
+		}
+		return files.stream()
+				.map(this::validateFile)
+				.toList();
+	}
+
+	private ValidatedFile validateFile(MultipartFile file) {
+		if (file == null || file.isEmpty()) {
+			throw new GeneralException(ReferenceErrorCode.INVALID_REFERENCE_FILE);
+		}
+		if (file.getSize() > MAX_FILE_SIZE) {
+			throw new GeneralException(ReferenceErrorCode.REFERENCE_FILE_SIZE_EXCEEDED);
+		}
+
+		String name = sanitizeFileName(file.getOriginalFilename());
+		ReferenceFileExtension extension = extractFileExtension(name);
+		String contentType = resolveContentType(extension, file.getContentType());
+		return new ValidatedFile(file, name, extension, contentType);
+	}
+
+	private String sanitizeFileName(String originalFilename) {
+		if (originalFilename == null) {
+			throw new GeneralException(ReferenceErrorCode.INVALID_REFERENCE_FILE);
+		}
+		String normalized = originalFilename.replace('\\', '/');
+		String name = normalized.substring(normalized.lastIndexOf('/') + 1).trim();
+		if (name.isBlank() || name.length() > MAX_FILE_NAME_LENGTH) {
+			throw new GeneralException(ReferenceErrorCode.INVALID_REFERENCE_FILE);
+		}
+		return name;
+	}
+
+	private ReferenceFileExtension extractFileExtension(String name) {
+		int separator = name.lastIndexOf('.');
+		if (separator <= 0 || separator == name.length() - 1) {
+			throw new GeneralException(ReferenceErrorCode.UNSUPPORTED_REFERENCE_FILE);
+		}
+		try {
+			return ReferenceFileExtension.valueOf(name.substring(separator + 1).toUpperCase(Locale.ROOT));
+		} catch (IllegalArgumentException exception) {
+			throw new GeneralException(ReferenceErrorCode.UNSUPPORTED_REFERENCE_FILE, exception);
+		}
+	}
+
+	private String resolveContentType(ReferenceFileExtension extension, String contentType) {
+		String canonicalContentType = CONTENT_TYPES.get(extension).iterator().next();
+		if (contentType == null || contentType.isBlank()) {
+			return canonicalContentType;
+		}
+		int parameterSeparator = contentType.indexOf(';');
+		String normalized = parameterSeparator >= 0
+				? contentType.substring(0, parameterSeparator)
+				: contentType;
+		normalized = normalized.trim().toLowerCase(Locale.ROOT);
+		if (normalized.equals("application/octet-stream")) {
+			return canonicalContentType;
+		}
+		if (!CONTENT_TYPES.get(extension).contains(normalized)) {
+			throw new GeneralException(ReferenceErrorCode.UNSUPPORTED_REFERENCE_FILE);
+		}
+		return normalized;
+	}
+
+	private String createStorageKey(Long projectId, ReferenceFileExtension extension) {
+		return "references/" + projectId + "/" + UUID.randomUUID()
+				+ "." + extension.name().toLowerCase(Locale.ROOT);
+	}
+
+	private void compensateUploads(List<String> storageKeys) {
+		for (int index = storageKeys.size() - 1; index >= 0; index--) {
+			String storageKey = storageKeys.get(index);
+			try {
+				referenceStorage.delete(storageKey);
+			} catch (RuntimeException compensationFailure) {
+				log.warn("참고자료 파일 보상 삭제 실패: storageKey={}", storageKey, compensationFailure);
+			}
+		}
+	}
+
+	private boolean registerRollbackCompensation(List<String> storageKeys, AtomicBoolean compensated) {
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+			return false;
+		}
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCompletion(int status) {
+				if (status != TransactionSynchronization.STATUS_COMMITTED) {
+					compensateOnce(storageKeys, compensated);
+				}
+			}
+		});
+		return true;
+	}
+
+	private void compensateOnce(List<String> storageKeys, AtomicBoolean compensated) {
+		if (compensated.compareAndSet(false, true)) {
+			compensateUploads(storageKeys);
+		}
+	}
+
+	private record ValidatedFile(
+			MultipartFile file,
+			String name,
+			ReferenceFileExtension extension,
+			String contentType
+	) {
 	}
 }
