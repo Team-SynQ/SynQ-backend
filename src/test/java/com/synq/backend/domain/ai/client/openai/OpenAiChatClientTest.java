@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.synq.backend.domain.ai.assistant.application.AiChatProperties;
 import com.synq.backend.domain.ai.assistant.domain.AiChatContext;
 import com.synq.backend.domain.ai.assistant.domain.AiChatPrompt;
 import com.synq.backend.domain.ai.assistant.domain.AiChatReference;
@@ -22,11 +23,11 @@ import org.mockito.Mockito;
 class OpenAiChatClientTest {
 
 	private final OpenAiClient openAiClient = Mockito.mock(OpenAiClient.class);
-	private final OpenAiChatClient client = new OpenAiChatClient(openAiClient, new ObjectMapper());
+	private final OpenAiChatClient client = new OpenAiChatClient(openAiClient, new ObjectMapper(), properties());
 
 	@Test
 	void Chat_응답은_허용된_출처만_저장하고_질문_맥락을_프롬프트에_포함한다() {
-		when(openAiClient.createStructuredText(anyString(), eq("meeting_ai_chat"), anyMap()))
+		when(openAiClient.createStructuredText(anyString(), eq("meeting_ai_chat"), anyMap(), Mockito.any()))
 				.thenReturn("""
 						{
 						  "answer": "온보딩 개선이 이번 주 우선순위입니다.",
@@ -44,7 +45,8 @@ class OpenAiChatClientTest {
 				.containsExactly("완료 기준은 무엇인가요?", "일정 위험은 무엇인가요?");
 
 		ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
-		verify(openAiClient).createStructuredText(prompt.capture(), eq("meeting_ai_chat"), anyMap());
+		verify(openAiClient).createStructuredText(prompt.capture(), eq("meeting_ai_chat"), anyMap(),
+				eq(new OpenAiGenerationOptions("chat-model", "low", 2_000)));
 		assertThat(prompt.getValue()).contains(
 				"DEV_TECH - 백엔드",
 				"TECH_RISK",
@@ -68,6 +70,7 @@ class OpenAiChatClientTest {
 
 		assertThat(welcome.welcomeMessage()).isEqualTo("회의가 시작되었습니다.");
 		assertThat(welcome.suggestedQuestions()).hasSize(2);
+		verify(openAiClient).createStructuredText(anyString(), eq("meeting_ai_chat_welcome"), anyMap());
 	}
 
 	private AiChatContext context() {
@@ -85,5 +88,9 @@ class OpenAiChatClientTest {
 						new AiChatSource("REFERENCE_MATERIAL", 7L, "참고자료 7")
 				)
 		);
+	}
+
+	private AiChatProperties properties() {
+		return new AiChatProperties("chat-model", "low", 2_000, 12, 2, 5, 5, 0.5);
 	}
 }

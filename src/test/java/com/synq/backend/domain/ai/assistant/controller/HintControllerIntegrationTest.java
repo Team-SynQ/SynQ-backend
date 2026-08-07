@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.synq.backend.domain.ai.context.repository.LiveContextRepository;
 import com.synq.backend.domain.ai.rag.search.ChunkSearcher;
 import com.synq.backend.domain.auth.jwt.AccessTokenBlacklistService;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
@@ -53,6 +54,9 @@ class HintControllerIntegrationTest extends PostgresTestContainer {
 	private TranscriptSegmentRepository transcriptSegmentRepository;
 
 	@Autowired
+	private LiveContextRepository liveContextRepository;
+
+	@Autowired
 	private JwtProvider jwtProvider;
 
 	@MockitoBean
@@ -66,6 +70,8 @@ class HintControllerIntegrationTest extends PostgresTestContainer {
 	void cleanUp() {
 		given(chunkSearcher.search(any())).willReturn(List.of());
 		transcriptSegmentRepository.deleteAll();
+		// 다른 테스트가 남긴 Live Context 가 meeting 삭제의 FK 제약에 걸린다.
+		liveContextRepository.deleteAll();
 		meetingParticipantRepository.deleteAll();
 		meetingRepository.deleteAll();
 		userRepository.deleteAll();

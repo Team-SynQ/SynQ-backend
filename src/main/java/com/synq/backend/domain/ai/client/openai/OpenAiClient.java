@@ -51,12 +51,23 @@ public class OpenAiClient {
 	 * JSON Schema를 만족하는 응답을 생성한다. 요약처럼 서버가 바로 역직렬화해야 하는 결과에 사용한다.
 	 */
 	public String createStructuredText(String input, String schemaName, Map<String, Object> schema) {
-		validateRequest(input, properties.model());
+		return createStructuredText(input, schemaName, schema,
+				new OpenAiGenerationOptions(properties.model(), "low", 1_024));
+	}
+
+	/** 기능별 모델과 생성 제약을 적용해 JSON Schema 응답을 생성한다. */
+	public String createStructuredText(
+			String input,
+			String schemaName,
+			Map<String, Object> schema,
+			OpenAiGenerationOptions options
+	) {
+		validateRequest(input, options.model());
 		if (!StringUtils.hasText(schemaName) || schema == null || schema.isEmpty()) {
 			throw new OpenAiException(OpenAiErrorCode.INVALID_RESPONSE);
 		}
 
-		return request(structuredRequestBody(input, properties.model(), schemaName, schema));
+		return request(structuredRequestBody(input, options, schemaName, schema));
 	}
 
 	static Map<String, Object> structuredRequestBody(
@@ -68,6 +79,28 @@ public class OpenAiClient {
 		return Map.of(
 				"model", model,
 				"input", input,
+				"text", Map.of(
+						"format", Map.of(
+								"type", "json_schema",
+								"name", schemaName,
+								"strict", true,
+								"schema", schema
+						)
+				)
+		);
+	}
+
+	static Map<String, Object> structuredRequestBody(
+			String input,
+			OpenAiGenerationOptions options,
+			String schemaName,
+			Map<String, Object> schema
+	) {
+		return Map.of(
+				"model", options.model(),
+				"input", input,
+				"max_output_tokens", options.maxOutputTokens(),
+				"reasoning", Map.of("effort", options.reasoningEffort()),
 				"text", Map.of(
 						"format", Map.of(
 								"type", "json_schema",

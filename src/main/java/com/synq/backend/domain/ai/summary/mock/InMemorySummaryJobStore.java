@@ -56,12 +56,12 @@ public class InMemorySummaryJobStore implements SummaryJobStore {
 	}
 
 	@Override
-	public synchronized boolean completeIfProcessing(UUID jobId) {
+	public synchronized boolean completeIfProcessing(UUID jobId, int failedPersonalSummaryCount) {
 		SummaryJob job = jobs.get(jobId);
 		if (job == null || job.status() != SummaryJobStatus.PROCESSING) {
 			return false;
 		}
-		jobs.put(jobId, job.complete());
+		jobs.put(jobId, job.complete(failedPersonalSummaryCount));
 		return true;
 	}
 }

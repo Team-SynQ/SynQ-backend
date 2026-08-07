@@ -34,13 +34,15 @@ public interface AiSummaryJobJpaRepository extends JpaRepository<AiSummaryJobEnt
 	@Modifying(flushAutomatically = true, clearAutomatically = true)
 	@Query("""
 			UPDATE AiSummaryJobEntity job
-			SET job.status = :completed, job.completedAt = :completedAt, job.errorMessage = NULL
+			SET job.status = :completed, job.completedAt = :completedAt,
+				job.failedPersonalSummaryCount = :failedPersonalSummaryCount, job.errorMessage = NULL
 			WHERE job.id = :jobId AND job.status = :processing
 			""")
 	int completeIfProcessing(
 			@Param("jobId") UUID jobId,
 			@Param("processing") SummaryJobStatus processing,
 			@Param("completed") SummaryJobStatus completed,
+			@Param("failedPersonalSummaryCount") int failedPersonalSummaryCount,
 			@Param("completedAt") Instant completedAt
 	);
 

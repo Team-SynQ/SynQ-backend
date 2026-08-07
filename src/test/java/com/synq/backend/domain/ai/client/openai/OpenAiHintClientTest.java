@@ -8,6 +8,7 @@ import static org.mockito.BDDMockito.given;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.synq.backend.domain.ai.assistant.domain.HintInput;
 import com.synq.backend.domain.ai.assistant.domain.HintResult;
+import com.synq.backend.domain.ai.assistant.service.AssistantAiProperties;
 import com.synq.backend.domain.ai.context.domain.LiveContextSnapshot;
 import com.synq.backend.domain.ai.prompt.HintPromptFactory;
 import java.util.List;
@@ -26,10 +27,11 @@ class OpenAiHintClientTest {
 	void 구조화_응답을_HintResult_로_파싱한다() {
 		String json = """
 				{"meaning":"의미다","myImpact":"영향이다","teamQuestion":"질문이다"}""";
-		given(openAiClient.createStructuredText(any(), eq("three_hint"), any())).willReturn(json);
+		given(openAiClient.createStructuredText(any(), eq("three_hint"), any(), any())).willReturn(json);
 
 		OpenAiHintClient client = new OpenAiHintClient(
-				openAiClient, new ObjectMapper(), new HintPromptFactory());
+				openAiClient, new ObjectMapper(), new HintPromptFactory(),
+				new AssistantAiProperties("hint-model", "low", 1_200));
 		HintInput input = new HintInput("발화", List.of(), List.of(), "PM", "", List.of("속도 우선"),
 				LiveContextSnapshot.empty(), List.of());
 
@@ -38,5 +40,8 @@ class OpenAiHintClientTest {
 		assertThat(result.meaning()).isEqualTo("의미다");
 		assertThat(result.myImpact()).isEqualTo("영향이다");
 		assertThat(result.teamQuestion()).isEqualTo("질문이다");
+		org.mockito.Mockito.verify(openAiClient).createStructuredText(
+				any(), eq("three_hint"), any(),
+				eq(new OpenAiGenerationOptions("hint-model", "low", 1_200)));
 	}
 }

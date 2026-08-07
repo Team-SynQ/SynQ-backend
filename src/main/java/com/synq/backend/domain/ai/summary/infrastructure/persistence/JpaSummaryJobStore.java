@@ -73,11 +73,18 @@ public class JpaSummaryJobStore implements SummaryJobStore {
 
 	@Override
 	@Transactional
-	public boolean completeIfProcessing(UUID jobId) {
+	public boolean completeIfProcessing(UUID jobId, int failedPersonalSummaryCount) {
+		if (failedPersonalSummaryCount < 0) {
+			throw new IllegalArgumentException("개인 요약 실패 건수는 음수일 수 없습니다.");
+		}
+		SummaryJobStatus completedStatus = failedPersonalSummaryCount == 0
+				? SummaryJobStatus.COMPLETED
+				: SummaryJobStatus.COMPLETED_WITH_ERRORS;
 		return repository.completeIfProcessing(
 				jobId,
 				SummaryJobStatus.PROCESSING,
-				SummaryJobStatus.COMPLETED,
+				completedStatus,
+				failedPersonalSummaryCount,
 				Instant.now()
 		) == 1;
 	}

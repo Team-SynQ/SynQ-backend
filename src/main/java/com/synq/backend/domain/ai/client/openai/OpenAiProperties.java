@@ -10,7 +10,7 @@ import org.springframework.validation.annotation.Validated;
 
 @ConfigurationProperties(prefix = "openai")
 @Validated
-@ConditionalOnExpression("'${ai.summary.client:fake}' == 'openai' or '${ai.live-context.client:fake}' == 'openai'")
+@ConditionalOnExpression("'${ai.summary.client:fake}' == 'openai' or '${ai.live-context.client:fake}' == 'openai' or '${ai.assistant.client:fake}' == 'openai' or '${ai.chat.client:fake}' == 'openai'")
 public record OpenAiProperties(
 		@NotBlank String apiKey,
 		@NotBlank String baseUrl,

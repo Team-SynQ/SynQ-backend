@@ -14,5 +14,5 @@ public interface SummaryJobStore {
 
 	boolean failIfActive(UUID jobId, String errorMessage);
 
-	boolean completeIfProcessing(UUID jobId);
+	boolean completeIfProcessing(UUID jobId, int failedPersonalSummaryCount);
 }

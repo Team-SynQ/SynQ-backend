@@ -60,7 +60,7 @@ class AiSummaryControllerTest {
 		var accessValidator = Mockito.mock(
 				com.synq.backend.domain.ai.summary.application.SummaryAccessValidator.class);
 		var service = new MeetingSummaryService(
-				jobStore, summaryStore, processor, meetingId -> true, properties, accessValidator);
+				jobStore, summaryStore, processor, meetingId -> true, properties, accessValidator, event -> {});
 		CurrentUserIdResolver userIdResolver = Mockito.mock(CurrentUserIdResolver.class);
 		Mockito.when(userIdResolver.resolve("Bearer test-token")).thenReturn(7L);
 		mockMvc = MockMvcBuilders.standaloneSetup(new AiSummaryController(
@@ -113,7 +113,9 @@ class AiSummaryControllerTest {
 					.andExpect(status().isOk())
 					.andReturn();
 			String jobStatus = JsonPath.read(result.getResponse().getContentAsString(), "$.result.status");
-			if ("COMPLETED".equals(jobStatus) || "FAILED".equals(jobStatus)) {
+			if ("COMPLETED".equals(jobStatus)
+					|| "COMPLETED_WITH_ERRORS".equals(jobStatus)
+					|| "FAILED".equals(jobStatus)) {
 				return jobStatus;
 			}
 			Thread.sleep(50);

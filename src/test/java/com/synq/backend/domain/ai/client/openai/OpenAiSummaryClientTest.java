@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.synq.backend.domain.ai.summary.application.SummaryProperties;
 import com.synq.backend.domain.ai.summary.domain.DiscussionSection;
 import com.synq.backend.domain.ai.summary.domain.GeneratedSummary;
 import com.synq.backend.domain.ai.summary.domain.PersonalSummaryTarget;
@@ -20,13 +21,13 @@ import org.mockito.Mockito;
 class OpenAiSummaryClientTest {
 
 	private final OpenAiClient openAiClient = Mockito.mock(OpenAiClient.class);
-	private final OpenAiSummaryClient client = new OpenAiSummaryClient(openAiClient, new ObjectMapper());
+	private final OpenAiSummaryClient client = new OpenAiSummaryClient(openAiClient, new ObjectMapper(), properties());
 
 	@Test
 	@SuppressWarnings("unchecked")
 	void 전체_요약은_전체_전사와_참고자료만_프롬프트에_포함한다() {
 		when(openAiClient.createStructuredText(
-				Mockito.anyString(), eq("meeting_summary"), anyMap()))
+				Mockito.anyString(), eq("meeting_summary"), anyMap(), Mockito.any()))
 				.thenReturn("""
 						{
 						  "oneLineSummary": "한 줄 요약",
@@ -42,7 +43,8 @@ class OpenAiSummaryClientTest {
 
 		ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
 		ArgumentCaptor<Map<String, Object>> schema = ArgumentCaptor.forClass(Map.class);
-		verify(openAiClient).createStructuredText(prompt.capture(), eq("meeting_summary"), schema.capture());
+		verify(openAiClient).createStructuredText(prompt.capture(), eq("meeting_summary"), schema.capture(),
+				eq(new OpenAiGenerationOptions("summary-model", "medium", 8_000)));
 		assertThat(prompt.getValue())
 				.contains("실제 전체 전사", "관련 참고자료")
 				.doesNotContain("회의 누적 맥락");
@@ -54,7 +56,7 @@ class OpenAiSummaryClientTest {
 	@Test
 	void 개인_요약은_역할과_관점을_반영하고_발화를_단정하지_않는다() {
 		when(openAiClient.createStructuredText(
-				Mockito.anyString(), eq("personal_meeting_summary"), anyMap()))
+				Mockito.anyString(), eq("personal_meeting_summary"), anyMap(), Mockito.any()))
 				.thenReturn("""
 						{
 						  "personalSummary": "개인 요약",
@@ -81,10 +83,15 @@ class OpenAiSummaryClientTest {
 
 		ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
 		verify(openAiClient).createStructuredText(
-				prompt.capture(), eq("personal_meeting_summary"), anyMap());
+				prompt.capture(), eq("personal_meeting_summary"), anyMap(),
+				eq(new OpenAiGenerationOptions("summary-model", "medium", 8_000)));
 		assertThat(prompt.getValue())
 				.contains("DEV_TECH - 백엔드", "TECH_RISK")
 				.contains("직접 말했거나 업무를 약속했다고 단정하지 마세요")
 				.contains("한 줄 요약: 한 줄 요약", "- 출시 일정: 베타 일정을 검토한다.");
+	}
+
+	private SummaryProperties properties() {
+		return new SummaryProperties("summary-model", "v1", 250_000);
 	}
 }

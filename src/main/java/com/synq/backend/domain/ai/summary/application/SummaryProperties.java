@@ -1,6 +1,8 @@
 package com.synq.backend.domain.ai.summary.application;
 
+import com.synq.backend.domain.ai.client.openai.OpenAiGenerationOptions;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.AssertTrue;
@@ -16,14 +18,20 @@ public record SummaryProperties(
 		@NotBlank String modelName,
 		@NotBlank String promptVersion,
 		@Positive int maxInputChars,
-		@NotNull @DefaultValue("30m") Duration activeJobTimeout
+		@NotNull @DefaultValue("30m") Duration activeJobTimeout,
+		@NotBlank @Pattern(regexp = OpenAiGenerationOptions.REASONING_EFFORT_PATTERN) String reasoningEffort,
+		@Positive int maxOutputTokens
 ) {
 	@ConstructorBinding
 	public SummaryProperties {
 	}
 
 	public SummaryProperties(String modelName, String promptVersion, int maxInputChars) {
-		this(modelName, promptVersion, maxInputChars, Duration.ofMinutes(30));
+		this(modelName, promptVersion, maxInputChars, Duration.ofMinutes(30), "medium", 8_000);
+	}
+
+	public SummaryProperties(String modelName, String promptVersion, int maxInputChars, Duration activeJobTimeout) {
+		this(modelName, promptVersion, maxInputChars, activeJobTimeout, "medium", 8_000);
 	}
 
 	@AssertTrue(message = "활성 요약 Job timeout은 양수여야 합니다.")

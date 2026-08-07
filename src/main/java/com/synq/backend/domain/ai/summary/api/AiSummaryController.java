@@ -70,7 +70,8 @@ public class AiSummaryController {
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.ACCEPTED, SummaryJobResponse.from(job)));
 	}
 
-	@Operation(summary = "회의 종료 후 AI 요약 작업 상태 조회")
+	@Operation(summary = "회의 종료 후 AI 요약 작업 상태 조회", description =
+			"개인 요약 일부가 재시도 후에도 실패하면 status는 COMPLETED_WITH_ERRORS이고 failedPersonalSummaryCount에 실패 건수가 표시됩니다.")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "AI 요약 작업 상태 조회 성공", useReturnTypeSchema = true),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "jobId 또는 요청값 오류"),

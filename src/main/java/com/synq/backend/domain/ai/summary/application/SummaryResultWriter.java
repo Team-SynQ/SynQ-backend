@@ -37,10 +37,11 @@ public class SummaryResultWriter {
 	public boolean saveIfJobProcessing(
 			SummaryJob job,
 			GeneratedSummary overall,
-			List<PersonalGeneration> personalGenerations
+			List<PersonalGeneration> personalGenerations,
+			int failedPersonalSummaryCount
 	) {
 		// 상태 전이를 먼저 선점해, 만료 처리된 오래된 Job이 결과를 저장하지 못하게 한다.
-		if (!summaryJobStore.completeIfProcessing(job.id())) {
+		if (!summaryJobStore.completeIfProcessing(job.id(), failedPersonalSummaryCount)) {
 			return false;
 		}
 		MeetingSummary savedSummary = meetingSummaryStore.save(
