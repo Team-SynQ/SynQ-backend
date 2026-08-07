@@ -2,6 +2,7 @@ package com.synq.backend.domain.reference.adapter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 
@@ -11,12 +12,17 @@ import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.reference.entity.ReferenceFileExtension;
 import com.synq.backend.domain.reference.entity.ReferenceMaterial;
 import com.synq.backend.domain.reference.entity.ReferenceStatus;
+import com.synq.backend.domain.reference.file.FileTextExtractor;
 import com.synq.backend.domain.reference.link.LinkTextExtractor;
 import com.synq.backend.domain.reference.repository.ReferenceMaterialRepository;
+import com.synq.backend.domain.reference.storage.ReferenceStorage;
+import com.synq.backend.domain.reference.storage.ReferenceStorageException;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
 import com.synq.backend.support.PostgresTestContainer;
 import jakarta.persistence.EntityManager;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -40,6 +46,10 @@ class ReferenceMaterialAdapterTest extends PostgresTestContainer {
 
 	@MockitoBean
 	LinkTextExtractor linkTextExtractor;
+	@MockitoBean
+	ReferenceStorage referenceStorage;
+	@MockitoBean
+	FileTextExtractor fileTextExtractor;
 
 	@Test
 	void 인덱싱이_끝나면_AVAILABLE_이_된다() {
@@ -105,15 +115,31 @@ class ReferenceMaterialAdapterTest extends PostgresTestContainer {
 	}
 
 	@Test
-	void 파일_참고자료는_비어_있다() {
-		// 파일 업로드와 텍스트 추출은 아직 구현되지 않았다.
+	void 파일은_S3_원본을_다시_파싱해서_돌려준다() {
+		// extracted_text 컬럼을 두지 않는다. 원본이 S3 에 영구 보관되어 재파싱으로 재현된다.
+		ReferenceMaterial file = saveFile();
+		given(referenceStorage.download(file.getStorageKey()))
+				.willReturn(new ByteArrayInputStream("무시되는 바이트".getBytes(StandardCharsets.UTF_8)));
+		given(fileTextExtractor.extract(any(), anyString())).willReturn("재파싱한 본문입니다.");
+
+		assertThat(port.findIndexableText(file.getId())).contains("재파싱한 본문입니다.");
+	}
+
+	@Test
+	void 파일_재파싱에_실패하면_비어_있다() {
+		ReferenceMaterial file = saveFile();
+		given(referenceStorage.download(file.getStorageKey()))
+				.willThrow(new ReferenceStorageException("객체 없음"));
+
+		assertThat(port.findIndexableText(file.getId())).isEmpty();
+	}
+
+	private ReferenceMaterial saveFile() {
 		Project project = saveProject();
-		ReferenceMaterial file = referenceMaterialRepository.save(ReferenceMaterial.ofFile(
+		return referenceMaterialRepository.save(ReferenceMaterial.ofFile(
 				project.getId(), saveUser().getUserId(), "설계.pdf", 1024L,
 				"references/" + project.getId() + "/" + UUID.randomUUID() + ".pdf",
 				ReferenceFileExtension.PDF, ReferenceStatus.UPLOADING));
-
-		assertThat(port.findIndexableText(file.getId())).isEmpty();
 	}
 
 	private ReferenceMaterial saveLink() {

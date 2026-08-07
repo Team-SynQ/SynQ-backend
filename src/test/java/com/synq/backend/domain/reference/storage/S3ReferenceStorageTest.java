@@ -6,10 +6,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
@@ -98,6 +102,47 @@ class S3ReferenceStorageTest {
 		)).isInstanceOf(ReferenceStorageException.class)
 				.hasMessage("storage.s3.bucket 설정이 필요합니다.");
 		verifyNoInteractions(s3Client);
+	}
+
+	@Test
+	void bucket과_key로_객체를_다운로드한다() throws Exception {
+		byte[] content = "file-content".getBytes(StandardCharsets.UTF_8);
+		when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(responseStream(content));
+
+		try (var stream = storage.download("references/1/file.pdf")) {
+			assertThat(stream.readAllBytes()).isEqualTo(content);
+		}
+
+		ArgumentCaptor<GetObjectRequest> request = ArgumentCaptor.forClass(GetObjectRequest.class);
+		verify(s3Client).getObject(request.capture());
+		assertThat(request.getValue().bucket()).isEqualTo("synq-bucket");
+		assertThat(request.getValue().key()).isEqualTo("references/1/file.pdf");
+	}
+
+	@Test
+	void 다운로드_SDK_예외를_ReferenceStorageException으로_변환한다() {
+		when(s3Client.getObject(any(GetObjectRequest.class)))
+				.thenThrow(S3Exception.builder().message("S3 실패").statusCode(500).build());
+
+		assertThatThrownBy(() -> storage.download("references/1/missing.pdf"))
+				.isInstanceOf(ReferenceStorageException.class)
+				.hasMessage("참고자료 객체 다운로드 실패");
+	}
+
+	@Test
+	void bucket이_없으면_다운로드도_설정_예외를_반환한다() {
+		S3ReferenceStorage missingBucketStorage = new S3ReferenceStorage(s3Client, properties(""));
+
+		assertThatThrownBy(() -> missingBucketStorage.download("references/1/file.pdf"))
+				.isInstanceOf(ReferenceStorageException.class)
+				.hasMessage("storage.s3.bucket 설정이 필요합니다.");
+		verifyNoInteractions(s3Client);
+	}
+
+	private ResponseInputStream<GetObjectResponse> responseStream(byte[] content) {
+		return new ResponseInputStream<>(
+				GetObjectResponse.builder().build(),
+				AbortableInputStream.create(new ByteArrayInputStream(content)));
 	}
 
 	private S3StorageProperties properties(String bucket) {

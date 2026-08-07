@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.InputStream;
@@ -30,6 +31,19 @@ public class S3ReferenceStorage implements ReferenceStorage {
 			);
 		} catch (RuntimeException exception) {
 			throw new ReferenceStorageException("참고자료 객체 업로드 실패", exception);
+		}
+	}
+
+	@Override
+	public InputStream download(String storageKey) {
+		String bucket = requireBucket();
+		try {
+			return s3Client.getObject(GetObjectRequest.builder()
+					.bucket(bucket)
+					.key(storageKey)
+					.build());
+		} catch (RuntimeException exception) {
+			throw new ReferenceStorageException("참고자료 객체 다운로드 실패", exception);
 		}
 	}
 
