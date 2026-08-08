@@ -29,7 +29,8 @@ public class MeetingTranscriptChunkSearcher implements ChunkSearcher {
 				query.projectId(),
 				VectorLiteral.of(queryVector),
 				query.minSimilarity(),
-				query.topK());
+				query.topK(),
+				query.excludedMeetingId());
 
 		return rows.stream()
 				.map(row -> new ChunkMatch(

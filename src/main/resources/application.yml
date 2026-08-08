@@ -180,6 +180,11 @@ ai:
     max-input-chars: ${AI_SUMMARY_MAX_INPUT_CHARS:250000}
     # 서버 중단 등으로 완료되지 못한 활성 Job을 다음 요청에서 복구하는 기준.
     active-job-timeout: ${AI_SUMMARY_ACTIVE_JOB_TIMEOUT:30m}
+    rag:
+      # 전체 전사는 프롬프트에 직접 넣으므로, 검색 결과에서는 현재 회의를 제외한다.
+      top-k: ${AI_SUMMARY_RAG_TOP_K:5}
+      min-similarity: ${AI_SUMMARY_RAG_MIN_SIMILARITY:0.5}
+      max-query-chars: ${AI_SUMMARY_RAG_MAX_QUERY_CHARS:8000}
   live-context:
     client: ${AI_LIVE_CONTEXT_CLIENT:openai}
     model: ${AI_LIVE_CONTEXT_MODEL:${OPENAI_MODEL:gpt-5.6-luna}}

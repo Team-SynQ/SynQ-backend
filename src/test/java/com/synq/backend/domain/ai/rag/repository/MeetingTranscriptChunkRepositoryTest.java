@@ -93,7 +93,7 @@ class MeetingTranscriptChunkRepositoryTest extends PostgresTestContainer {
 		repository.flush();
 
 		List<ChunkSearchRow> rows = repository.searchByProject(
-				meeting.projectId(), queryVector(), -1.0, 10);
+				meeting.projectId(), queryVector(), -1.0, 10, null);
 
 		assertThat(rows).hasSize(1);
 		assertThat(rows.get(0).getContent()).isEqualTo("내 프로젝트");
