@@ -221,6 +221,7 @@ class SummaryJobAsyncTest {
 					summaryStore,
 					processor,
 					meetingId -> true,
+					meetingId -> java.util.Optional.of("테스트 회의"),
 					properties,
 					org.mockito.Mockito.mock(SummaryAccessValidator.class),
 					event -> {

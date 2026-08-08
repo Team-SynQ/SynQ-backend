@@ -54,6 +54,13 @@ public class Meeting extends BaseEntity {
 		return new Meeting(projectId, title, MeetingStatus.IN_PROGRESS, LocalDateTime.now());
 	}
 
+	public void changeTitle(String title) {
+		if (title == null || title.isBlank()) {
+			throw new IllegalArgumentException("회의 제목은 비어 있을 수 없습니다.");
+		}
+		this.title = title.strip();
+	}
+
 	// 종료 호출 시 즉시 SUMMARIZING 으로 전환하고 종료 시각을 기록한다.
 	// 이후 AI 정리 결과에 따라 markSummarized/markSummaryFailed 로 상태가 확정된다.
 	public void end() {

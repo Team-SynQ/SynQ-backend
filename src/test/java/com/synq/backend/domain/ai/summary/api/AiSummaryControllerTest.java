@@ -60,7 +60,16 @@ class AiSummaryControllerTest {
 		var accessValidator = Mockito.mock(
 				com.synq.backend.domain.ai.summary.application.SummaryAccessValidator.class);
 		var service = new MeetingSummaryService(
-				jobStore, summaryStore, processor, meetingId -> true, properties, accessValidator, event -> {});
+				jobStore,
+				summaryStore,
+				processor,
+				meetingId -> true,
+				meetingId -> java.util.Optional.of("테스트 회의"),
+				properties,
+				accessValidator,
+				event -> {
+				}
+		);
 		CurrentUserIdResolver userIdResolver = Mockito.mock(CurrentUserIdResolver.class);
 		Mockito.when(userIdResolver.resolve("Bearer test-token")).thenReturn(7L);
 		mockMvc = MockMvcBuilders.standaloneSetup(new AiSummaryController(
@@ -83,8 +92,9 @@ class AiSummaryControllerTest {
 		assertThat(jobStatus).isEqualTo("COMPLETED");
 
 		mockMvc.perform(get("/meetings/{meetingId}/summary", 1L)
-						.header("Authorization", "Bearer test-token"))
+					.header("Authorization", "Bearer test-token"))
 				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result.title").value("테스트 회의"))
 				.andExpect(jsonPath("$.result.oneLineSummary").isNotEmpty())
 				.andExpect(jsonPath("$.result.keyTopics").isArray())
 				.andExpect(jsonPath("$.result.discussionSections").isArray())
