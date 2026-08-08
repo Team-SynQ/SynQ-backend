@@ -89,6 +89,21 @@ class MeetingTranscriptChunkSearcherTest extends PostgresTestContainer {
 	}
 
 	@Test
+	void 제외한_회의의_전사_청크는_검색하지_않는다() {
+		Long otherMeetingId = fixture.createMeeting(meeting);
+		repository.save(MeetingTranscriptChunk.of(
+				meeting.meetingId(), meeting.projectId(), 0, "현재 회의", vector(1.0f, 0.0f), MODEL));
+		repository.save(MeetingTranscriptChunk.of(
+				otherMeetingId, meeting.projectId(), 0, "이전 회의", vector(1.0f, 0.0f), MODEL));
+		repository.flush();
+
+		List<ChunkMatch> matches = searcher.search(
+				new ChunkSearchQuery(meeting.projectId(), "질의", 5, -1.0, meeting.meetingId()));
+
+		assertThat(matches).extracting(ChunkMatch::sourceId).containsExactly(otherMeetingId);
+	}
+
+	@Test
 	void 임계값_미만은_제외한다() {
 		// (0.6, 0.8) 과 질의 (1, 0) 의 코사인 유사도는 0.6 이다.
 		repository.save(MeetingTranscriptChunk.of(

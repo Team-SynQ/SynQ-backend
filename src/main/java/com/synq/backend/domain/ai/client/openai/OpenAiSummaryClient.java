@@ -168,11 +168,15 @@ public class OpenAiSummaryClient implements SummaryAiClient, PersonalSummaryAiCl
 
 				[회의 전사]
 				%s
+
+				[참고자료 및 이전 회의]
+				%s
 				""".formatted(
 				target.roleDescription(),
 				String.join(", ", target.perspectives()),
 				formatOverallSummary(overallSummary),
-				context.transcript()
+				context.transcript(),
+				String.join("\n", context.referenceContexts())
 		);
 	}
 

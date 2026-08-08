@@ -32,6 +32,7 @@ public interface MeetingTranscriptChunkRepository extends JpaRepository<MeetingT
 			       1 - (embedding <=> CAST(:embedding AS vector)) AS "similarity"
 			FROM meeting_transcript_chunk
 			WHERE project_id = :projectId
+			  AND (:excludedMeetingId IS NULL OR meeting_id <> :excludedMeetingId)
 			  AND 1 - (embedding <=> CAST(:embedding AS vector)) >= :minSimilarity
 			ORDER BY embedding <=> CAST(:embedding AS vector)
 			LIMIT :topK
@@ -40,5 +41,6 @@ public interface MeetingTranscriptChunkRepository extends JpaRepository<MeetingT
 			@Param("projectId") Long projectId,
 			@Param("embedding") String embedding,
 			@Param("minSimilarity") double minSimilarity,
-			@Param("topK") int topK);
+			@Param("topK") int topK,
+			@Param("excludedMeetingId") Long excludedMeetingId);
 }

@@ -7,13 +7,19 @@ package com.synq.backend.domain.ai.rag.search;
  * @param query         자연어 질의
  * @param topK          최대 결과 개수
  * @param minSimilarity 이 값 미만은 제외한다. 코사인 유사도이므로 범위는 [-1, 1] 이다.
+ * @param excludedMeetingId 제외할 회의 ID. 현재 회의 전사를 이미 직접 전달하는 경우 중복 검색을 막는다.
  */
 public record ChunkSearchQuery(
 		Long projectId,
 		String query,
 		int topK,
-		double minSimilarity
+		double minSimilarity,
+		Long excludedMeetingId
 ) {
+
+	public ChunkSearchQuery(Long projectId, String query, int topK, double minSimilarity) {
+		this(projectId, query, topK, minSimilarity, null);
+	}
 
 	public ChunkSearchQuery {
 		if (projectId == null) {
