@@ -27,8 +27,9 @@ public class DocumentReindexController {
 	private final DocumentIndexingService indexingService;
 
 	@Operation(summary = "참고자료 재인덱싱",
-			description = "인덱싱이 FAILED 로 끝난 문서를 복구하기 위한 개발자용 엔드포인트. "
-					+ "저장된 추출 텍스트로 청킹·임베딩을 다시 실행한다. 원본 파일은 필요하지 않다.")
+			description = "인덱싱이 실패로 끝난 참고자료를 복구하기 위한 개발자용 엔드포인트. "
+					+ "링크는 URL 을 다시 읽고, 파일은 S3 원본을 받아 다시 파싱한 뒤 청킹·임베딩을 재실행한다. "
+					+ "파일 재파싱은 동기로 수행되어 큰 파일은 응답이 수 초 걸릴 수 있다.")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "참고자료 재인덱싱 요청 성공", useReturnTypeSchema = true),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),

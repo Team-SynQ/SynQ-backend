@@ -47,6 +47,10 @@ dependencies {
 	// 링크 참고자료 본문에서 텍스트를 뽑는다.
 	implementation 'org.jsoup:jsoup:1.18.3'
 
+	// 참고자료 파일(PDF/DOCX/PPTX/TXT)에서 본문 텍스트를 뽑는다.
+	implementation 'org.apache.tika:tika-core:3.3.1'
+	implementation 'org.apache.tika:tika-parsers-standard-package:3.3.1'
+
 	implementation 'org.springframework.security:spring-security-crypto'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -63,6 +67,9 @@ dependencies {
 	// 링크 fetch 테스트용 로컬 HTTP 서버. 이미 쓰는 OkHttp 와 같은 버전으로 맞춘다.
 	testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
 	testImplementation 'org.awaitility:awaitility'
+	// Tika 가 전이로 끌어오는 것과 같은 라이브러리이므로 버전을 맞춘다.
+	testImplementation 'org.apache.pdfbox:pdfbox:3.0.7'
+	testImplementation 'org.apache.poi:poi-ooxml:5.5.1'
 	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'

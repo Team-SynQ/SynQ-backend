@@ -1,5 +1,11 @@
 package com.synq.backend.domain.reference.service;
 
+import com.synq.backend.domain.reference.file.FileTextExtractor;
+import org.junit.jupiter.api.BeforeEach;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+
 import com.synq.backend.domain.project.entity.Project;
 import com.synq.backend.domain.project.entity.ProjectMember;
 import com.synq.backend.domain.project.entity.ProjectMemberRole;
@@ -56,6 +62,17 @@ class ReferenceFileCreateConcurrencyTest extends PostgresTestContainer {
 
 	@MockitoBean
 	private LinkPreflightChecker linkPreflightChecker;
+
+	// 기존 픽스처는 "content" 7바이트를 .pdf 로 위장해서 쓴다. 실제 Tika 파싱은 이를 거절하므로
+	// 등록 흐름을 검증하는 테스트에서는 추출기를 대역으로 세운다.
+	@MockitoBean
+	private FileTextExtractor fileTextExtractor;
+
+	@BeforeEach
+	void stubFileTextExtractor() {
+		given(fileTextExtractor.extract(any(), anyString()))
+				.willReturn("추출된 본문입니다. 최소 길이 조건을 넘기기 위한 충분히 긴 문장입니다.");
+	}
 
 	@Test
 	void 활성_자료가_9개일_때_파일과_링크_동시_등록은_하나만_성공한다() throws Exception {
