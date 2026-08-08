@@ -4,6 +4,7 @@ import com.synq.backend.domain.ai.summary.code.SummaryErrorCode;
 import com.synq.backend.domain.ai.event.SummaryFailedEvent;
 import com.synq.backend.domain.ai.summary.domain.MeetingStatusReader;
 import com.synq.backend.domain.ai.summary.domain.MeetingSummary;
+import com.synq.backend.domain.ai.summary.domain.MeetingTitleReader;
 import com.synq.backend.domain.ai.summary.domain.SummaryJob;
 import com.synq.backend.domain.ai.summary.domain.MeetingSummaryStore;
 import com.synq.backend.domain.ai.summary.domain.SummaryJobStore;
@@ -25,6 +26,7 @@ public class MeetingSummaryService {
 	private final MeetingSummaryStore summaryStore;
 	private final SummaryJobProcessor processor;
 	private final MeetingStatusReader meetingStatusReader;
+	private final MeetingTitleReader meetingTitleReader;
 	private final SummaryProperties properties;
 	private final SummaryAccessValidator accessValidator;
 	private final ApplicationEventPublisher eventPublisher;
@@ -34,6 +36,7 @@ public class MeetingSummaryService {
 			MeetingSummaryStore summaryStore,
 			SummaryJobProcessor processor,
 			MeetingStatusReader meetingStatusReader,
+			MeetingTitleReader meetingTitleReader,
 			SummaryProperties properties,
 			SummaryAccessValidator accessValidator,
 			ApplicationEventPublisher eventPublisher
@@ -42,6 +45,7 @@ public class MeetingSummaryService {
 		this.summaryStore = summaryStore;
 		this.processor = processor;
 		this.meetingStatusReader = meetingStatusReader;
+		this.meetingTitleReader = meetingTitleReader;
 		this.properties = properties;
 		this.accessValidator = accessValidator;
 		this.eventPublisher = eventPublisher;
@@ -118,9 +122,12 @@ public class MeetingSummaryService {
 				.orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
 	}
 
-	public MeetingSummary getLatestSummary(Long meetingId, Long userId) {
+	public MeetingSummaryResult getLatestSummary(Long meetingId, Long userId) {
 		validateAccess(meetingId, userId);
-		return getLatestSummary(meetingId);
+		MeetingSummary summary = getLatestSummary(meetingId);
+		String title = meetingTitleReader.findTitle(meetingId)
+				.orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
+		return new MeetingSummaryResult(title, summary);
 	}
 
 	public void validateAccess(Long meetingId, Long userId) {

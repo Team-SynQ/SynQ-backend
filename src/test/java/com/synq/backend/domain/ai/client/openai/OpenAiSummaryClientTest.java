@@ -30,6 +30,7 @@ class OpenAiSummaryClientTest {
 				Mockito.anyString(), eq("meeting_summary"), anyMap(), Mockito.any()))
 				.thenReturn("""
 						{
+						  "title": "서비스 온보딩 개선 논의",
 						  "oneLineSummary": "한 줄 요약",
 						  "keyTopics": [],
 						  "discussionSections": [],
@@ -39,7 +40,8 @@ class OpenAiSummaryClientTest {
 						}
 						""");
 
-		client.generate(new SummaryContext(1L, "실제 전체 전사", List.of("관련 참고자료")));
+		GeneratedSummary generated = client.generate(new SummaryContext(1L, "실제 전체 전사", List.of("관련 참고자료")));
+		assertThat(generated.title()).isEqualTo("서비스 온보딩 개선 논의");
 
 		ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
 		ArgumentCaptor<Map<String, Object>> schema = ArgumentCaptor.forClass(Map.class);
@@ -49,7 +51,7 @@ class OpenAiSummaryClientTest {
 				.contains("실제 전체 전사", "관련 참고자료")
 				.doesNotContain("회의 누적 맥락");
 		assertThat(schema.getValue().get("properties").toString())
-				.contains("oneLineSummary", "discussionSections", "tentativeDirections", "confirmationItems")
+				.contains("title", "oneLineSummary", "discussionSections", "tentativeDirections", "confirmationItems")
 				.doesNotContain("overallSummary", "actionItems", "openQuestions");
 	}
 
