@@ -2,6 +2,7 @@ package com.synq.backend.domain.reference.service;
 
 import com.synq.backend.domain.project.code.ProjectErrorCode;
 import com.synq.backend.domain.project.entity.Project;
+import com.synq.backend.domain.project.repository.ProjectMemberRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.reference.ReferenceLimits;
 import com.synq.backend.domain.reference.code.ReferenceErrorCode;
@@ -45,6 +46,7 @@ public class ReferenceFileRegistrar {
 
 	private final ReferenceMaterialRepository referenceMaterialRepository;
 	private final ProjectRepository projectRepository;
+	private final ProjectMemberRepository projectMemberRepository;
 	private final ReferenceStorage referenceStorage;
 	private final ApplicationEventPublisher eventPublisher;
 
@@ -56,6 +58,12 @@ public class ReferenceFileRegistrar {
 			List<ExtractedFile> files
 	) {
 		findActiveProjectByIdForUpdate(projectId);
+		// ReferenceService 가 추출 전에 이미 한 번 봤지만 여기서 또 본다. 그 검사는 비멤버가
+		// 파싱을 유발하지 못하게 막는 것이고, 이 검사는 추출하는 수 초 사이에 멤버십이 해제된
+		// 사용자가 등록을 마치는 것을 막는다. 목적이 달라 둘 중 하나로 대체되지 않는다.
+		if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
+			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_MEMBER);
+		}
 		if (referenceMaterialRepository.countByProjectId(projectId) + files.size()
 				> ReferenceLimits.MAX_REFERENCES) {
 			throw new GeneralException(ReferenceErrorCode.REFERENCE_LIMIT_EXCEEDED);

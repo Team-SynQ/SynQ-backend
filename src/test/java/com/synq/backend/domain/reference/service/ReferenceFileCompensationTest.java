@@ -1,6 +1,7 @@
 package com.synq.backend.domain.reference.service;
 
 import com.synq.backend.domain.project.entity.Project;
+import com.synq.backend.domain.project.repository.ProjectMemberRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.reference.code.ReferenceErrorCode;
 import com.synq.backend.domain.reference.entity.ReferenceFileExtension;
@@ -45,6 +46,9 @@ class ReferenceFileCompensationTest {
 	private ProjectRepository projectRepository;
 
 	@Mock
+	private ProjectMemberRepository projectMemberRepository;
+
+	@Mock
 	private ReferenceStorage referenceStorage;
 
 	@InjectMocks
@@ -87,6 +91,7 @@ class ReferenceFileCompensationTest {
 	private void givenRegistrableProject() {
 		when(projectRepository.findByIdForUpdate(PROJECT_ID))
 				.thenReturn(Optional.of(Project.of(USER_ID, "SynQ", null)));
+		when(projectMemberRepository.existsByProjectIdAndUserId(PROJECT_ID, USER_ID)).thenReturn(true);
 		when(referenceMaterialRepository.countByProjectId(PROJECT_ID)).thenReturn(0L);
 	}
 
