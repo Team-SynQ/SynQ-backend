@@ -65,6 +65,7 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 		assertThat(resultWriter.saveIfJobProcessing(
 				processingJob,
 				new GeneratedSummary(
+						"서비스 온보딩 개선 논의",
 						"한 줄 요약",
 						List.of("주제"),
 						List.of(new DiscussionSection("주요 논의", List.of("세부 논의"))),
@@ -84,6 +85,9 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 		assertThat(jobStore.findById(job.id()).orElseThrow().status()).isEqualTo(SummaryJobStatus.COMPLETED);
 		assertThat(overall.version()).isEqualTo(1);
 		assertThat(overall.content().oneLineSummary()).isEqualTo("한 줄 요약");
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT title FROM meeting WHERE id = ?", String.class, MEETING_ID))
+				.isEqualTo("서비스 온보딩 개선 논의");
 		assertThat(overall.content().discussionSections())
 				.containsExactly(new DiscussionSection("주요 논의", List.of("세부 논의")));
 		assertThat(personal.version()).isEqualTo(overall.version());

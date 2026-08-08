@@ -18,6 +18,7 @@ public class FakeSummaryAiClient implements SummaryAiClient, PersonalSummaryAiCl
 	public GeneratedSummary generate(SummaryContext context) {
 		// 개발·테스트 환경에서는 비용과 API 키 없이 응답 형식과 Job 흐름을 검증한다.
 		return new GeneratedSummary(
+				"회의 후 AI 요약 구현 논의",
 				"회의 후 AI 요약 API를 우선 구현하고 전사와 참고자료를 함께 활용하기로 했습니다.",
 				List.of("회의 후 AI 요약", "전사와 참고자료 활용", "SSE 적용 시점"),
 				List.of(new com.synq.backend.domain.ai.summary.domain.DiscussionSection(

@@ -24,6 +24,7 @@ public class OpenAiSummaryClient implements SummaryAiClient, PersonalSummaryAiCl
 			"type", "object",
 			"additionalProperties", false,
 			"properties", Map.of(
+					"title", stringSchema(),
 					"oneLineSummary", stringSchema(),
 					"keyTopics", stringArraySchema(),
 					"discussionSections", discussionSectionArraySchema(),
@@ -32,7 +33,7 @@ public class OpenAiSummaryClient implements SummaryAiClient, PersonalSummaryAiCl
 					"confirmationItems", stringArraySchema()
 			),
 			"required", List.of(
-					"oneLineSummary", "keyTopics", "discussionSections", "decisions",
+				"title", "oneLineSummary", "keyTopics", "discussionSections", "decisions",
 					"tentativeDirections", "confirmationItems"
 			)
 	);
@@ -130,6 +131,7 @@ public class OpenAiSummaryClient implements SummaryAiClient, PersonalSummaryAiCl
 		return """
 				당신은 회의록 요약 도우미입니다. 아래 정보를 바탕으로 회의 결과를 한국어로 정리하세요.
 				회의에 없는 사실, 담당자, 결정 사항은 추측하지 마세요. 해당 내용이 없으면 빈 배열로 두세요.
+				title은 회의의 핵심 주제를 담은 짧은 제목으로 작성하세요. 날짜나 '회의' 같은 일반적인 표현만 단독으로 쓰지 마세요.
 				oneLineSummary는 회의 핵심을 한 문장으로 작성하세요.
 				discussionSections는 주요 논의 주제별로 묶고, details에는 각 주제의 구체적인 논의 내용을 작성하세요.
 				tentativeDirections에는 논의되었지만 아직 확정되지 않은 방향만 작성하세요.
