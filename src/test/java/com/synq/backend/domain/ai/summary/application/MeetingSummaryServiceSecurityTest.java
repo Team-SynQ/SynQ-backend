@@ -74,6 +74,7 @@ class MeetingSummaryServiceSecurityTest {
 				new InMemoryMeetingSummaryStore(),
 				processor,
 				meetingId -> true,
+				meetingId -> java.util.Optional.of("테스트 회의"),
 				new SummaryProperties("test-model", "test-v1", 600_000),
 				accessValidator,
 				eventPublisher
@@ -99,6 +100,7 @@ class MeetingSummaryServiceSecurityTest {
 				new InMemoryMeetingSummaryStore(),
 				processor,
 				meetingId -> true,
+				meetingId -> java.util.Optional.of("테스트 회의"),
 				new SummaryProperties("test-model", "test-v1", 600_000, Duration.ofMinutes(30)),
 				accessValidator,
 				event -> {
