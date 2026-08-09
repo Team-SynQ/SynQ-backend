@@ -160,7 +160,7 @@ ai:
     # 3-hint 생성기 선택. 값을 빠뜨리면 조용히 Fake 로 떨어지는 대신 기동이 실패한다.
     # (local 프로파일에서만 fake 로 폴백한다.)
     client: ${AI_ASSISTANT_CLIENT}
-    model: ${AI_ASSISTANT_MODEL:${OPENAI_MODEL:gpt-5.6-terra}}
+    model: ${AI_ASSISTANT_MODEL:gpt-5.6-luna}
     reasoning-effort: ${AI_ASSISTANT_REASONING_EFFORT:low}
     max-output-tokens: ${AI_ASSISTANT_MAX_OUTPUT_TOKENS:1200}
     hint:
