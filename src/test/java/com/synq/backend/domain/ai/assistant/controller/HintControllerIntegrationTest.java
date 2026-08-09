@@ -1,11 +1,14 @@
 package com.synq.backend.domain.ai.assistant.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.synq.backend.domain.ai.assistant.domain.SegmentHint;
+import com.synq.backend.domain.ai.assistant.repository.SegmentHintRepository;
 import com.synq.backend.domain.ai.context.repository.LiveContextRepository;
 import com.synq.backend.domain.ai.rag.search.ChunkSearcher;
 import com.synq.backend.domain.auth.jwt.AccessTokenBlacklistService;
@@ -57,6 +60,9 @@ class HintControllerIntegrationTest extends PostgresTestContainer {
 	private LiveContextRepository liveContextRepository;
 
 	@Autowired
+	private SegmentHintRepository segmentHintRepository;
+
+	@Autowired
 	private JwtProvider jwtProvider;
 
 	@MockitoBean
@@ -69,6 +75,8 @@ class HintControllerIntegrationTest extends PostgresTestContainer {
 	@BeforeEach
 	void cleanUp() {
 		given(chunkSearcher.search(any())).willReturn(List.of());
+		// 세그먼트를 지우기 전에 힌트부터 지운다 (segment_id FK).
+		segmentHintRepository.deleteAll();
 		transcriptSegmentRepository.deleteAll();
 		// 다른 테스트가 남긴 Live Context 가 meeting 삭제의 FK 제약에 걸린다.
 		liveContextRepository.deleteAll();
@@ -138,6 +146,24 @@ class HintControllerIntegrationTest extends PostgresTestContainer {
 						.header(HttpHeaders.AUTHORIZATION, bearer(outsider.getUserId())))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("MEETING403_4"));
+	}
+
+	@Test
+	void 같은_세그먼트를_두_번_눌러도_힌트는_한_행만_남는다() throws Exception {
+		User user = saveUser("반복 클릭 사용자", "hint-twice@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(user.getUserId());
+		Long segmentId = saveSegment(meeting.getId());
+
+		for (int i = 0; i < 2; i++) {
+			mockMvc.perform(post("/meetings/{meetingId}/segments/{segmentId}/hints",
+									meeting.getId(), segmentId)
+							.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId())))
+					.andExpect(status().isOk());
+		}
+
+		List<SegmentHint> hints = segmentHintRepository
+				.findByMeetingIdAndUserIdOrderBySegmentIdAsc(meeting.getId(), user.getUserId());
+		assertThat(hints).hasSize(1);
 	}
 
 	private User saveUser(String name, String email) {
