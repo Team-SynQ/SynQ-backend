@@ -79,6 +79,23 @@ public class MeetingService {
 		meetingRepository.delete(meeting);
 	}
 
+	// 현재 활성 참여자만 나갈 수 있고, 호스트는 나갈 수 없다(종료/삭제로만 회의를 정리할 수 있다).
+	// 나간 뒤 재참여는 기존 join() 이 처리한다(새 MEMBER row 생성).
+	@Transactional
+	public void leave(Long meetingId, Long userId) {
+		if (!meetingRepository.existsById(meetingId)) {
+			throw new GeneralException(MeetingErrorCode.MEETING_NOT_FOUND);
+		}
+		MeetingParticipant participant = meetingParticipantRepository
+				.findByMeetingIdAndUserIdAndLeftAtIsNull(meetingId, userId)
+				.orElseThrow(() -> new GeneralException(MeetingErrorCode.NOT_MEETING_PARTICIPANT));
+		if (participant.getRole() == ParticipantRole.HOST) {
+			throw new GeneralException(MeetingErrorCode.HOST_CANNOT_LEAVE);
+		}
+
+		participant.leave();
+	}
+
 	// 회의 진행자(HOST) 판별. 회의 시작 시 생성자를 role=HOST 로 저장해두므로 그 참여자인지 확인한다.
 	private boolean isHost(Long meetingId, Long userId) {
 		return meetingParticipantRepository.findByMeetingIdAndUserId(meetingId, userId).stream()
