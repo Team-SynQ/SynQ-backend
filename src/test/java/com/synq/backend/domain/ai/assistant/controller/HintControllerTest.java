@@ -3,14 +3,17 @@ package com.synq.backend.domain.ai.assistant.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.synq.backend.domain.ai.assistant.domain.HintResult;
+import com.synq.backend.domain.ai.assistant.domain.SegmentHint;
 import com.synq.backend.domain.ai.assistant.service.HintService;
 import com.synq.backend.domain.auth.jwt.CurrentUserIdResolver;
 import com.synq.backend.global.config.CorsConfig;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -50,5 +53,35 @@ class HintControllerTest {
 				.andExpect(jsonPath("$.result.meaning").value("의미다"))
 				.andExpect(jsonPath("$.result.myImpact").value("영향이다"))
 				.andExpect(jsonPath("$.result.teamQuestion").value("질문이다"));
+	}
+
+	@Test
+	void 내_힌트_목록을_200으로_반환한다() throws Exception {
+		given(currentUserIdResolver.resolve(any())).willReturn(10L);
+		given(hintService.getMyHints(eq(10L), eq(1L)))
+				.willReturn(List.of(SegmentHint.of(1L, 3L, 10L,
+						new HintResult("의미다", "영향이다", "질문이다"))));
+
+		mockMvc.perform(get("/meetings/1/hints")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer test-token"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.isSuccess").value(true))
+				.andExpect(jsonPath("$.result.meetingId").value(1))
+				.andExpect(jsonPath("$.result.hints[0].segmentId").value(3))
+				.andExpect(jsonPath("$.result.hints[0].meaning").value("의미다"))
+				.andExpect(jsonPath("$.result.hints[0].myImpact").value("영향이다"))
+				.andExpect(jsonPath("$.result.hints[0].teamQuestion").value("질문이다"));
+	}
+
+	@Test
+	void 힌트가_없으면_빈_배열을_반환한다() throws Exception {
+		given(currentUserIdResolver.resolve(any())).willReturn(10L);
+		given(hintService.getMyHints(eq(10L), eq(1L))).willReturn(List.of());
+
+		mockMvc.perform(get("/meetings/1/hints")
+						.header(HttpHeaders.AUTHORIZATION, "Bearer test-token"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result.hints").isArray())
+				.andExpect(jsonPath("$.result.hints").isEmpty());
 	}
 }

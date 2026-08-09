@@ -3,6 +3,7 @@ package com.synq.backend.domain.ai.assistant.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -164,6 +165,59 @@ class HintControllerIntegrationTest extends PostgresTestContainer {
 		List<SegmentHint> hints = segmentHintRepository
 				.findByMeetingIdAndUserIdOrderBySegmentIdAsc(meeting.getId(), user.getUserId());
 		assertThat(hints).hasSize(1);
+	}
+
+	@Test
+	void 생성한_힌트를_기록_조회로_다시_읽는다() throws Exception {
+		User user = saveUser("기록 조회 사용자", "hint-record@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(user.getUserId());
+		Long segmentId = saveSegment(meeting.getId());
+
+		mockMvc.perform(post("/meetings/{meetingId}/segments/{segmentId}/hints",
+								meeting.getId(), segmentId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId())))
+				.andExpect(status().isOk());
+
+		mockMvc.perform(get("/meetings/{meetingId}/hints", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId())))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result.meetingId").value(meeting.getId()))
+				.andExpect(jsonPath("$.result.hints.length()").value(1))
+				.andExpect(jsonPath("$.result.hints[0].segmentId").value(segmentId))
+				.andExpect(jsonPath("$.result.hints[0].meaning").isNotEmpty())
+				.andExpect(jsonPath("$.result.hints[0].generatedAt").isNotEmpty());
+	}
+
+	@Test
+	void 다른_참가자의_힌트는_보이지_않는다() throws Exception {
+		User owner = saveUser("힌트 생성자", "hint-record-owner@synq.com");
+		User other = saveUser("다른 참가자", "hint-record-other@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(owner.getUserId());
+		meetingParticipantRepository.save(
+				MeetingParticipant.of(meeting.getId(), other.getUserId(), ParticipantRole.MEMBER));
+		Long segmentId = saveSegment(meeting.getId());
+
+		mockMvc.perform(post("/meetings/{meetingId}/segments/{segmentId}/hints",
+								meeting.getId(), segmentId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(owner.getUserId())))
+				.andExpect(status().isOk());
+
+		mockMvc.perform(get("/meetings/{meetingId}/hints", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(other.getUserId())))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result.hints").isEmpty());
+	}
+
+	@Test
+	void 회의_비참가자는_힌트_기록을_조회할_수_없다() throws Exception {
+		User participant = saveUser("참가 사용자", "hint-record-insider@synq.com");
+		User outsider = saveUser("외부 사용자", "hint-record-outsider@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(participant.getUserId());
+
+		mockMvc.perform(get("/meetings/{meetingId}/hints", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(outsider.getUserId())))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("MEETING403_4"));
 	}
 
 	private User saveUser(String name, String email) {
