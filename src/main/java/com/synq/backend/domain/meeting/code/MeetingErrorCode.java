@@ -43,7 +43,10 @@ public enum MeetingErrorCode implements BaseCode {
 			"진행 중인 회의는 삭제할 수 없습니다. 먼저 회의를 종료해주세요."),
 	HOST_CANNOT_LEAVE(HttpStatus.FORBIDDEN,
 			"MEETING403_7",
-			"호스트는 회의를 나갈 수 없습니다. 회의 종료 또는 삭제를 이용해주세요.");
+			"호스트는 회의를 나갈 수 없습니다. 회의 종료 또는 삭제를 이용해주세요."),
+	CONCURRENT_MEETING_EXISTS(HttpStatus.CONFLICT,
+			"MEETING409_3",
+			"이미 진행 중인 회의가 있습니다. 프로젝트당 동시에 하나의 회의만 진행할 수 있습니다.");
 
 	private final HttpStatus status;
 	private final String code;

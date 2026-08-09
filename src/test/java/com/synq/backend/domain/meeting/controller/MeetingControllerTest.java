@@ -59,6 +59,22 @@ class MeetingControllerTest extends PostgresTestContainer {
 	}
 
 	@Test
+	void 이미_진행_중인_회의가_있으면_409와_도메인_에러코드를_반환한다() throws Exception {
+		mockMvc.perform(post("/projects/{projectId}/meetings", 2L)
+						.header(HttpHeaders.AUTHORIZATION, bearer(20L))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"consentAgreed\": true}"))
+				.andExpect(status().isCreated());
+
+		mockMvc.perform(post("/projects/{projectId}/meetings", 2L)
+						.header(HttpHeaders.AUTHORIZATION, bearer(20L))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"consentAgreed\": true}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("MEETING409_3"));
+	}
+
+	@Test
 	void 동의하지_않으면_400과_도메인_에러코드를_반환한다() throws Exception {
 		mockMvc.perform(post("/projects/{projectId}/meetings", 1L)
 						.header(HttpHeaders.AUTHORIZATION, bearer(10L))

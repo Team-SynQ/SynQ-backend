@@ -56,6 +56,8 @@ class ProjectDetailControllerTest extends ProjectControllerTestSupport {
 				.andExpect(jsonPath("$.result.ownerId").isNumber())
 				.andExpect(jsonPath("$.result.title").isString())
 				.andExpect(jsonPath("$.result.description").isString())
+				.andExpect(jsonPath("$.result.activeMeetingId").value(org.hamcrest.Matchers.nullValue()))
+				.andExpect(jsonPath("$.result.activeMeetingStartedAt").value(org.hamcrest.Matchers.nullValue()))
 				.andExpect(jsonPath("$.result.createdAt").isString())
 				.andExpect(jsonPath("$.result.updatedAt").isString())
 				.andExpect(jsonPath("$.result.projectRole").doesNotExist())
@@ -69,6 +71,8 @@ class ProjectDetailControllerTest extends ProjectControllerTestSupport {
 				"ownerId",
 				"title",
 				"description",
+				"activeMeetingId",
+				"activeMeetingStartedAt",
 				"createdAt",
 				"updatedAt"
 		);

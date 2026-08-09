@@ -1,5 +1,7 @@
 package com.synq.backend.domain.project.service;
 
+import com.synq.backend.domain.meeting.entity.Meeting;
+import com.synq.backend.domain.meeting.repository.MeetingRepository;
 import com.synq.backend.domain.project.code.ProjectErrorCode;
 import com.synq.backend.domain.project.dto.ProjectDetailResponse;
 import com.synq.backend.domain.project.entity.Project;
@@ -31,6 +33,9 @@ class ProjectDetailServiceTest extends PostgresTestContainer {
 	private ProjectMemberRepository projectMemberRepository;
 
 	@Autowired
+	private MeetingRepository meetingRepository;
+
+	@Autowired
 	private UserRepository userRepository;
 
 	@Test
@@ -47,6 +52,21 @@ class ProjectDetailServiceTest extends PostgresTestContainer {
 		assertThat(response.description()).isEqualTo("회의 협업 프로젝트");
 		assertThat(response.createdAt()).isEqualTo(project.getCreatedAt());
 		assertThat(response.updatedAt()).isEqualTo(project.getUpdatedAt());
+		assertThat(response.activeMeetingId()).isNull();
+		assertThat(response.activeMeetingStartedAt()).isNull();
+	}
+
+	@Test
+	void 진행_중인_회의가_있으면_activeMeeting_정보를_반환한다() {
+		User owner = saveUser("detail-active-meeting@synq.com");
+		Project project = saveProject(owner, "SynQ", "회의 협업 프로젝트");
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		Meeting activeMeeting = meetingRepository.save(Meeting.of(project.getId(), "진행 중 회의"));
+
+		ProjectDetailResponse response = projectService.findById(project.getId(), owner.getUserId());
+
+		assertThat(response.activeMeetingId()).isEqualTo(activeMeeting.getId());
+		assertThat(response.activeMeetingStartedAt()).isEqualTo(activeMeeting.getStartedAt());
 	}
 
 	@Test

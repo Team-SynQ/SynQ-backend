@@ -38,6 +38,10 @@ public class MeetingService {
 		if (!projectMembershipChecker.isMember(projectId, userId)) {
 			throw new GeneralException(MeetingErrorCode.NOT_PROJECT_MEMBER);
 		}
+		// 프로젝트당 진행 중인 회의는 동시에 하나만 존재할 수 있다.
+		if (meetingRepository.existsByProjectIdAndStatus(projectId, MeetingStatus.IN_PROGRESS)) {
+			throw new GeneralException(MeetingErrorCode.CONCURRENT_MEETING_EXISTS);
+		}
 
 		Meeting meeting = meetingRepository.save(Meeting.of(projectId, temporaryTitle()));
 		meetingParticipantRepository.save(MeetingParticipant.of(meeting.getId(), userId, ParticipantRole.HOST));

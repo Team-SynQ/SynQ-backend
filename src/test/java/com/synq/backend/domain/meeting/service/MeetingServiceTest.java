@@ -3,6 +3,7 @@ package com.synq.backend.domain.meeting.service;
 import com.synq.backend.domain.meeting.code.MeetingErrorCode;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
+import com.synq.backend.domain.meeting.entity.MeetingStatus;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
 import com.synq.backend.domain.meeting.port.ProjectMembershipChecker;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
@@ -46,6 +47,18 @@ class MeetingServiceTest {
 						exception -> assertThat(exception.getCode())
 								.isEqualTo(MeetingErrorCode.NOT_PROJECT_MEMBER));
 		verifyNoInteractions(meetingRepository, meetingParticipantRepository, eventPublisher);
+	}
+
+	@Test
+	void 이미_진행_중인_회의가_있으면_생성시_CONCURRENT_MEETING_EXISTS_예외를_발생시킨다() {
+		when(projectMembershipChecker.isMember(1L, 10L)).thenReturn(true);
+		when(meetingRepository.existsByProjectIdAndStatus(1L, MeetingStatus.IN_PROGRESS)).thenReturn(true);
+
+		assertThatThrownBy(() -> meetingService.create(1L, 10L, true))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.CONCURRENT_MEETING_EXISTS));
+		verifyNoInteractions(meetingParticipantRepository, eventPublisher);
 	}
 
 	// AlwaysMemberProjectMembershipChecker(test 프로필)는 항상 true라 이 분기는 통합 테스트로는
