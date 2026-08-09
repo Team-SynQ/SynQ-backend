@@ -107,6 +107,23 @@ public class MeetingService {
 		meetingRepository.findById(meetingId).ifPresent(Meeting::markSummaryFailed);
 	}
 
+	// 회의 진행자(HOST)만 제목을 수정할 수 있고, 회의 상태와 무관하게(진행 중/종료 후 모두) 허용한다.
+	@Transactional
+	public Meeting updateTitle(Long meetingId, Long userId, String title) {
+		if (title == null || title.isBlank()) {
+			throw new GeneralException(MeetingErrorCode.BLANK_TITLE);
+		}
+
+		Meeting meeting = meetingRepository.findById(meetingId)
+				.orElseThrow(() -> new GeneralException(MeetingErrorCode.MEETING_NOT_FOUND));
+		if (!isHost(meetingId, userId)) {
+			throw new GeneralException(MeetingErrorCode.NOT_HOST_TO_UPDATE_TITLE);
+		}
+
+		meeting.updateTitle(title);
+		return meeting;
+	}
+
 	// 종료 시 AI가 전사 기반으로 덮어쓰기 전까지의 임시 제목. 사용자가 직접 수정한 적 있으면
 	// (제목 수정 API 이슈에서 추가될 플래그 기준) 종료 시점에도 이 값을 덮어쓰지 않는다.
 	private String temporaryTitle() {

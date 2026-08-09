@@ -28,7 +28,13 @@ public enum MeetingErrorCode implements BaseCode {
 			"프로젝트 멤버만 회의에 참여할 수 있습니다."),
 	NOT_MEETING_PARTICIPANT(HttpStatus.FORBIDDEN,
 			"MEETING403_4",
-			"현재 회의 참여자만 이용할 수 있습니다.");
+			"현재 회의 참여자만 이용할 수 있습니다."),
+	NOT_HOST_TO_UPDATE_TITLE(HttpStatus.FORBIDDEN,
+			"MEETING403_5",
+			"회의 제목을 수정할 권한이 없습니다."),
+	BLANK_TITLE(HttpStatus.BAD_REQUEST,
+			"MEETING400_2",
+			"회의 제목은 비어 있을 수 없습니다.");
 
 	private final HttpStatus status;
 	private final String code;

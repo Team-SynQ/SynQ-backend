@@ -95,6 +95,36 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 	}
 
 	@Test
+	void 사용자가_수정한_제목은_AI_전체_요약이_완료돼도_덮어쓰지_않는다() {
+		jdbcTemplate.update("""
+				UPDATE meeting
+				SET title = '사용자가 입력한 제목', title_auto_generated = false
+				WHERE id = ?
+				""", MEETING_ID);
+		SummaryJob job = jobStore.save(SummaryJob.queued(MEETING_ID, "test-model", "test-v1"));
+		SummaryJob processingJob = jobStore.startIfQueued(job.id()).orElseThrow();
+
+		assertThat(resultWriter.saveIfJobProcessing(
+				processingJob,
+				new GeneratedSummary(
+						"AI가 생성한 제목",
+						"한 줄 요약",
+						List.of(),
+						List.of(),
+						List.of(),
+						List.of(),
+						List.of()
+				),
+				List.of(),
+				0
+		)).isTrue();
+
+		assertThat(jdbcTemplate.queryForObject(
+				"SELECT title FROM meeting WHERE id = ?", String.class, MEETING_ID))
+				.isEqualTo("사용자가 입력한 제목");
+	}
+
+	@Test
 	void 실패로_전환된_Job은_지연_실행되더라도_요약을_저장하지_않는다() {
 		SummaryJob job = jobStore.save(SummaryJob.queued(MEETING_ID, "test-model", "test-v1"));
 		SummaryJob processingJob = jobStore.startIfQueued(job.id()).orElseThrow();
