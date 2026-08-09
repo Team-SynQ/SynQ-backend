@@ -9,11 +9,15 @@ public record ProjectListResponse(
 		String title,
 		String description,
 		String recentMeetingTitle,
+		Long activeMeetingId,
+		LocalDateTime activeMeetingStartedAt,
 		LocalDateTime updatedAt
 ) {
 	public static ProjectListResponse from(
 			Project project,
 			String recentMeetingTitle,
+			Long activeMeetingId,
+			LocalDateTime activeMeetingStartedAt,
 			LocalDateTime updatedAt
 	) {
 		return new ProjectListResponse(
@@ -21,6 +25,8 @@ public record ProjectListResponse(
 				project.getTitle(),
 				project.getDescription(),
 				recentMeetingTitle,
+				activeMeetingId,
+				activeMeetingStartedAt,
 				updatedAt
 		);
 	}

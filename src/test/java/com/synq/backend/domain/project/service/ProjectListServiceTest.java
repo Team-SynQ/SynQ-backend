@@ -67,13 +67,44 @@ class ProjectListServiceTest extends PostgresTestContainer {
 		User user = saveUser("recent-meeting@synq.com");
 		Project project = saveProject(
 				user.getUserId(), user.getUserId(), ProjectMemberRole.OWNER, "회의 프로젝트");
-		meetingRepository.save(Meeting.of(project.getId(), "이전 회의"));
+		// 프로젝트당 IN_PROGRESS 회의는 하나만 허용되므로(uq_meeting_project_active), 이전 회의는 종료시켜 둔다.
+		Meeting previousMeeting = Meeting.of(project.getId(), "이전 회의");
+		previousMeeting.end();
+		meetingRepository.save(previousMeeting);
 		Meeting recentMeeting = meetingRepository.save(Meeting.of(project.getId(), "최근 회의"));
 
 		ProjectListResponse response = projectService.findAll(user.getUserId()).get(0);
 
 		assertThat(response.recentMeetingTitle()).isEqualTo("최근 회의");
 		assertThat(response.updatedAt()).isEqualTo(recentMeeting.getUpdatedAt());
+	}
+
+	@Test
+	void 진행_중인_회의가_있으면_activeMeeting_정보를_반환한다() {
+		User user = saveUser("active-meeting@synq.com");
+		Project project = saveProject(
+				user.getUserId(), user.getUserId(), ProjectMemberRole.OWNER, "진행중 프로젝트");
+		Meeting activeMeeting = meetingRepository.save(Meeting.of(project.getId(), "진행 중 회의"));
+
+		ProjectListResponse response = projectService.findAll(user.getUserId()).get(0);
+
+		assertThat(response.activeMeetingId()).isEqualTo(activeMeeting.getId());
+		assertThat(response.activeMeetingStartedAt()).isEqualTo(activeMeeting.getStartedAt());
+	}
+
+	@Test
+	void 종료된_회의만_있으면_activeMeeting은_null이다() {
+		User user = saveUser("ended-meeting@synq.com");
+		Project project = saveProject(
+				user.getUserId(), user.getUserId(), ProjectMemberRole.OWNER, "종료 프로젝트");
+		Meeting meeting = Meeting.of(project.getId(), "종료된 회의");
+		meeting.end();
+		meetingRepository.save(meeting);
+
+		ProjectListResponse response = projectService.findAll(user.getUserId()).get(0);
+
+		assertThat(response.activeMeetingId()).isNull();
+		assertThat(response.activeMeetingStartedAt()).isNull();
 	}
 
 	@Test

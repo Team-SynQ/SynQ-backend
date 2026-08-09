@@ -3,6 +3,7 @@ package com.synq.backend.domain.meeting.service;
 import com.synq.backend.domain.meeting.code.MeetingErrorCode;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
+import com.synq.backend.domain.meeting.entity.MeetingStatus;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
 import com.synq.backend.domain.meeting.port.ProjectMembershipChecker;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
@@ -10,12 +11,14 @@ import com.synq.backend.domain.meeting.repository.MeetingRepository;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -46,6 +49,35 @@ class MeetingServiceTest {
 						exception -> assertThat(exception.getCode())
 								.isEqualTo(MeetingErrorCode.NOT_PROJECT_MEMBER));
 		verifyNoInteractions(meetingRepository, meetingParticipantRepository, eventPublisher);
+	}
+
+	@Test
+	void 이미_진행_중인_회의가_있으면_생성시_CONCURRENT_MEETING_EXISTS_예외를_발생시킨다() {
+		when(projectMembershipChecker.isMember(1L, 10L)).thenReturn(true);
+		when(meetingRepository.existsByProjectIdAndStatus(1L, MeetingStatus.IN_PROGRESS)).thenReturn(true);
+
+		assertThatThrownBy(() -> meetingService.create(1L, 10L, true))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.CONCURRENT_MEETING_EXISTS));
+		verifyNoInteractions(meetingParticipantRepository, eventPublisher);
+	}
+
+	// 존재 체크(existsByProjectIdAndStatus)를 둘 다 통과한 뒤에도, save() 시점에 DB의
+	// partial unique index(uq_meeting_project_active)가 동시 요청의 레이스를 막아준다.
+	// 이 경우 DataIntegrityViolationException을 CONCURRENT_MEETING_EXISTS로 변환해야 한다.
+	@Test
+	void 존재체크_통과후_저장시_유니크_제약_위반이면_CONCURRENT_MEETING_EXISTS_예외를_발생시킨다() {
+		when(projectMembershipChecker.isMember(1L, 10L)).thenReturn(true);
+		when(meetingRepository.existsByProjectIdAndStatus(1L, MeetingStatus.IN_PROGRESS)).thenReturn(false);
+		when(meetingRepository.save(any(Meeting.class)))
+				.thenThrow(new DataIntegrityViolationException("uq_meeting_project_active"));
+
+		assertThatThrownBy(() -> meetingService.create(1L, 10L, true))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.CONCURRENT_MEETING_EXISTS));
+		verifyNoInteractions(meetingParticipantRepository, eventPublisher);
 	}
 
 	// AlwaysMemberProjectMembershipChecker(test 프로필)는 항상 true라 이 분기는 통합 테스트로는

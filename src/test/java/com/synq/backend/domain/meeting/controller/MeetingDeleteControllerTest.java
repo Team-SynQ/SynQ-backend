@@ -49,7 +49,8 @@ class MeetingDeleteControllerTest extends PostgresTestContainer {
 	}
 
 	private Long createInProgressMeetingWithHost() {
-		Long meetingId = meetingRepository.save(Meeting.of(1L, "회의")).getId();
+		// project_id는 IN_PROGRESS 상태에서 유니크해야 하므로(uq_meeting_project_active), 매번 새 값을 쓴다.
+		Long meetingId = meetingRepository.save(Meeting.of(System.nanoTime(), "회의")).getId();
 		meetingParticipantRepository.save(MeetingParticipant.of(meetingId, HOST_ID, ParticipantRole.HOST));
 		return meetingId;
 	}

@@ -1,6 +1,7 @@
 package com.synq.backend.domain.project.service;
 
 import com.synq.backend.domain.meeting.entity.Meeting;
+import com.synq.backend.domain.meeting.entity.MeetingStatus;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
 import com.synq.backend.domain.project.code.ProjectErrorCode;
 import com.synq.backend.domain.project.config.ProjectInvitationProperties;
@@ -69,8 +70,18 @@ public class ProjectService {
 		if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
 			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_MEMBER);
 		}
+
+		Meeting activeMeeting = meetingRepository
+				.findByProjectIdInAndStatus(List.of(projectId), MeetingStatus.IN_PROGRESS)
+				.stream()
+				.max(Comparator.comparing(Meeting::getId))
+				.orElse(null);
 		// Project 엔티티 updatedAt 반환
-		return ProjectDetailResponse.from(project);
+		return ProjectDetailResponse.from(
+				project,
+				activeMeeting == null ? null : activeMeeting.getId(),
+				activeMeeting == null ? null : activeMeeting.getStartedAt()
+		);
 	}
 
 	@Transactional(readOnly = true)
@@ -203,15 +214,25 @@ public class ProjectService {
 						meeting,
 						(first, second) -> first.getId() > second.getId() ? first : second
 				));
+		Map<Long, Meeting> activeMeetingByProjectId = new HashMap<>();
+		meetingRepository.findByProjectIdInAndStatus(projectIds, MeetingStatus.IN_PROGRESS)
+				.forEach(meeting -> activeMeetingByProjectId.merge(
+						meeting.getProjectId(),
+						meeting,
+						(first, second) -> first.getId() > second.getId() ? first : second
+				));
 		return projectRepository.findAllById(projectIds).stream()
 				.map(project -> {
 					Meeting recentMeeting = recentMeetingByProjectId.get(project.getId());
+					Meeting activeMeeting = activeMeetingByProjectId.get(project.getId());
 					LocalDateTime updatedAt = recentMeeting == null
 							? project.getUpdatedAt()
 							: latest(project.getUpdatedAt(), recentMeeting.getUpdatedAt());
 					return ProjectListResponse.from(
 							project,
 							recentMeeting == null ? null : recentMeeting.getTitle(),
+							activeMeeting == null ? null : activeMeeting.getId(),
+							activeMeeting == null ? null : activeMeeting.getStartedAt(),
 							updatedAt
 					);
 				})

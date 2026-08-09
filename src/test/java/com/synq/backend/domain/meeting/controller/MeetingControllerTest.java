@@ -40,7 +40,10 @@ class MeetingControllerTest extends PostgresTestContainer {
 
 	@Test
 	void 동의하면_미팅을_생성하고_생성자를_호스트로_등록한다() throws Exception {
-		MvcResult result = mockMvc.perform(post("/projects/{projectId}/meetings", 1L)
+		// project 테이블도 같은 시퀀스로 1부터 시작하는 id를 쓰므로, 다른 테스트가 만든 실제 프로젝트와
+		// 겹치지 않도록(uq_meeting_project_active) 리터럴 대신 매번 새 값을 쓴다.
+		long projectId = System.nanoTime();
+		MvcResult result = mockMvc.perform(post("/projects/{projectId}/meetings", projectId)
 						.header(HttpHeaders.AUTHORIZATION, bearer(10L))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"consentAgreed\": true}"))
@@ -56,6 +59,23 @@ class MeetingControllerTest extends PostgresTestContainer {
 		List<MeetingParticipant> hosts = meetingParticipantRepository.findByMeetingIdAndRole(meetingId, ParticipantRole.HOST);
 		assertThat(hosts).hasSize(1);
 		assertThat(hosts.get(0).getUserId()).isEqualTo(10L);
+	}
+
+	@Test
+	void 이미_진행_중인_회의가_있으면_409와_도메인_에러코드를_반환한다() throws Exception {
+		long projectId = System.nanoTime();
+		mockMvc.perform(post("/projects/{projectId}/meetings", projectId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(20L))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"consentAgreed\": true}"))
+				.andExpect(status().isCreated());
+
+		mockMvc.perform(post("/projects/{projectId}/meetings", projectId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(20L))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"consentAgreed\": true}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.code").value("MEETING409_3"));
 	}
 
 	@Test

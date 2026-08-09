@@ -12,6 +12,7 @@ import com.synq.backend.domain.meeting.repository.MeetingRepository;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,8 +39,19 @@ public class MeetingService {
 		if (!projectMembershipChecker.isMember(projectId, userId)) {
 			throw new GeneralException(MeetingErrorCode.NOT_PROJECT_MEMBER);
 		}
+		// 프로젝트당 진행 중인 회의는 동시에 하나만 존재할 수 있다. 아래 존재 체크는 흔한 경우를 빠르게
+		// 막기 위한 것일 뿐이고(TOCTOU 레이스로 뚫릴 수 있음), 실제 보장은 DB의 partial unique index
+		// (uq_meeting_project_active)가 한다 — 동시 요청 중 뒤에 커밋되는 쪽은 저장 시점에 제약 위반으로 막힌다.
+		if (meetingRepository.existsByProjectIdAndStatus(projectId, MeetingStatus.IN_PROGRESS)) {
+			throw new GeneralException(MeetingErrorCode.CONCURRENT_MEETING_EXISTS);
+		}
 
-		Meeting meeting = meetingRepository.save(Meeting.of(projectId, temporaryTitle()));
+		Meeting meeting;
+		try {
+			meeting = meetingRepository.save(Meeting.of(projectId, temporaryTitle()));
+		} catch (DataIntegrityViolationException e) {
+			throw new GeneralException(MeetingErrorCode.CONCURRENT_MEETING_EXISTS);
+		}
 		meetingParticipantRepository.save(MeetingParticipant.of(meeting.getId(), userId, ParticipantRole.HOST));
 		return meeting;
 	}

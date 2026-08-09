@@ -48,7 +48,8 @@ class LiveContextTranscriptListenerIntegrationTest extends PostgresTestContainer
 
 	private Long createMeetingAndPublish(Long segmentId, int sequenceIndex, String content) {
 		return new TransactionTemplate(transactionManager).execute(status -> {
-			Meeting meeting = meetingRepository.save(Meeting.of(1L, "AI 회의"));
+			// project_id는 IN_PROGRESS 상태에서 유니크해야 하므로(uq_meeting_project_active), 매번 새 값을 쓴다.
+			Meeting meeting = meetingRepository.save(Meeting.of(System.nanoTime(), "AI 회의"));
 			eventPublisher.publishEvent(event(meeting.getId(), segmentId, sequenceIndex, content));
 			return meeting.getId();
 		});
