@@ -60,7 +60,8 @@ class AiEventControllerTest extends PostgresTestContainer {
 	@Test
 	void 회의_참여자는_AI_결과_SSE를_구독할_수_있다() throws Exception {
 		User user = userRepository.save(User.ofLocal("구독 사용자", "sse-user@synq.com", "encoded-password"));
-		Meeting meeting = meetingRepository.save(Meeting.of(1L, "SSE 테스트 회의"));
+		// project_id는 IN_PROGRESS 상태에서 유니크해야 하므로(uq_meeting_project_active), 매번 새 값을 쓴다.
+		Meeting meeting = meetingRepository.save(Meeting.of(System.nanoTime(), "SSE 테스트 회의"));
 		participantRepository.save(MeetingParticipant.of(meeting.getId(), user.getUserId(), ParticipantRole.HOST));
 
 		MvcResult result = mockMvc.perform(get("/meetings/{meetingId}/ai-events", meeting.getId())
@@ -76,7 +77,8 @@ class AiEventControllerTest extends PostgresTestContainer {
 	void 회의_비참여자는_AI_결과를_구독할_수_없다() throws Exception {
 		User participant = userRepository.save(User.ofLocal("참여 사용자", "sse-member@synq.com", "encoded-password"));
 		User outsider = userRepository.save(User.ofLocal("외부 사용자", "sse-outsider@synq.com", "encoded-password"));
-		Meeting meeting = meetingRepository.save(Meeting.of(1L, "SSE 접근 제어 회의"));
+		// project_id는 IN_PROGRESS 상태에서 유니크해야 하므로(uq_meeting_project_active), 매번 새 값을 쓴다.
+		Meeting meeting = meetingRepository.save(Meeting.of(System.nanoTime(), "SSE 접근 제어 회의"));
 		participantRepository.save(MeetingParticipant.of(meeting.getId(), participant.getUserId(), ParticipantRole.HOST));
 
 		mockMvc.perform(get("/meetings/{meetingId}/ai-events", meeting.getId())

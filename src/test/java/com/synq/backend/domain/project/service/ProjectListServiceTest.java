@@ -67,7 +67,10 @@ class ProjectListServiceTest extends PostgresTestContainer {
 		User user = saveUser("recent-meeting@synq.com");
 		Project project = saveProject(
 				user.getUserId(), user.getUserId(), ProjectMemberRole.OWNER, "회의 프로젝트");
-		meetingRepository.save(Meeting.of(project.getId(), "이전 회의"));
+		// 프로젝트당 IN_PROGRESS 회의는 하나만 허용되므로(uq_meeting_project_active), 이전 회의는 종료시켜 둔다.
+		Meeting previousMeeting = Meeting.of(project.getId(), "이전 회의");
+		previousMeeting.end();
+		meetingRepository.save(previousMeeting);
 		Meeting recentMeeting = meetingRepository.save(Meeting.of(project.getId(), "최근 회의"));
 
 		ProjectListResponse response = projectService.findAll(user.getUserId()).get(0);

@@ -145,7 +145,8 @@ class HintControllerIntegrationTest extends PostgresTestContainer {
 	}
 
 	private Meeting saveMeetingWithParticipant(Long userId) {
-		Meeting meeting = meetingRepository.save(Meeting.of(1L, "3-hint 테스트 회의"));
+		// project_id는 IN_PROGRESS 상태에서 유니크해야 하므로(uq_meeting_project_active), 매번 새 값을 쓴다.
+		Meeting meeting = meetingRepository.save(Meeting.of(System.nanoTime(), "3-hint 테스트 회의"));
 		meetingParticipantRepository.save(
 				MeetingParticipant.of(meeting.getId(), userId, ParticipantRole.HOST)
 		);

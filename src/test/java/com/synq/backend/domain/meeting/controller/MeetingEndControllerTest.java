@@ -40,8 +40,9 @@ class MeetingEndControllerTest extends PostgresTestContainer {
 	private AccessTokenBlacklistService accessTokenBlacklistService;
 
 	// 회의 생성 시 생성자를 HOST 참여자로 저장하는 것과 동일한 상태를 만든다.
+	// project_id는 IN_PROGRESS 상태에서 유니크해야 하므로(uq_meeting_project_active), 매번 새 값을 쓴다.
 	private Long createInProgressMeetingWithHost() {
-		Long meetingId = meetingRepository.save(Meeting.of(1L, "회의")).getId();
+		Long meetingId = meetingRepository.save(Meeting.of(System.nanoTime(), "회의")).getId();
 		meetingParticipantRepository.save(MeetingParticipant.of(meetingId, HOST_ID, ParticipantRole.HOST));
 		return meetingId;
 	}

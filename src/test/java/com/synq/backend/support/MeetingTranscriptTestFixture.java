@@ -46,9 +46,15 @@ public class MeetingTranscriptTestFixture {
 		return new Fixture(meeting.getId(), project.getId(), host.getUserId());
 	}
 
-	/** 같은 프로젝트에 회의를 하나 더 만든다. 프로젝트 단위 검색 테스트에 쓴다. */
+	/**
+	 * 같은 프로젝트에 회의를 하나 더 만든다. 프로젝트 단위 검색 테스트에 쓴다.
+	 * 프로젝트당 IN_PROGRESS 회의는 하나만 허용되므로(uq_meeting_project_active), 종료된 상태로 만든다 —
+	 * 어차피 "이전 회의" 성격이라 검색 로직은 상태를 신경 쓰지 않는다.
+	 */
 	public Long createMeeting(Fixture fixture) {
-		return meetingRepository.save(Meeting.of(fixture.projectId(), "테스트 회의 추가")).getId();
+		Meeting meeting = Meeting.of(fixture.projectId(), "테스트 회의 추가");
+		meeting.end();
+		return meetingRepository.save(meeting).getId();
 	}
 
 	/** sequenceIndex 와 startMs 를 순서대로 채워 확정 세그먼트를 저장한다. */
