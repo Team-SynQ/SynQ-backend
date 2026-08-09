@@ -57,7 +57,7 @@ public class SecurityConfig {
 									"/projects/*/references/*").authenticated()
 							.requestMatchers("/users/me", "/users/me/**").authenticated()
 							.requestMatchers("/projects/*/meetings", "/meetings/*", "/meetings/*/end", "/meetings/*/join",
-									"/meetings/*/title").authenticated()
+									"/meetings/*/title", "/meetings/*/leave").authenticated()
 							.requestMatchers("/meetings/*/ai-summary/**", "/meetings/*/summary/**").authenticated()
 							.requestMatchers("/meetings/*/live-context", "/meetings/*/segments/*/hints").authenticated()
 							.requestMatchers("/meetings/*/transcript-segments/**").authenticated()

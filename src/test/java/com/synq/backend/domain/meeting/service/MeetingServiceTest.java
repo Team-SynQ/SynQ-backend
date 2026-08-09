@@ -172,4 +172,52 @@ class MeetingServiceTest {
 						exception -> assertThat(exception.getCode())
 								.isEqualTo(MeetingErrorCode.MEETING_NOT_FOUND));
 	}
+
+	@Test
+	void 활성_참여자가_나가면_leave가_호출된다() {
+		MeetingParticipant participant = MeetingParticipant.of(5L, 10L, ParticipantRole.MEMBER);
+		when(meetingRepository.existsById(5L)).thenReturn(true);
+		when(meetingParticipantRepository.findByMeetingIdAndUserIdAndLeftAtIsNull(5L, 10L))
+				.thenReturn(Optional.of(participant));
+
+		meetingService.leave(5L, 10L);
+
+		assertThat(participant.getLeftAt()).isNotNull();
+	}
+
+	@Test
+	void 호스트가_나가려_하면_HOST_CANNOT_LEAVE_예외를_발생시킨다() {
+		MeetingParticipant participant = MeetingParticipant.of(5L, 10L, ParticipantRole.HOST);
+		when(meetingRepository.existsById(5L)).thenReturn(true);
+		when(meetingParticipantRepository.findByMeetingIdAndUserIdAndLeftAtIsNull(5L, 10L))
+				.thenReturn(Optional.of(participant));
+
+		assertThatThrownBy(() -> meetingService.leave(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.HOST_CANNOT_LEAVE));
+		assertThat(participant.getLeftAt()).isNull();
+	}
+
+	@Test
+	void 활성_참여자가_아니면_나가기시_NOT_MEETING_PARTICIPANT_예외를_발생시킨다() {
+		when(meetingRepository.existsById(5L)).thenReturn(true);
+		when(meetingParticipantRepository.findByMeetingIdAndUserIdAndLeftAtIsNull(5L, 10L))
+				.thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> meetingService.leave(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.NOT_MEETING_PARTICIPANT));
+	}
+
+	@Test
+	void 존재하지_않는_회의면_나가기시_MEETING_NOT_FOUND_예외를_발생시킨다() {
+		when(meetingRepository.existsById(5L)).thenReturn(false);
+
+		assertThatThrownBy(() -> meetingService.leave(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.MEETING_NOT_FOUND));
+	}
 }
