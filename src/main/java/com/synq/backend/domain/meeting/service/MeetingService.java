@@ -63,6 +63,22 @@ public class MeetingService {
 		return meeting;
 	}
 
+	// 진행자(HOST)만 회의를 삭제할 수 있다. 진행 중인 회의는 삭제할 수 없고 먼저 종료해야 한다.
+	// 자식 데이터(참여자/전사/요약 등)는 meeting FK 의 ON DELETE CASCADE 가 처리한다.
+	@Transactional
+	public void delete(Long meetingId, Long userId) {
+		Meeting meeting = meetingRepository.findById(meetingId)
+				.orElseThrow(() -> new GeneralException(MeetingErrorCode.MEETING_NOT_FOUND));
+		if (!isHost(meetingId, userId)) {
+			throw new GeneralException(MeetingErrorCode.NOT_HOST_TO_DELETE);
+		}
+		if (meeting.getStatus() == MeetingStatus.IN_PROGRESS) {
+			throw new GeneralException(MeetingErrorCode.CANNOT_DELETE_IN_PROGRESS_MEETING);
+		}
+
+		meetingRepository.delete(meeting);
+	}
+
 	// 회의 진행자(HOST) 판별. 회의 시작 시 생성자를 role=HOST 로 저장해두므로 그 참여자인지 확인한다.
 	private boolean isHost(Long meetingId, Long userId) {
 		return meetingParticipantRepository.findByMeetingIdAndUserId(meetingId, userId).stream()

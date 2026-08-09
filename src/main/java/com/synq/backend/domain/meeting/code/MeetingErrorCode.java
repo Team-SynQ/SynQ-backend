@@ -34,7 +34,13 @@ public enum MeetingErrorCode implements BaseCode {
 			"회의 제목을 수정할 권한이 없습니다."),
 	BLANK_TITLE(HttpStatus.BAD_REQUEST,
 			"MEETING400_2",
-			"회의 제목은 비어 있을 수 없습니다.");
+			"회의 제목은 비어 있을 수 없습니다."),
+	NOT_HOST_TO_DELETE(HttpStatus.FORBIDDEN,
+			"MEETING403_6",
+			"회의를 삭제할 권한이 없습니다."),
+	CANNOT_DELETE_IN_PROGRESS_MEETING(HttpStatus.CONFLICT,
+			"MEETING409_2",
+			"진행 중인 회의는 삭제할 수 없습니다. 먼저 회의를 종료해주세요.");
 
 	private final HttpStatus status;
 	private final String code;

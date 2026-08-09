@@ -17,6 +17,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -118,5 +120,56 @@ class MeetingServiceTest {
 						exception -> assertThat(exception.getCode())
 								.isEqualTo(MeetingErrorCode.BLANK_TITLE));
 		verifyNoInteractions(meetingRepository);
+	}
+
+	@Test
+	void 진행자가_종료된_회의를_삭제하면_meetingRepository_delete가_호출된다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		meeting.end();
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdAndUserId(5L, 10L))
+				.thenReturn(List.of(MeetingParticipant.of(5L, 10L, ParticipantRole.HOST)));
+
+		meetingService.delete(5L, 10L);
+
+		verify(meetingRepository).delete(meeting);
+	}
+
+	@Test
+	void 진행_중인_회의를_삭제하려_하면_CANNOT_DELETE_IN_PROGRESS_MEETING_예외를_발생시킨다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdAndUserId(5L, 10L))
+				.thenReturn(List.of(MeetingParticipant.of(5L, 10L, ParticipantRole.HOST)));
+
+		assertThatThrownBy(() -> meetingService.delete(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.CANNOT_DELETE_IN_PROGRESS_MEETING));
+		verify(meetingRepository, never()).delete(meeting);
+	}
+
+	@Test
+	void 진행자가_아니면_삭제시_NOT_HOST_TO_DELETE_예외를_발생시킨다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		meeting.end();
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdAndUserId(5L, 10L))
+				.thenReturn(List.of(MeetingParticipant.of(5L, 10L, ParticipantRole.MEMBER)));
+
+		assertThatThrownBy(() -> meetingService.delete(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.NOT_HOST_TO_DELETE));
+	}
+
+	@Test
+	void 존재하지_않는_회의면_삭제시_MEETING_NOT_FOUND_예외를_발생시킨다() {
+		when(meetingRepository.findById(5L)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> meetingService.delete(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.MEETING_NOT_FOUND));
 	}
 }
