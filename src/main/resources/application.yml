@@ -164,11 +164,17 @@ ai:
     reasoning-effort: ${AI_ASSISTANT_REASONING_EFFORT:low}
     max-output-tokens: ${AI_ASSISTANT_MAX_OUTPUT_TOKENS:1200}
     hint:
+      # 프롬프트에 넣는 맥락 윈도우. LLM 은 무관한 발화를 알아서 걸러내므로 넓게 잡는다.
       window-before: ${AI_ASSISTANT_HINT_WINDOW_BEFORE:2}
       window-after: ${AI_ASSISTANT_HINT_WINDOW_AFTER:2}
+      # 검색 질의에만 쓰는 좁은 윈도우.
+      search-window: ${AI_ASSISTANT_HINT_SEARCH_WINDOW:1}
+      # 검색 질의에서 클릭한 발화를 반복하는 횟수. 반복이 곧 가중이다.
+      focus-repeat: ${AI_ASSISTANT_HINT_FOCUS_REPEAT:3}
       top-k: ${AI_ASSISTANT_HINT_TOP_K:3}
       # 실측값.
       # 관련 문서 0.640~0.645 / 무관 문서 0.522~0.540 사이에 둔다.
+      # 주의: 이 실측은 search-window/focus-repeat 도입 전 질의 구성으로 잰 값이다.
       min-similarity: ${AI_ASSISTANT_HINT_MIN_SIMILARITY:0.6}
   summary:
     client: ${AI_SUMMARY_CLIENT:fake}

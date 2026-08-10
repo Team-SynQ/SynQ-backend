@@ -26,6 +26,7 @@ import com.synq.backend.support.PostgresTestContainer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -64,6 +65,8 @@ class HintContextBuilderTest extends PostgresTestContainer {
 	RoleProfileRepository roleProfileRepository;
 	@Autowired
 	RoleProfilePerspectiveRepository perspectiveRepository;
+	@Autowired
+	AssistantHintProperties properties;
 
 	@MockitoBean
 	DocumentChunkSearcher chunkSearcher;
@@ -121,15 +124,57 @@ class HintContextBuilderTest extends PostgresTestContainer {
 	}
 
 	@Test
-	void RAG_질의문은_윈도우_텍스트다() {
+	void RAG_질의문은_클릭한_발화를_focusRepeat_만큼_반복한다() {
 		builder.build(userId, meetingId, segmentIds.get(2));
 
-		ArgumentCaptor<ChunkSearchQuery> captor = ArgumentCaptor.forClass(ChunkSearchQuery.class);
-		Mockito.verify(chunkSearcher).search(captor.capture());
-		assertThat(captor.getValue().query())
-				.contains(CONTENTS.get(2))
-				.contains(CONTENTS.get(3));
-		assertThat(captor.getValue().projectId()).isEqualTo(7L);
+		String query = captureQuery().query();
+
+		int occurrences = query.split(Pattern.quote(CONTENTS.get(2)), -1).length - 1;
+		assertThat(occurrences).isEqualTo(properties.focusRepeat());
+	}
+
+	@Test
+	void RAG_질의문에서_searchWindow_밖_세그먼트는_빠진다() {
+		builder.build(userId, meetingId, segmentIds.get(2));
+
+		String query = captureQuery().query();
+
+		for (int i = 0; i < CONTENTS.size(); i++) {
+			if (Math.abs(i - 2) <= properties.searchWindow()) {
+				assertThat(query).contains(CONTENTS.get(i));
+			} else {
+				assertThat(query).doesNotContain(CONTENTS.get(i));
+			}
+		}
+	}
+
+	@Test
+	void RAG_질의문은_프로젝트_스코프와_검색_설정을_따른다() {
+		builder.build(userId, meetingId, segmentIds.get(2));
+
+		ChunkSearchQuery query = captureQuery();
+
+		assertThat(query.projectId()).isEqualTo(7L);
+		assertThat(query.topK()).isEqualTo(properties.topK());
+		assertThat(query.minSimilarity()).isEqualTo(properties.minSimilarity());
+	}
+
+	@Test
+	void 검색_질의를_좁혀도_프롬프트_윈도우는_그대로다() {
+		HintInput input = builder.build(userId, meetingId, segmentIds.get(2));
+
+		String query = captureQuery().query();
+
+		// 프롬프트 맥락은 window-before/after 기준으로 항상 채워진다.
+		assertThat(input.windowBefore()).containsExactly(CONTENTS.get(0), CONTENTS.get(1));
+		assertThat(input.windowAfter()).containsExactly(CONTENTS.get(3), CONTENTS.get(4));
+
+		// 같은 세그먼트라도 searchWindow 밖이면 검색 질의에서는 빠진다.
+		for (int i = 0; i < CONTENTS.size(); i++) {
+			if (Math.abs(i - 2) > properties.searchWindow()) {
+				assertThat(query).doesNotContain(CONTENTS.get(i));
+			}
+		}
 	}
 
 	@Test
@@ -157,6 +202,12 @@ class HintContextBuilderTest extends PostgresTestContainer {
 				.isInstanceOf(GeneralException.class)
 				.extracting("code")
 				.isEqualTo(AssistantErrorCode.SEGMENT_MEETING_MISMATCH);
+	}
+
+	private ChunkSearchQuery captureQuery() {
+		ArgumentCaptor<ChunkSearchQuery> captor = ArgumentCaptor.forClass(ChunkSearchQuery.class);
+		Mockito.verify(chunkSearcher).search(captor.capture());
+		return captor.getValue();
 	}
 
 	private void saveDefaultProfile(Role role, String detailRole, Perspective perspective) {
