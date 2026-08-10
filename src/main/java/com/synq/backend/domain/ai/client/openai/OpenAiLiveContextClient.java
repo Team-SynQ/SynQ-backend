@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 /**
@@ -38,7 +39,11 @@ public class OpenAiLiveContextClient implements LiveContextAiClient {
 	private final LiveContextAiProperties properties;
 
 	@Autowired
-	public OpenAiLiveContextClient(OpenAiClient openAiClient, ObjectMapper objectMapper, LiveContextAiProperties properties) {
+	public OpenAiLiveContextClient(
+			@Qualifier("openAiClient") OpenAiClient openAiClient,
+			ObjectMapper objectMapper,
+			LiveContextAiProperties properties
+	) {
 		this.openAiClient = openAiClient;
 		this.objectMapper = objectMapper;
 		this.properties = properties;

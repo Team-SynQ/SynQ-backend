@@ -175,6 +175,8 @@ ai:
     model-name: ${AI_SUMMARY_MODEL:${OPENAI_MODEL:gpt-5.6-sol}}
     reasoning-effort: ${AI_SUMMARY_REASONING_EFFORT:medium}
     max-output-tokens: ${AI_SUMMARY_MAX_OUTPUT_TOKENS:8000}
+    # 긴 전사를 처리하는 요약은 다른 AI 기능과 별도의 HTTP 읽기 제한을 사용한다.
+    timeout: ${AI_SUMMARY_TIMEOUT:120s}
     prompt-version: ${AI_SUMMARY_PROMPT_VERSION:v1}
     # 토큰 수를 정밀 계산하기 전 입력 폭주를 막는 보수적인 문자 수 제한.
     max-input-chars: ${AI_SUMMARY_MAX_INPUT_CHARS:250000}

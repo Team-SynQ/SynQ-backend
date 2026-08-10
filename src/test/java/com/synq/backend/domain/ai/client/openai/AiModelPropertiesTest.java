@@ -35,7 +35,8 @@ class AiModelPropertiesTest {
 					"ai.summary.max-input-chars=250000",
 					"ai.summary.active-job-timeout=30m",
 					"ai.summary.reasoning-effort=medium",
-					"ai.summary.max-output-tokens=8000"
+					"ai.summary.max-output-tokens=8000",
+					"ai.summary.timeout=120s"
 			);
 
 	@Test
@@ -53,8 +54,12 @@ class AiModelPropertiesTest {
 							LiveContextAiProperties::maxOutputTokens)
 					.containsExactly("context-model", "low", 1_200);
 			assertThat(context.getBean(SummaryProperties.class))
-				.extracting(SummaryProperties::modelName, SummaryProperties::reasoningEffort, SummaryProperties::maxOutputTokens)
-				.containsExactly("summary-model", "medium", 8_000);
+				.extracting(
+						SummaryProperties::modelName,
+						SummaryProperties::reasoningEffort,
+						SummaryProperties::maxOutputTokens,
+						SummaryProperties::timeout)
+				.containsExactly("summary-model", "medium", 8_000, java.time.Duration.ofSeconds(120));
 		});
 	}
 
