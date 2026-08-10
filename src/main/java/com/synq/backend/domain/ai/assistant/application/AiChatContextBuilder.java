@@ -74,7 +74,8 @@ public class AiChatContextBuilder {
 		return new AiChatContext(
 				meetingId,
 				userId,
-				roleDescription(memberProfile),
+				memberProfile.role(),
+				memberProfile.detailRole(),
 				memberProfile.perspectives(),
 				liveContextRepository.findByMeetingId(meetingId)
 						.map(LiveContextSnapshot::from)
@@ -158,13 +159,4 @@ public class AiChatContextBuilder {
 				reference.source(), reference.sourceId(), reference.chunkId(), reference.content());
 	}
 
-	private String roleDescription(MemberProfile profile) {
-		if (profile.role().isBlank()) {
-			return "";
-		}
-		if (profile.detailRole().isBlank()) {
-			return profile.role();
-		}
-		return profile.role() + " - " + profile.detailRole();
-	}
 }
