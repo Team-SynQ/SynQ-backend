@@ -5,6 +5,7 @@ import com.synq.backend.domain.auth.jwt.JwtProvider;
 import com.synq.backend.global.apipayload.handler.RestAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -28,6 +29,9 @@ public class SecurityConfig {
 	public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter,
 													RestAuthenticationEntryPoint entryPoint) throws Exception {
 		http
+				// CorsConfig(WebMvcConfigurer)의 설정은 DispatcherServlet 까지 가야 적용된다. 이 선언이 없으면
+				// Authorization 헤더가 없는 preflight(OPTIONS)가 인가 필터에서 401 로 끊겨 프론트에 CORS 에러로 보인다.
+				.cors(Customizer.withDefaults())
 				.csrf(csrf -> csrf.disable())
 				.formLogin(formLogin -> formLogin.disable())
 				.httpBasic(httpBasic -> httpBasic.disable())
