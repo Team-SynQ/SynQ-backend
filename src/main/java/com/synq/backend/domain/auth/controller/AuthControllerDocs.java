@@ -69,7 +69,9 @@ interface EmailAuthControllerDocs {
 interface KakaoAuthControllerDocs {
 
 	@Operation(summary = "카카오 로그인",
-			description = "카카오 OAuth 인가 코드(code)로 로그인한다. 최초 로그인이면 회원가입도 함께 처리된다.")
+			description = "카카오 OAuth 인가 코드(code)로 로그인한다. 최초 로그인이면 회원가입도 함께 처리된다. "
+					+ "redirectUri에는 인가 요청에 사용한 값을 그대로 담아야 하며, 다르면 카카오가 토큰 교환을 거부한다. "
+					+ "생략하면 서버에 설정된 기본 redirect URI를 사용한다.")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "code가 비어있음"),
@@ -93,7 +95,9 @@ interface NaverAuthControllerDocs {
 
 	@Operation(summary = "네이버 로그인",
 			description = "네이버 OAuth 인가 코드(code)와 state로 로그인한다. state는 /auth/naver/state로 미리 발급받은 값과 "
-					+ "일치해야 하며(CSRF 방지), 일치하지 않거나 만료된 경우 로그인이 거부된다.  최초 로그인이면 회원가입도 함께 처리된다.")
+					+ "일치해야 하며(CSRF 방지), 일치하지 않거나 만료된 경우 로그인이 거부된다.  최초 로그인이면 회원가입도 함께 처리된다. "
+					+ "redirectUri에는 인가 요청에 사용한 값을 그대로 담아야 하며, 다르면 네이버가 토큰 교환을 거부한다. "
+					+ "생략하면 서버에 설정된 기본 redirect URI를 사용한다.")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "code 또는 state가 비어있음"),
@@ -108,7 +112,9 @@ interface NaverAuthControllerDocs {
 interface GoogleAuthControllerDocs {
 
 	@Operation(summary = "구글 로그인",
-			description = "구글 OAuth 인가 코드(code)로 로그인한다. 최초 로그인이면 회원가입도 함께 처리된다.")
+			description = "구글 OAuth 인가 코드(code)로 로그인한다. 최초 로그인이면 회원가입도 함께 처리된다. "
+					+ "redirectUri에는 인가 요청에 사용한 값을 그대로 담아야 하며, 다르면 구글이 토큰 교환을 거부한다. "
+					+ "생략하면 서버에 설정된 기본 redirect URI를 사용한다.")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그인 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "code가 비어있음"),

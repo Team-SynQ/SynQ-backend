@@ -33,11 +33,11 @@ public class NaverAuthService {
 		this.naverOAuthStateService = naverOAuthStateService;
 	}
 
-	public TokenResponse login(String code, String state) {
+	public TokenResponse login(String code, String state, String redirectUri) {
 		if (!naverOAuthStateService.validateAndConsume(state)) {
 			throw new GeneralException(AuthErrorCode.INVALID_OAUTH_STATE);
 		}
-		String naverAccessToken = naverClient.exchangeCodeForAccessToken(code, state);
+		String naverAccessToken = naverClient.exchangeCodeForAccessToken(code, state, redirectUri);
 		NaverUserResponse naverUser = naverClient.fetchUser(naverAccessToken);
 		String providerId = naverUser.response().id();
 

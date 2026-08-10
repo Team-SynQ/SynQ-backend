@@ -29,8 +29,8 @@ public class KakaoAuthService {
 		this.authTokenService = authTokenService;
 	}
 
-	public TokenResponse login(String code) {
-		String kakaoAccessToken = kakaoClient.exchangeCodeForAccessToken(code);
+	public TokenResponse login(String code, String redirectUri) {
+		String kakaoAccessToken = kakaoClient.exchangeCodeForAccessToken(code, redirectUri);
 		KakaoUserResponse kakaoUser = kakaoClient.fetchUser(kakaoAccessToken);
 		String providerId = String.valueOf(kakaoUser.id());
 
