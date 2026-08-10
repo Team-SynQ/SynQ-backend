@@ -30,8 +30,9 @@ public class TranscriptSegmentController implements TranscriptSegmentControllerD
 	}
 
 	@Override
-	public ResponseEntity<ApiResponse<TranscriptSegmentListResponse>> getSegments(Long meetingId, Long userId) {
-		List<TranscriptSegment> segments = transcriptSegmentService.getSegments(meetingId, userId);
+	public ResponseEntity<ApiResponse<TranscriptSegmentListResponse>> getSegments(
+			Long meetingId, Long userId, Integer afterSequenceIndex) {
+		List<TranscriptSegment> segments = transcriptSegmentService.getSegments(meetingId, userId, afterSequenceIndex);
 		return ResponseEntity.ok(
 				ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK,
 						TranscriptSegmentListResponse.from(meetingId, segments)));

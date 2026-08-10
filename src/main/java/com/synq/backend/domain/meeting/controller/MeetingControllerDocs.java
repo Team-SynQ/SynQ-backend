@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,13 +21,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 public interface MeetingControllerDocs {
 
 	@SecurityRequirement(name = "bearerAuth")
-	@Operation(summary = "미팅 생성", description = "생성과 동시에 녹음이 시작되며(IN_PROGRESS), 참여 동의(consentAgreed)가 필요하다.")
+	@Operation(summary = "미팅 생성", description = "생성과 동시에 녹음이 시작되며(IN_PROGRESS), 참여 동의(consentAgreed)가 필요하다. "
+			+ "wsUrl은 요청 scheme에 맞춰 ws:// 또는 wss:// 절대 URL로 내려간다.")
 	@ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "미팅 생성 성공"))
 	@PostMapping
 	ResponseEntity<ApiResponse<MeetingCreateResponse>> create(
 			@PathVariable Long projectId,
 			@AuthenticationPrincipal(expression = "userId") Long userId,
-			@RequestBody MeetingCreateRequest request
+			@RequestBody MeetingCreateRequest request,
+			HttpServletRequest servletRequest
 	);
 
 	@SecurityRequirement(name = "bearerAuth")

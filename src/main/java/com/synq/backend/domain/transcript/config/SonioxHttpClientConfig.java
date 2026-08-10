@@ -8,8 +8,8 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * OkHttpClient 빈을 별도 설정 클래스로 분리한다.
- * TranscriptWebSocketConfig 안에 두면 그 설정이 주입받는 HostAudioWebSocketHandler → SonioxClientFactory
- * 가 다시 이 빈을 요구해 TranscriptWebSocketConfig ↔ HostAudioWebSocketHandler 순환 참조가 생긴다.
+ * TranscriptWebSocketConfig 안에 두면 그 설정이 주입받는 TranscriptWebSocketHandler → SonioxClientFactory
+ * 가 다시 이 빈을 요구해 TranscriptWebSocketConfig ↔ TranscriptWebSocketHandler 순환 참조가 생긴다.
  */
 @Configuration
 public class SonioxHttpClientConfig {

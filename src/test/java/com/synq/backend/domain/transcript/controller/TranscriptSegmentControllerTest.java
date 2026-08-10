@@ -177,6 +177,34 @@ class TranscriptSegmentControllerTest extends PostgresTestContainer {
 	}
 
 	@Test
+	void afterSequenceIndex를_주면_그_이후_세그먼트만_반환한다() throws Exception {
+		Long meetingId = createInProgressMeetingWithParticipants();
+		createSegment(meetingId); // sequenceIndex 0
+		transcriptSegmentRepository.save(TranscriptSegment.of(meetingId, 1, 1000, 2000, "두번째"));
+		transcriptSegmentRepository.save(TranscriptSegment.of(meetingId, 2, 2000, 3000, "세번째"));
+
+		mockMvc.perform(get("/meetings/{meetingId}/transcript-segments", meetingId)
+						.param("afterSequenceIndex", "0")
+						.header(HttpHeaders.AUTHORIZATION, bearer(MEMBER_ID)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result.segments.length()").value(2))
+				.andExpect(jsonPath("$.result.segments[0].content").value("두번째"))
+				.andExpect(jsonPath("$.result.segments[1].content").value("세번째"));
+	}
+
+	@Test
+	void afterSequenceIndex가_없으면_기존처럼_전체를_반환한다() throws Exception {
+		Long meetingId = createInProgressMeetingWithParticipants();
+		createSegment(meetingId);
+		transcriptSegmentRepository.save(TranscriptSegment.of(meetingId, 1, 1000, 2000, "두번째"));
+
+		mockMvc.perform(get("/meetings/{meetingId}/transcript-segments", meetingId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(MEMBER_ID)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result.segments.length()").value(2));
+	}
+
+	@Test
 	void 전사_목록_조회시_회의_참가자가_아니면_403과_도메인_에러코드를_반환한다() throws Exception {
 		Long meetingId = createInProgressMeetingWithParticipants();
 		createSegment(meetingId);

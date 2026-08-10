@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Transcript", description = "전사 API")
 public interface TranscriptSegmentControllerDocs {
@@ -41,7 +42,8 @@ public interface TranscriptSegmentControllerDocs {
 	@SecurityRequirement(name = "bearerAuth")
 	@Operation(summary = "전사 세그먼트 목록 조회", description = """
 			회의의 확정된 전사 세그먼트를 start_ms, sequenceIndex 순으로 조회한다. 회의에 남아있는 참가자면 누구나 조회할 수 있다(호스트 제한 없음).
-			사용자가 교정한 세그먼트는 수정된 content 로 응답하며 isModified 로 구분할 수 있다. 회의 진행 상태와 무관하게 조회할 수 있다.""")
+			사용자가 교정한 세그먼트는 수정된 content 로 응답하며 isModified 로 구분할 수 있다. 회의 진행 상태와 무관하게 조회할 수 있다.
+			afterSequenceIndex를 주면 그보다 큰 sequenceIndex의 세그먼트만 반환한다(폴링으로 실시간 전사를 따라갈 때, 이미 받은 구간을 다시 받지 않기 위한 증분 조회용).""")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "전사 세그먼트 목록 조회 성공"),
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "회의 참가자가 아님"),
@@ -50,6 +52,7 @@ public interface TranscriptSegmentControllerDocs {
 	@GetMapping("/transcript-segments")
 	ResponseEntity<ApiResponse<TranscriptSegmentListResponse>> getSegments(
 			@PathVariable Long meetingId,
-			@AuthenticationPrincipal(expression = "userId") Long userId
+			@AuthenticationPrincipal(expression = "userId") Long userId,
+			@RequestParam(required = false) Integer afterSequenceIndex
 	);
 }
