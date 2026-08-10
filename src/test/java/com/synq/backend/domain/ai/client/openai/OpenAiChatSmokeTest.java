@@ -61,7 +61,8 @@ class OpenAiChatSmokeTest {
 		return new AiChatContext(
 				1L,
 				2L,
-				"DEV_TECH - 백엔드",
+				"DEV_TECH",
+				"백엔드",
 				List.of("TECH_RISK", "SCHEDULE"),
 				new LiveContextSnapshot(
 						"온보딩 개선을 이번 주 우선순위로 두기로 논의했습니다.",

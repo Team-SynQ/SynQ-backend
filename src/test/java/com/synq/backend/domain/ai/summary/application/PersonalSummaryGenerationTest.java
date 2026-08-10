@@ -36,7 +36,8 @@ class PersonalSummaryGenerationTest {
 				fakeClient,
 				meetingId -> List.of(new PersonalSummaryTarget(
 						7L,
-						"DEV_TECH - 백엔드",
+						"DEV_TECH",
+						"백엔드",
 						List.of("TECH_RISK", "ACTION_ITEM")
 				)),
 				new SummaryResultWriter(meetingSummaryStore, personalSummaryStore, jobStore),
@@ -116,8 +117,8 @@ class PersonalSummaryGenerationTest {
 				fakeClient,
 				personalSummaryAiClient,
 				meetingId -> List.of(
-						new PersonalSummaryTarget(7L, "DEV_TECH", List.of()),
-						new PersonalSummaryTarget(8L, "DESIGN", List.of())
+						new PersonalSummaryTarget(7L, "DEV_TECH", "", List.of()),
+						new PersonalSummaryTarget(8L, "DESIGN_CONTENT", "", List.of())
 				),
 				new SummaryResultWriter(meetingSummaryStore, personalSummaryStore, jobStore),
 				new SummaryProperties("test-model", "test-v1", 600_000),
@@ -156,7 +157,7 @@ class PersonalSummaryGenerationTest {
 						new SummaryProperties("test-model", "test-v1", 600_000)),
 				fakeClient,
 				personalSummaryAiClient,
-				meetingId -> List.of(new PersonalSummaryTarget(7L, "DEV_TECH", List.of())),
+				meetingId -> List.of(new PersonalSummaryTarget(7L, "DEV_TECH", "", List.of())),
 				new SummaryResultWriter(meetingSummaryStore, personalSummaryStore, jobStore),
 				new SummaryProperties("test-model", "test-v1", 600_000),
 				event -> {

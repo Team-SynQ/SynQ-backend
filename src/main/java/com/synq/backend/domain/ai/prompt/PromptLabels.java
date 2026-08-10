@@ -22,7 +22,7 @@ public final class PromptLabels {
 
 	private static final Map<String, String> PERSPECTIVES = Map.ofEntries(
 			Map.entry("SCHEDULE", "일정"),
-			Map.entry("SCOPE", "범위"),
+			Map.entry("SCOPE", "기능 범위"),
 			Map.entry("DECISION", "의사결정"),
 			Map.entry("UX", "사용자 경험"),
 			Map.entry("TECH_RISK", "기술 리스크"),

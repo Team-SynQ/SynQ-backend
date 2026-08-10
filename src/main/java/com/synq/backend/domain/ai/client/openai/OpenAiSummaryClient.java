@@ -9,6 +9,7 @@ import com.synq.backend.domain.ai.summary.domain.PersonalSummaryTarget;
 import com.synq.backend.domain.ai.summary.domain.SummaryContext;
 import com.synq.backend.domain.ai.summary.domain.SummaryAiClient;
 import com.synq.backend.domain.ai.summary.application.SummaryProperties;
+import com.synq.backend.domain.ai.prompt.PromptLabels;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -20,6 +21,8 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(prefix = "ai.summary", name = "client", havingValue = "openai")
 public class OpenAiSummaryClient implements SummaryAiClient, PersonalSummaryAiClient {
+
+	private static final String UNSET = "(미입력)";
 
 	private static final Map<String, Object> SUMMARY_SCHEMA = Map.of(
 			"type", "object",
@@ -179,12 +182,29 @@ public class OpenAiSummaryClient implements SummaryAiClient, PersonalSummaryAiCl
 				[참고자료 및 이전 회의]
 				%s
 				""".formatted(
-				target.roleDescription(),
-				String.join(", ", target.perspectives()),
+				roleText(target),
+				perspectivesText(target.perspectives()),
 				formatOverallSummary(overallSummary),
 				context.transcript(),
 				String.join("\n", context.referenceContexts())
 		);
+	}
+
+	private String roleText(PersonalSummaryTarget target) {
+		if (target.role().isBlank()) {
+			return UNSET;
+		}
+		String label = PromptLabels.role(target.role());
+		return target.detailRole().isBlank() ? label : label + " - " + target.detailRole();
+	}
+
+	private String perspectivesText(List<String> perspectives) {
+		if (perspectives.isEmpty()) {
+			return UNSET;
+		}
+		return perspectives.stream()
+				.map(PromptLabels::perspective)
+				.collect(Collectors.joining(", "));
 	}
 
 	private String formatOverallSummary(GeneratedSummary summary) {

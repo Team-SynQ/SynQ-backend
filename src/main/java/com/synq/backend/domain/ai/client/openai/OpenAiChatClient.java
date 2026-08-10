@@ -12,6 +12,7 @@ import com.synq.backend.domain.ai.assistant.domain.AiChatTranscript;
 import com.synq.backend.domain.ai.assistant.domain.AiChatTurn;
 import com.synq.backend.domain.ai.assistant.domain.AiChatWelcome;
 import com.synq.backend.domain.ai.assistant.application.AiChatProperties;
+import com.synq.backend.domain.ai.prompt.PromptLabels;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,8 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(prefix = "ai.chat", name = "client", havingValue = "openai")
 public class OpenAiChatClient implements AiChatClient {
+
+	private static final String UNSET = "(미입력)";
 
 	private static final Map<String, Object> CHAT_SCHEMA = Map.of(
 			"type", "object",
@@ -124,8 +127,8 @@ public class OpenAiChatClient implements AiChatClient {
 				[사용자 질문]
 				%s
 				""".formatted(
-				blankToDash(prompt.context().role()),
-				joinOrDash(prompt.context().perspectives()),
+				roleText(prompt.context().role(), prompt.context().detailRole()),
+				perspectivesText(prompt.context().perspectives()),
 				blankToDash(prompt.context().liveContext().rollingSummary()),
 				blankToDash(prompt.context().liveContext().currentTopic()),
 				joinOrDash(prompt.context().liveContext().decisions()),
@@ -165,8 +168,8 @@ public class OpenAiChatClient implements AiChatClient {
 				[최근 발화]
 				%s
 				""".formatted(
-				blankToDash(context.role()),
-				joinOrDash(context.perspectives()),
+				roleText(context.role(), context.detailRole()),
+				perspectivesText(context.perspectives()),
 				blankToDash(context.liveContext().rollingSummary()),
 				blankToDash(context.liveContext().currentTopic()),
 				joinOrDash(context.liveContext().decisions()),
@@ -244,6 +247,23 @@ public class OpenAiChatClient implements AiChatClient {
 		return sources.isEmpty() ? "(없음)" : sources.stream()
 				.map(source -> source.type() + ":" + source.id() + " - " + source.label())
 				.collect(Collectors.joining("\n"));
+	}
+
+	private String roleText(String role, String detailRole) {
+		if (role == null || role.isBlank()) {
+			return UNSET;
+		}
+		String label = PromptLabels.role(role);
+		return detailRole == null || detailRole.isBlank() ? label : label + " - " + detailRole;
+	}
+
+	private String perspectivesText(List<String> perspectives) {
+		if (perspectives == null || perspectives.isEmpty()) {
+			return UNSET;
+		}
+		return perspectives.stream()
+				.map(PromptLabels::perspective)
+				.collect(Collectors.joining(", "));
 	}
 
 	private String joinOrDash(List<String> values) {
