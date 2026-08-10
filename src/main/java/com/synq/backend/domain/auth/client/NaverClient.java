@@ -28,12 +28,13 @@ public class NaverClient {
 		this.callExecutor = callExecutor;
 	}
 
-	public String exchangeCodeForAccessToken(String code, String state) {
+	// 프론트가 안 보내면 기존처럼 설정값을 쓴다.
+	public String exchangeCodeForAccessToken(String code, String state, String redirectUri) {
 		URI uri = UriComponentsBuilder.fromUriString(TOKEN_URI)
 				.queryParam("grant_type", "authorization_code")
 				.queryParam("client_id", properties.clientId())
 				.queryParam("client_secret", properties.clientSecret())
-				.queryParam("redirect_uri", properties.redirectUri())
+				.queryParam("redirect_uri", StringUtils.hasText(redirectUri) ? redirectUri : properties.redirectUri())
 				.queryParam("code", code)
 				.queryParam("state", state)
 				.encode()

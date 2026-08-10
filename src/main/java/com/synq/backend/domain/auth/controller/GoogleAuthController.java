@@ -23,7 +23,7 @@ public class GoogleAuthController implements GoogleAuthControllerDocs {
 	@Override
 	@PostMapping("/google")
 	public ResponseEntity<ApiResponse<TokenResponse>> login(GoogleLoginRequest request) {
-		TokenResponse response = googleAuthService.login(request.code());
+		TokenResponse response = googleAuthService.login(request.code(), request.redirectUri());
 		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
 	}

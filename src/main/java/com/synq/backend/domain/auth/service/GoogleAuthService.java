@@ -28,8 +28,8 @@ public class GoogleAuthService {
 		this.authTokenService = authTokenService;
 	}
 
-	public TokenResponse login(String code) {
-		String googleAccessToken = googleClient.exchangeCodeForAccessToken(code);
+	public TokenResponse login(String code, String redirectUri) {
+		String googleAccessToken = googleClient.exchangeCodeForAccessToken(code, redirectUri);
 		GoogleUserResponse googleUser = googleClient.fetchUser(googleAccessToken);
 		String providerId = googleUser.sub();
 

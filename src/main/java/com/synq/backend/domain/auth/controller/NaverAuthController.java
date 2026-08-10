@@ -36,7 +36,7 @@ public class NaverAuthController implements NaverAuthControllerDocs {
 	@Override
 	@PostMapping("/naver")
 	public ResponseEntity<ApiResponse<TokenResponse>> login(NaverLoginRequest request) {
-		TokenResponse response = naverAuthService.login(request.code(), request.state());
+		TokenResponse response = naverAuthService.login(request.code(), request.state(), request.redirectUri());
 		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
 	}

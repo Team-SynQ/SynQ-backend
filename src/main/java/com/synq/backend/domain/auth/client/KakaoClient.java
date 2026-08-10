@@ -28,11 +28,12 @@ public class KakaoClient {
 		this.callExecutor = callExecutor;
 	}
 
-	public String exchangeCodeForAccessToken(String code) {
+	// 프론트가 안 보내면 기존처럼 설정값을 쓴다.
+	public String exchangeCodeForAccessToken(String code, String redirectUri) {
 		MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
 		form.add("grant_type", "authorization_code");
 		form.add("client_id", properties.clientId());
-		form.add("redirect_uri", properties.redirectUri());
+		form.add("redirect_uri", StringUtils.hasText(redirectUri) ? redirectUri : properties.redirectUri());
 		form.add("code", code);
 		if (StringUtils.hasText(properties.clientSecret())) {
 			form.add("client_secret", properties.clientSecret());

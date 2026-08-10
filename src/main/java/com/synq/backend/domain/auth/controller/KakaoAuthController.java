@@ -23,7 +23,7 @@ public class KakaoAuthController implements KakaoAuthControllerDocs {
 	@Override
 	@PostMapping("/kakao")
 	public ResponseEntity<ApiResponse<TokenResponse>> login(KakaoLoginRequest request) {
-		TokenResponse response = kakaoAuthService.login(request.code());
+		TokenResponse response = kakaoAuthService.login(request.code(), request.redirectUri());
 		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
 	}
