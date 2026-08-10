@@ -1,14 +1,19 @@
 package com.synq.backend.domain.meeting.service;
 
 import com.synq.backend.domain.meeting.code.MeetingErrorCode;
+import com.synq.backend.domain.meeting.dto.MeetingListResponse;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.MeetingStatus;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
 import com.synq.backend.domain.meeting.event.MeetingEndedEvent;
+import com.synq.backend.domain.meeting.port.MeetingSummaryTopicsReader;
 import com.synq.backend.domain.meeting.port.ProjectMembershipChecker;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
+import com.synq.backend.domain.user.entity.User;
+import com.synq.backend.domain.user.repository.UserRepository;
+import com.synq.backend.domain.user.service.ProfileImageService;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -16,9 +21,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +40,9 @@ public class MeetingService {
 	private final MeetingParticipantRepository meetingParticipantRepository;
 	private final ProjectMembershipChecker projectMembershipChecker;
 	private final ApplicationEventPublisher eventPublisher;
+	private final UserRepository userRepository;
+	private final ProfileImageService profileImageService;
+	private final MeetingSummaryTopicsReader meetingSummaryTopicsReader;
 
 	@Transactional
 	public Meeting create(Long projectId, Long userId, Boolean consentAgreed) {
@@ -54,6 +67,61 @@ public class MeetingService {
 		}
 		meetingParticipantRepository.save(MeetingParticipant.of(meeting.getId(), userId, ParticipantRole.HOST));
 		return meeting;
+	}
+
+	// 프로젝트의 회의 목록을 최근 생성순으로 조회한다. 호스트 정보/주제 태그는 N+1을 피하기 위해
+	// meetingId 단위로 배치 조회한 뒤 메모리에서 조합한다.
+	@Transactional(readOnly = true)
+	public List<MeetingListResponse> findAll(Long projectId, Long userId) {
+		if (!projectMembershipChecker.isMember(projectId, userId)) {
+			throw new GeneralException(MeetingErrorCode.NOT_PROJECT_MEMBER_TO_LIST);
+		}
+
+		List<Meeting> meetings = meetingRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
+		List<Long> meetingIds = meetings.stream().map(Meeting::getId).toList();
+
+		Map<Long, Long> hostUserIdByMeetingId = meetingParticipantRepository
+				.findByMeetingIdInAndRole(meetingIds, ParticipantRole.HOST).stream()
+				.collect(Collectors.toMap(
+						MeetingParticipant::getMeetingId, MeetingParticipant::getUserId, (a, b) -> a));
+		Map<Long, User> userById = userRepository.findAllById(hostUserIdByMeetingId.values()).stream()
+				.collect(Collectors.toMap(User::getUserId, Function.identity()));
+		Map<Long, List<String>> keyTopicsByMeetingId = meetingSummaryTopicsReader.findKeyTopicsByMeetingIds(meetingIds);
+
+		return meetings.stream()
+				.map(meeting -> toListResponse(meeting, hostUserIdByMeetingId, userById, keyTopicsByMeetingId))
+				.toList();
+	}
+
+	private MeetingListResponse toListResponse(
+			Meeting meeting,
+			Map<Long, Long> hostUserIdByMeetingId,
+			Map<Long, User> userById,
+			Map<Long, List<String>> keyTopicsByMeetingId
+	) {
+		MeetingListResponse.Host host = Optional.ofNullable(hostUserIdByMeetingId.get(meeting.getId()))
+				.map(userById::get)
+				.map(user -> new MeetingListResponse.Host(
+						user.getUserId(), user.getName(), profileImageService.toUrl(user.getProfileImageKey())))
+				.orElse(null);
+
+		return new MeetingListResponse(
+				meeting.getId(),
+				meeting.getTitle(),
+				meeting.getStatus().name(),
+				meeting.getCreatedAt(),
+				durationSeconds(meeting),
+				host,
+				keyTopicsByMeetingId.get(meeting.getId())
+		);
+	}
+
+	// 회의가 아직 끝나지 않았으면(진행 중) 길이를 알 수 없으므로 null.
+	private Long durationSeconds(Meeting meeting) {
+		if (meeting.getEndedAt() == null) {
+			return null;
+		}
+		return Duration.between(meeting.getStartedAt(), meeting.getEndedAt()).toSeconds();
 	}
 
 	// 진행자(회의 HOST)만 회의를 종료할 수 있다. 종료 즉시 SUMMARIZING 으로 전환하고

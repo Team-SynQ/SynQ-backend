@@ -6,6 +6,8 @@ import com.synq.backend.domain.auth.jwt.JwtProvider;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
+import com.synq.backend.domain.user.entity.User;
+import com.synq.backend.domain.user.repository.UserRepository;
 import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +21,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -31,6 +34,9 @@ class MeetingControllerTest extends PostgresTestContainer {
 
 	@Autowired
 	private MeetingParticipantRepository meetingParticipantRepository;
+
+	@Autowired
+	private UserRepository userRepository;
 
 	@Autowired
 	private JwtProvider jwtProvider;
@@ -93,6 +99,32 @@ class MeetingControllerTest extends PostgresTestContainer {
 		mockMvc.perform(post("/projects/{projectId}/meetings", 1L)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"consentAgreed\": true}"))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void 회의_목록을_생성일_최신순으로_조회하며_요약전에는_keyTopics가_null이다() throws Exception {
+		User host = userRepository.save(User.ofLocal("호스트", "host-" + System.nanoTime() + "@synq.com", "password-hash"));
+		long projectId = System.nanoTime();
+		mockMvc.perform(post("/projects/{projectId}/meetings", projectId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(host.getUserId()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"consentAgreed\": true}"))
+				.andExpect(status().isCreated());
+
+		mockMvc.perform(get("/projects/{projectId}/meetings", projectId)
+						.header(HttpHeaders.AUTHORIZATION, bearer(host.getUserId())))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result[0].host.userId").value(host.getUserId()))
+				.andExpect(jsonPath("$.result[0].host.name").value("호스트"))
+				.andExpect(jsonPath("$.result[0].status").value("IN_PROGRESS"))
+				.andExpect(jsonPath("$.result[0].durationSeconds").isEmpty())
+				.andExpect(jsonPath("$.result[0].keyTopics").isEmpty());
+	}
+
+	@Test
+	void 토큰_없이_목록을_조회하면_401을_반환한다() throws Exception {
+		mockMvc.perform(get("/projects/{projectId}/meetings", 1L))
 				.andExpect(status().isUnauthorized());
 	}
 
