@@ -20,22 +20,28 @@ public record SummaryProperties(
 		@Positive int maxInputChars,
 		@NotNull @DefaultValue("30m") Duration activeJobTimeout,
 		@NotBlank @Pattern(regexp = OpenAiGenerationOptions.REASONING_EFFORT_PATTERN) String reasoningEffort,
-		@Positive int maxOutputTokens
+		@Positive int maxOutputTokens,
+		@NotNull @DefaultValue("120s") Duration timeout
 ) {
 	@ConstructorBinding
 	public SummaryProperties {
 	}
 
 	public SummaryProperties(String modelName, String promptVersion, int maxInputChars) {
-		this(modelName, promptVersion, maxInputChars, Duration.ofMinutes(30), "medium", 8_000);
+		this(modelName, promptVersion, maxInputChars, Duration.ofMinutes(30), "medium", 8_000, Duration.ofSeconds(120));
 	}
 
 	public SummaryProperties(String modelName, String promptVersion, int maxInputChars, Duration activeJobTimeout) {
-		this(modelName, promptVersion, maxInputChars, activeJobTimeout, "medium", 8_000);
+		this(modelName, promptVersion, maxInputChars, activeJobTimeout, "medium", 8_000, Duration.ofSeconds(120));
 	}
 
 	@AssertTrue(message = "활성 요약 Job timeout은 양수여야 합니다.")
 	public boolean hasValidActiveJobTimeout() {
 		return activeJobTimeout != null && !activeJobTimeout.isZero() && !activeJobTimeout.isNegative();
+	}
+
+	@AssertTrue(message = "요약 OpenAI timeout은 양수여야 합니다.")
+	public boolean hasValidTimeout() {
+		return timeout != null && !timeout.isZero() && !timeout.isNegative();
 	}
 }

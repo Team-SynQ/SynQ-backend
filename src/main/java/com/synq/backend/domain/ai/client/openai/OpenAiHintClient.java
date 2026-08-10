@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -39,7 +40,7 @@ public class OpenAiHintClient implements HintAiClient {
 
 	@Autowired
 	public OpenAiHintClient(
-			OpenAiClient openAiClient,
+			@Qualifier("openAiClient") OpenAiClient openAiClient,
 			ObjectMapper objectMapper,
 			HintPromptFactory promptFactory,
 			AssistantAiProperties properties

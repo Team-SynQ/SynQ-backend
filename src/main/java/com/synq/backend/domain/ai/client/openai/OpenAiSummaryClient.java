@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -54,7 +55,11 @@ public class OpenAiSummaryClient implements SummaryAiClient, PersonalSummaryAiCl
 	private final SummaryProperties properties;
 
 	@Autowired
-	public OpenAiSummaryClient(OpenAiClient openAiClient, ObjectMapper objectMapper, SummaryProperties properties) {
+	public OpenAiSummaryClient(
+			@Qualifier("openAiSummaryApiClient") OpenAiClient openAiClient,
+			ObjectMapper objectMapper,
+			SummaryProperties properties
+	) {
 		this.openAiClient = openAiClient;
 		this.objectMapper = objectMapper;
 		this.properties = properties;

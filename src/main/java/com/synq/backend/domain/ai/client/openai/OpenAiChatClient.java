@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -53,7 +54,11 @@ public class OpenAiChatClient implements AiChatClient {
 	private final AiChatProperties properties;
 
 	@Autowired
-	public OpenAiChatClient(OpenAiClient openAiClient, ObjectMapper objectMapper, AiChatProperties properties) {
+	public OpenAiChatClient(
+			@Qualifier("openAiClient") OpenAiClient openAiClient,
+			ObjectMapper objectMapper,
+			AiChatProperties properties
+	) {
 		this.openAiClient = openAiClient;
 		this.objectMapper = objectMapper;
 		this.properties = properties;

@@ -1,7 +1,11 @@
 package com.synq.backend.domain.ai.client.openai;
 
+import com.synq.backend.domain.ai.summary.application.SummaryProperties;
+import java.time.Duration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -17,14 +21,45 @@ public class OpenAiClientConfig {
 
 	@Bean
 	public RestClient openAiRestClient(RestClient.Builder builder, OpenAiProperties properties) {
-		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-		requestFactory.setConnectTimeout(properties.timeout());
-		requestFactory.setReadTimeout(properties.timeout());
+		return createRestClient(builder, properties, properties.timeout(), properties.timeout());
+	}
 
+	@Bean("openAiSummaryRestClient")
+	@ConditionalOnProperty(prefix = "ai.summary", name = "client", havingValue = "openai")
+	public RestClient openAiSummaryRestClient(
+			RestClient.Builder builder,
+			OpenAiProperties properties,
+			SummaryProperties summaryProperties
+	) {
+		return createRestClient(builder, properties, properties.timeout(), summaryProperties.timeout());
+	}
+
+	@Bean("openAiSummaryApiClient")
+	@ConditionalOnProperty(prefix = "ai.summary", name = "client", havingValue = "openai")
+	public OpenAiClient openAiSummaryApiClient(
+			@Qualifier("openAiSummaryRestClient") RestClient openAiSummaryRestClient,
+			OpenAiProperties properties
+	) {
+		return new OpenAiClient(openAiSummaryRestClient, properties);
+	}
+
+	private RestClient createRestClient(
+			RestClient.Builder builder,
+			OpenAiProperties properties,
+			Duration connectTimeout,
+			Duration readTimeout
+	) {
 		return builder
 				.baseUrl(properties.baseUrl())
-				.requestFactory(requestFactory)
+				.requestFactory(createRequestFactory(connectTimeout, readTimeout))
 				.defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 				.build();
+	}
+
+	static SimpleClientHttpRequestFactory createRequestFactory(Duration connectTimeout, Duration readTimeout) {
+		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+		requestFactory.setConnectTimeout(connectTimeout);
+		requestFactory.setReadTimeout(readTimeout);
+		return requestFactory;
 	}
 }
