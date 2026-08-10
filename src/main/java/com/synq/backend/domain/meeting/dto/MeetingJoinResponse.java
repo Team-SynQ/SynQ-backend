@@ -12,6 +12,7 @@ public record MeetingJoinResponse(
 		String status,
 		String role,
 		LocalDateTime joinedAt,
+		LocalDateTime startedAt,
 		String wsUrl
 ) {
 	public static MeetingJoinResponse from(MeetingJoinResult result, String wsUrl) {
@@ -23,6 +24,7 @@ public record MeetingJoinResponse(
 				meeting.getStatus().name(),
 				participant.getRole().name(),
 				participant.getJoinedAt(),
+				meeting.getStartedAt(),
 				wsUrl
 		);
 	}

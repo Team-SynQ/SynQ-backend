@@ -60,6 +60,7 @@ class MeetingJoinControllerTest extends PostgresTestContainer {
 				.andExpect(jsonPath("$.result.meetingId").value(meetingId))
 				.andExpect(jsonPath("$.result.role").value("MEMBER"))
 				.andExpect(jsonPath("$.result.joinedAt").isNotEmpty())
+				.andExpect(jsonPath("$.result.startedAt").isNotEmpty())
 				.andExpect(jsonPath("$.result.wsUrl").value("ws://localhost/ws/meetings/%d/stt".formatted(meetingId)));
 
 		List<MeetingParticipant> members =
