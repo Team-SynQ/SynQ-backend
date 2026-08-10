@@ -44,6 +44,7 @@ public class SttSession implements SonioxStreamListener {
 	private final TranscriptSegmentService transcriptSegmentService;
 	private final SonioxProperties properties;
 	private final ObjectMapper objectMapper;
+	private final SttSessionRegistry registry;
 
 	private volatile boolean firstAudioFrameSeen;
 	private volatile boolean streamRejected;
@@ -51,7 +52,7 @@ public class SttSession implements SonioxStreamListener {
 
 	public SttSession(Long meetingId, WebSocketSession browserSession, MeetingTimeline timeline, int startSequence,
 					TranscriptSegmentService transcriptSegmentService, SonioxProperties properties,
-					ObjectMapper objectMapper, SonioxClientFactory sonioxClientFactory) {
+					ObjectMapper objectMapper, SonioxClientFactory sonioxClientFactory, SttSessionRegistry registry) {
 		this.meetingId = meetingId;
 		this.browserSession = browserSession;
 		this.timeline = timeline;
@@ -59,6 +60,7 @@ public class SttSession implements SonioxStreamListener {
 		this.transcriptSegmentService = transcriptSegmentService;
 		this.properties = properties;
 		this.objectMapper = objectMapper;
+		this.registry = registry;
 		this.sonioxClient = sonioxClientFactory.create(meetingId, this);
 	}
 
@@ -192,7 +194,12 @@ public class SttSession implements SonioxStreamListener {
 			TranscriptSegment saved = transcriptSegmentService.finalizeSegment(
 					meetingId, sequenceIndex, startMs, endMs, segment.content());
 
-			send(SttServerMessage.transcript(saved.getId(), saved.getContent(), startMs, sequenceIndex));
+			SttServerMessage transcriptMessage =
+					SttServerMessage.transcript(saved.getId(), saved.getContent(), startMs, sequenceIndex);
+			send(transcriptMessage);
+			// 확정 전사만 참여자(수신 전용 구독자)에게 fan-out 한다. 중간 캡션/연결상태는 호스트 자신의
+			// 오디오 파이프라인 상태라 지금은 구독자 브로드캐스트 대상이 아니다.
+			registry.broadcastToSubscribers(meetingId, transcriptMessage);
 		} catch (RuntimeException e) {
 			// 한 세그먼트 저장 실패가 스트림 전체를 죽이지 않도록 삼킨다.
 			// content 는 회의 발화 원문(민감정보)이라 로그에는 길이만 남긴다.

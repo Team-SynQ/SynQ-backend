@@ -76,10 +76,16 @@ public class TranscriptSegmentService {
 
 	// 조회는 회의 상태와 무관하게 가능하다 — 회의가 끝난 뒤에도 전사는 계속 봐야 한다.
 	// editContent() 가 세그먼트를 in-place 로 덮어쓰므로, 그냥 최신 row 를 읽으면 수정본이 그대로 반영된다.
+	// afterSequenceIndex 가 있으면 그 이후분만 반환한다 — 참여자 화면이 폴링으로 실시간 전사를
+	// 따라갈 때 이미 받은 구간을 매번 다시 받지 않게 하기 위함.
 	@Transactional(readOnly = true)
-	public List<TranscriptSegment> getSegments(Long meetingId, Long userId) {
+	public List<TranscriptSegment> getSegments(Long meetingId, Long userId, Integer afterSequenceIndex) {
 		requireParticipant(meetingId, userId);
-		return transcriptSegmentRepository.findByMeetingIdOrderByStartMsAscSequenceIndexAsc(meetingId);
+		if (afterSequenceIndex == null) {
+			return transcriptSegmentRepository.findByMeetingIdOrderByStartMsAscSequenceIndexAsc(meetingId);
+		}
+		return transcriptSegmentRepository
+				.findByMeetingIdAndSequenceIndexGreaterThanOrderByStartMsAscSequenceIndexAsc(meetingId, afterSequenceIndex);
 	}
 
 	private Meeting requireParticipant(Long meetingId, Long userId) {

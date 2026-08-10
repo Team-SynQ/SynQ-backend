@@ -42,6 +42,7 @@ public class SttHandshakeInterceptor implements HandshakeInterceptor {
 
 	public static final String ATTRIBUTE_MEETING_ID = "meetingId";
 	public static final String ATTRIBUTE_USER_ID = "userId";
+	public static final String ATTRIBUTE_ROLE = "role";
 
 	private final JwtProvider jwtProvider;
 	private final MeetingRepository meetingRepository;
@@ -68,13 +69,15 @@ public class SttHandshakeInterceptor implements HandshakeInterceptor {
 		if (meeting.get().getStatus() != MeetingStatus.IN_PROGRESS) {
 			return reject(response, HttpStatus.CONFLICT, "진행 중인 회의가 아닙니다. meetingId=" + meetingId.get());
 		}
-		if (!isHost(meetingId.get(), userId.get())) {
+		Optional<ParticipantRole> role = activeParticipantRole(meetingId.get(), userId.get());
+		if (role.isEmpty()) {
 			return reject(response, HttpStatus.FORBIDDEN,
-					"호스트가 아닙니다. meetingId=%d userId=%d".formatted(meetingId.get(), userId.get()));
+					"회의 참가자가 아닙니다. meetingId=%d userId=%d".formatted(meetingId.get(), userId.get()));
 		}
 
 		attributes.put(ATTRIBUTE_MEETING_ID, meetingId.get());
 		attributes.put(ATTRIBUTE_USER_ID, userId.get());
+		attributes.put(ATTRIBUTE_ROLE, role.get().name());
 		return true;
 	}
 
@@ -84,11 +87,13 @@ public class SttHandshakeInterceptor implements HandshakeInterceptor {
 		// 별도 처리 없음
 	}
 
-	// 오디오 송신은 호스트만 가능하다. 호스트는 MeetingParticipant.role=HOST 로 판별한다.
-	private boolean isHost(Long meetingId, Long userId) {
+	// 호스트(오디오 송신)든 참여자(수신 전용 구독)든 현재 활성 참여자면 연결을 허용한다.
+	// 역할은 핸들러가 오디오 처리 여부를 분기하는 데 쓴다.
+	private Optional<ParticipantRole> activeParticipantRole(Long meetingId, Long userId) {
 		return meetingParticipantRepository.findByMeetingIdAndUserId(meetingId, userId).stream()
-				.anyMatch(participant -> participant.getRole() == ParticipantRole.HOST
-						&& isActive(participant));
+				.filter(this::isActive)
+				.map(MeetingParticipant::getRole)
+				.findFirst();
 	}
 
 	private boolean isActive(MeetingParticipant participant) {

@@ -56,7 +56,8 @@ class MeetingControllerTest extends PostgresTestContainer {
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.result.status").value("IN_PROGRESS"))
 				.andExpect(jsonPath("$.result.startedAt").isNotEmpty())
-				.andExpect(jsonPath("$.result.wsUrl").isNotEmpty())
+				.andExpect(jsonPath("$.result.wsUrl")
+						.value(org.hamcrest.Matchers.matchesPattern("ws://localhost/ws/meetings/\\d+/stt")))
 				.andReturn();
 
 		Long meetingId = ((Number) JsonPath.read(result.getResponse().getContentAsString(), "$.result.meetingId"))

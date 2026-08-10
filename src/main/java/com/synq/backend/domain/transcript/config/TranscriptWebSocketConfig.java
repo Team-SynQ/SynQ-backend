@@ -1,6 +1,6 @@
 package com.synq.backend.domain.transcript.config;
 
-import com.synq.backend.domain.transcript.ws.HostAudioWebSocketHandler;
+import com.synq.backend.domain.transcript.ws.TranscriptWebSocketHandler;
 import com.synq.backend.domain.transcript.ws.SttHandshakeInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -15,13 +15,13 @@ import org.springframework.web.socket.server.standard.ServletServerContainerFact
 
 import java.util.List;
 
-/** 호스트 오디오 수신용 raw WebSocket 설정. STOMP 는 오디오 릴레이에 불필요한 오버헤드라 쓰지 않는다. */
+/** 회의 전사용 raw WebSocket 설정. 호스트(오디오 송신) + 참여자(전사 수신)가 같은 엔드포인트를 쓴다. STOMP 는 오디오 릴레이에 불필요한 오버헤드라 쓰지 않는다. */
 @Configuration
 @EnableWebSocket
 @RequiredArgsConstructor
 public class TranscriptWebSocketConfig implements WebSocketConfigurer {
 
-	private final HostAudioWebSocketHandler hostAudioWebSocketHandler;
+	private final TranscriptWebSocketHandler transcriptWebSocketHandler;
 	private final SttHandshakeInterceptor sttHandshakeInterceptor;
 
 	@Value("${cors.allowed-origins}")
@@ -29,7 +29,7 @@ public class TranscriptWebSocketConfig implements WebSocketConfigurer {
 
 	@Override
 	public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-		registry.addHandler(hostAudioWebSocketHandler, "/ws/meetings/{meetingId}/stt")
+		registry.addHandler(transcriptWebSocketHandler, "/ws/meetings/{meetingId}/stt")
 				.addInterceptors(sttHandshakeInterceptor)
 				.setAllowedOriginPatterns(allowedOrigins.toArray(String[]::new));
 	}

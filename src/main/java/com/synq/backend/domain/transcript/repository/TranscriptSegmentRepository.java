@@ -14,6 +14,10 @@ public interface TranscriptSegmentRepository extends JpaRepository<TranscriptSeg
 	// 발화 순서 보장: 같은 start_ms 가 겹칠 수 있어 sequenceIndex 를 2차 정렬로 둔다.
 	List<TranscriptSegment> findByMeetingIdOrderByStartMsAscSequenceIndexAsc(Long meetingId);
 
+	// 폴링 클라이언트가 이미 받은 구간을 다시 받지 않도록, afterSequenceIndex 이후분만 조회한다.
+	List<TranscriptSegment> findByMeetingIdAndSequenceIndexGreaterThanOrderByStartMsAscSequenceIndexAsc(
+			Long meetingId, Integer afterSequenceIndex);
+
 	List<TranscriptSegment> findByMeetingIdOrderByStartMsDescSequenceIndexDesc(Long meetingId, Pageable pageable);
 
 	List<TranscriptSegment> findByMeetingIdAndSequenceIndexBetweenOrderByStartMsAscSequenceIndexAsc(

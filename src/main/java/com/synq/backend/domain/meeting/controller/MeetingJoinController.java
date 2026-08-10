@@ -3,8 +3,10 @@ package com.synq.backend.domain.meeting.controller;
 import com.synq.backend.domain.meeting.dto.MeetingJoinResponse;
 import com.synq.backend.domain.meeting.service.MeetingJoinResult;
 import com.synq.backend.domain.meeting.service.MeetingService;
+import com.synq.backend.domain.meeting.web.MeetingWsUrlResolver;
 import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,11 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class MeetingJoinController implements MeetingJoinControllerDocs {
 
 	private final MeetingService meetingService;
+	private final MeetingWsUrlResolver wsUrlResolver;
 
 	@Override
-	public ResponseEntity<ApiResponse<MeetingJoinResponse>> join(Long meetingId, Long userId) {
+	public ResponseEntity<ApiResponse<MeetingJoinResponse>> join(
+			Long meetingId, Long userId, HttpServletRequest servletRequest) {
 		MeetingJoinResult result = meetingService.join(meetingId, userId);
+		String wsUrl = wsUrlResolver.resolve(servletRequest, meetingId);
 		return ResponseEntity.ok(
-				ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, MeetingJoinResponse.from(result)));
+				ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, MeetingJoinResponse.from(result, wsUrl)));
 	}
 }

@@ -2,6 +2,7 @@ package com.synq.backend.domain.transcript.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.synq.backend.domain.meeting.entity.Meeting;
+import com.synq.backend.domain.meeting.entity.ParticipantRole;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
 import com.synq.backend.domain.transcript.config.SonioxProperties;
 import com.synq.backend.domain.transcript.service.TranscriptSegmentService;
@@ -17,14 +18,18 @@ import org.springframework.web.socket.handler.BinaryWebSocketHandler;
 import java.time.LocalDateTime;
 
 /**
- * 호스트 마이크 오디오 수신 핸들러. 인증/인가는 SttHandshakeInterceptor 가 이미 끝냈다.
- * 여기서는 세션을 만들고 오디오를 Soniox 로 릴레이하기만 한다.
+ * 회의 전사 WebSocket 핸들러. 인증/인가와 역할 판별은 SttHandshakeInterceptor 가 이미 끝냈다.
+ *
+ * <p>연결한 사용자의 역할(ATTRIBUTE_ROLE)에 따라 둘로 갈린다:
+ * 호스트는 오디오를 Soniox 로 릴레이하는 SttSession 을 갖는 publisher, 참여자는 오디오 없이
+ * 확정 전사(TRANSCRIPT)만 받는 수신 전용 subscriber다. 참여자는 SttSession 을 만들지 않으므로
+ * 실수로 바이너리(오디오) 프레임을 보내도 sttSession(session) 이 null 이라 조용히 무시된다.
  */
 @Component
 @RequiredArgsConstructor
-public class HostAudioWebSocketHandler extends BinaryWebSocketHandler {
+public class TranscriptWebSocketHandler extends BinaryWebSocketHandler {
 
-	private static final Logger log = LoggerFactory.getLogger(HostAudioWebSocketHandler.class);
+	private static final Logger log = LoggerFactory.getLogger(TranscriptWebSocketHandler.class);
 	private static final String SESSION_ATTRIBUTE = "sttSession";
 
 	private final SttSessionRegistry registry;
@@ -37,7 +42,17 @@ public class HostAudioWebSocketHandler extends BinaryWebSocketHandler {
 	@Override
 	public void afterConnectionEstablished(WebSocketSession session) {
 		Long meetingId = (Long) session.getAttributes().get(SttHandshakeInterceptor.ATTRIBUTE_MEETING_ID);
+		String role = (String) session.getAttributes().get(SttHandshakeInterceptor.ATTRIBUTE_ROLE);
 
+		if (ParticipantRole.HOST.name().equals(role)) {
+			startHostSession(session, meetingId);
+		} else {
+			registry.registerSubscriber(meetingId, session);
+			log.info("참여자가 실시간 전사 구독을 시작했습니다. meetingId={} wsSessionId={}", meetingId, session.getId());
+		}
+	}
+
+	private void startHostSession(WebSocketSession session, Long meetingId) {
 		if (!properties.hasApiKey()) {
 			log.error("SONIOX_API_KEY 가 설정되지 않아 전사를 시작할 수 없습니다. meetingId={}", meetingId);
 			closeQuietly(session, CloseStatus.SERVER_ERROR.withReason("STT_UNAVAILABLE"));
@@ -67,7 +82,8 @@ public class HostAudioWebSocketHandler extends BinaryWebSocketHandler {
 				transcriptSegmentService,
 				properties,
 				objectMapper,
-				sonioxClientFactory
+				sonioxClientFactory,
+				registry
 		);
 
 		session.getAttributes().put(SESSION_ATTRIBUTE, sttSession);
@@ -90,16 +106,23 @@ public class HostAudioWebSocketHandler extends BinaryWebSocketHandler {
 	@Override
 	public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
 		SttSession sttSession = sttSession(session);
-		if (sttSession == null) {
+		if (sttSession != null) {
+			log.info("호스트 오디오 전사 세션이 종료됐습니다. meetingId={} status={}", sttSession.meetingId(), status);
+			try {
+				// 회의 종료(/end)가 아닌 단순 연결 끊김이다. 남은 토큰은 살리되 오래 기다리지 않는다.
+				sttSession.close(true);
+			} finally {
+				// close() 가 예외를 던지더라도 레지스트리에 좀비 세션이 남지 않도록 반드시 제거한다.
+				registry.remove(sttSession);
+			}
 			return;
 		}
-		log.info("호스트 오디오 전사 세션이 종료됐습니다. meetingId={} status={}", sttSession.meetingId(), status);
-		try {
-			// 회의 종료(/end)가 아닌 단순 연결 끊김이다. 남은 토큰은 살리되 오래 기다리지 않는다.
-			sttSession.close(true);
-		} finally {
-			// close() 가 예외를 던지더라도 레지스트리에 좀비 세션이 남지 않도록 반드시 제거한다.
-			registry.remove(sttSession);
+
+		Long meetingId = (Long) session.getAttributes().get(SttHandshakeInterceptor.ATTRIBUTE_MEETING_ID);
+		if (meetingId != null) {
+			registry.removeSubscriber(meetingId, session);
+			log.info("참여자의 실시간 전사 구독이 종료됐습니다. meetingId={} wsSessionId={} status={}",
+					meetingId, session.getId(), status);
 		}
 	}
 
@@ -107,7 +130,7 @@ public class HostAudioWebSocketHandler extends BinaryWebSocketHandler {
 	public void handleTransportError(WebSocketSession session, Throwable exception) {
 		SttSession sttSession = sttSession(session);
 		Long meetingId = sttSession == null ? null : sttSession.meetingId();
-		log.warn("호스트 오디오 WebSocket 전송 오류가 발생했습니다. meetingId={}", meetingId, exception);
+		log.warn("전사 WebSocket 전송 오류가 발생했습니다. meetingId={}", meetingId, exception);
 		closeQuietly(session, CloseStatus.SERVER_ERROR);
 	}
 
