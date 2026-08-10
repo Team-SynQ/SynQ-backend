@@ -80,7 +80,7 @@ class OpenAiSummaryClientTest {
 		client.generate(
 				context,
 				overall,
-				new PersonalSummaryTarget(7L, "DEV_TECH - 백엔드", List.of("TECH_RISK"))
+				new PersonalSummaryTarget(7L, "DEV_TECH", "백엔드", List.of("TECH_RISK"))
 		);
 
 		ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
@@ -88,10 +88,11 @@ class OpenAiSummaryClientTest {
 				prompt.capture(), eq("personal_meeting_summary"), anyMap(),
 				eq(new OpenAiGenerationOptions("summary-model", "medium", 8_000)));
 		assertThat(prompt.getValue())
-				.contains("DEV_TECH - 백엔드", "TECH_RISK")
+				.contains("개발·기술 - 백엔드", "기술 리스크")
 				.contains("직접 말했거나 업무를 약속했다고 단정하지 마세요")
 				.contains("한 줄 요약: 한 줄 요약", "- 출시 일정: 베타 일정을 검토한다.")
 				.contains("[참고자료 및 이전 회의]", "[이전 회의 #3] 이전에 합의한 일정");
+		assertThat(prompt.getValue()).doesNotContain("DEV_TECH", "TECH_RISK");
 	}
 
 	private SummaryProperties properties() {

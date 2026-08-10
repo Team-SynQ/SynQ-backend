@@ -3,7 +3,6 @@ package com.synq.backend.domain.ai.summary.infrastructure;
 import com.synq.backend.domain.ai.summary.domain.PersonalSummaryTarget;
 import com.synq.backend.domain.ai.summary.domain.PersonalSummaryTargetReader;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
-import com.synq.backend.domain.user.entity.RoleProfile;
 import com.synq.backend.domain.user.repository.RoleProfilePerspectiveRepository;
 import com.synq.backend.domain.user.repository.RoleProfileRepository;
 import java.util.LinkedHashMap;
@@ -39,27 +38,23 @@ public class MeetingParticipantSummaryTargetReader implements PersonalSummaryTar
 		meetingParticipantRepository.findByMeetingIdOrderByJoinedAtAscIdAsc(meetingId)
 				.forEach(participant -> targets.computeIfAbsent(
 						participant.getUserId(),
-						userId -> createTarget(userId, participant.getRole().name())
+						this::createTarget
 				));
 		return List.copyOf(targets.values());
 	}
 
-	private PersonalSummaryTarget createTarget(Long userId, String meetingRole) {
+	// 역할 프로필이 없으면 빈 값으로 둔다. 회의 참가 역할(HOST/MEMBER)은 직무 역할이 아니라
+	// 프롬프트에 넣으면 개인 요약이 "주최자 관점"이라는 엉뚱한 축으로 생성된다.
+	private PersonalSummaryTarget createTarget(Long userId) {
 		return roleProfileRepository.findByUserIdAndIsDefaultTrue(userId)
 				.map(profile -> new PersonalSummaryTarget(
 						userId,
-						roleDescription(profile),
+						profile.getRole().name(),
+						profile.getDetailRole(),
 						perspectiveRepository.findAllByRoleProfileId(profile.getId()).stream()
 								.map(value -> value.getPerspective().name())
 								.toList()
 				))
-				.orElseGet(() -> new PersonalSummaryTarget(userId, meetingRole, List.of()));
-	}
-
-	private String roleDescription(RoleProfile profile) {
-		if (profile.getDetailRole() == null || profile.getDetailRole().isBlank()) {
-			return profile.getRole().name();
-		}
-		return profile.getRole().name() + " - " + profile.getDetailRole();
+				.orElseGet(() -> new PersonalSummaryTarget(userId, "", "", List.of()));
 	}
 }

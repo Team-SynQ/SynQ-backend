@@ -49,7 +49,7 @@ class AiSummaryControllerTest {
 				fakeClient,
 				fakeClient,
 				meetingId -> java.util.List.of(new PersonalSummaryTarget(
-						7L, "DEV_TECH - 백엔드", java.util.List.of("TECH_RISK"))),
+						7L, "DEV_TECH", "백엔드", java.util.List.of("TECH_RISK"))),
 				new com.synq.backend.domain.ai.summary.application.SummaryResultWriter(
 						summaryStore, personalSummaryStore, jobStore),
 				properties,

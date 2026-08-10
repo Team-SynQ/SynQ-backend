@@ -74,7 +74,7 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 						List.of("확인 항목")
 				),
 				List.of(new SummaryResultWriter.PersonalGeneration(
-						new PersonalSummaryTarget(USER_ID, "DEV_TECH", List.of("TECH_RISK")),
+						new PersonalSummaryTarget(USER_ID, "DEV_TECH", "", List.of("TECH_RISK")),
 						new GeneratedPersonalSummary("개인 요약", List.of("핵심"), List.of(), List.of())
 				)),
 				0
@@ -134,7 +134,7 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 				processingJob,
 				new GeneratedSummary("한 줄 요약", List.of("주제"), List.of(), List.of(), List.of(), List.of("확인 항목")),
 				List.of(new SummaryResultWriter.PersonalGeneration(
-						new PersonalSummaryTarget(USER_ID, "DEV_TECH", List.of("TECH_RISK")),
+						new PersonalSummaryTarget(USER_ID, "DEV_TECH", "", List.of("TECH_RISK")),
 						new GeneratedPersonalSummary("개인 요약", List.of("핵심"), List.of(), List.of())
 				)),
 				0
