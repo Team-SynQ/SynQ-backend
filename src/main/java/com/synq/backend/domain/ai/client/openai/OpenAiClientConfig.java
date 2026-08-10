@@ -21,7 +21,7 @@ public class OpenAiClientConfig {
 
 	@Bean
 	public RestClient openAiRestClient(RestClient.Builder builder, OpenAiProperties properties) {
-		return createRestClient(builder, properties, properties.timeout());
+		return createRestClient(builder, properties, properties.timeout(), properties.timeout());
 	}
 
 	@Bean("openAiSummaryRestClient")
@@ -31,7 +31,7 @@ public class OpenAiClientConfig {
 			OpenAiProperties properties,
 			SummaryProperties summaryProperties
 	) {
-		return createRestClient(builder, properties, summaryProperties.timeout());
+		return createRestClient(builder, properties, properties.timeout(), summaryProperties.timeout());
 	}
 
 	@Bean("openAiSummaryApiClient")
@@ -46,16 +46,20 @@ public class OpenAiClientConfig {
 	private RestClient createRestClient(
 			RestClient.Builder builder,
 			OpenAiProperties properties,
-			Duration timeout
+			Duration connectTimeout,
+			Duration readTimeout
 	) {
-		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-		requestFactory.setConnectTimeout(timeout);
-		requestFactory.setReadTimeout(timeout);
-
 		return builder
 				.baseUrl(properties.baseUrl())
-				.requestFactory(requestFactory)
+				.requestFactory(createRequestFactory(connectTimeout, readTimeout))
 				.defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 				.build();
+	}
+
+	static SimpleClientHttpRequestFactory createRequestFactory(Duration connectTimeout, Duration readTimeout) {
+		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+		requestFactory.setConnectTimeout(connectTimeout);
+		requestFactory.setReadTimeout(readTimeout);
+		return requestFactory;
 	}
 }

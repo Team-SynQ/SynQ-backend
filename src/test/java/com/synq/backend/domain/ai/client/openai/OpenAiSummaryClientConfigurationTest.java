@@ -11,6 +11,8 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestClient;
 
 class OpenAiSummaryClientConfigurationTest {
@@ -44,6 +46,15 @@ class OpenAiSummaryClientConfigurationTest {
 			assertThat(context).hasSingleBean(OpenAiSummaryClient.class);
 			assertThat(context.getBean(SummaryProperties.class).timeout()).isEqualTo(Duration.ofSeconds(120));
 		});
+	}
+
+	@Test
+	void 요약_타임아웃은_읽기_제한에만_적용하고_연결_제한은_공통_설정을_사용한다() {
+		SimpleClientHttpRequestFactory requestFactory = OpenAiClientConfig.createRequestFactory(
+				Duration.ofSeconds(30), Duration.ofSeconds(120));
+
+		assertThat(ReflectionTestUtils.getField(requestFactory, "connectTimeout")).isEqualTo(30_000);
+		assertThat(ReflectionTestUtils.getField(requestFactory, "readTimeout")).isEqualTo(120_000);
 	}
 
 	@Configuration(proxyBeanMethods = false)
