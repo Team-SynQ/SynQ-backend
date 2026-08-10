@@ -13,6 +13,8 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
 
 	boolean existsByProjectIdAndStatus(Long projectId, MeetingStatus status);
 
+	List<Meeting> findByProjectIdOrderByCreatedAtDesc(Long projectId);
+
 	// 프로젝트당 IN_PROGRESS 회의는 최대 1개라는 불변식을 서비스 레벨에서만 강제하고 있어,
 	// 목록 조회에서도 방어적으로 여러 건일 가능성을 열어두고 호출부에서 최신 것만 취한다.
 	List<Meeting> findByProjectIdInAndStatus(List<Long> projectIds, MeetingStatus status);

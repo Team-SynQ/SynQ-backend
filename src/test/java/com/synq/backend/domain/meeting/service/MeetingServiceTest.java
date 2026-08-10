@@ -1,19 +1,26 @@
 package com.synq.backend.domain.meeting.service;
 
 import com.synq.backend.domain.meeting.code.MeetingErrorCode;
+import com.synq.backend.domain.meeting.dto.MeetingListResponse;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.MeetingStatus;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
+import com.synq.backend.domain.meeting.port.MeetingSummaryTopicsReader;
 import com.synq.backend.domain.meeting.port.ProjectMembershipChecker;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
+import com.synq.backend.domain.user.entity.User;
+import com.synq.backend.domain.user.repository.UserRepository;
+import com.synq.backend.domain.user.service.ProfileImageService;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,11 +40,17 @@ class MeetingServiceTest {
 	private final ProjectMembershipChecker projectMembershipChecker =
 			mock(ProjectMembershipChecker.class);
 	private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+	private final UserRepository userRepository = mock(UserRepository.class);
+	private final ProfileImageService profileImageService = mock(ProfileImageService.class);
+	private final MeetingSummaryTopicsReader meetingSummaryTopicsReader = mock(MeetingSummaryTopicsReader.class);
 	private final MeetingService meetingService = new MeetingService(
 			meetingRepository,
 			meetingParticipantRepository,
 			projectMembershipChecker,
-			eventPublisher
+			eventPublisher,
+			userRepository,
+			profileImageService,
+			meetingSummaryTopicsReader
 	);
 
 	@Test
@@ -251,5 +264,67 @@ class MeetingServiceTest {
 				.isInstanceOfSatisfying(GeneralException.class,
 						exception -> assertThat(exception.getCode())
 								.isEqualTo(MeetingErrorCode.MEETING_NOT_FOUND));
+	}
+
+	@Test
+	void 프로젝트_멤버가_아니면_목록_조회시_NOT_PROJECT_MEMBER_TO_LIST_예외를_발생시킨다() {
+		when(projectMembershipChecker.isMember(1L, 10L)).thenReturn(false);
+
+		assertThatThrownBy(() -> meetingService.findAll(1L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.NOT_PROJECT_MEMBER_TO_LIST));
+		verifyNoInteractions(meetingRepository);
+	}
+
+	@Test
+	void 목록_조회시_호스트와_주제태그와_회의길이를_함께_조합한다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		meeting.end();
+		ReflectionTestUtils.setField(meeting, "id", 100L);
+
+		when(projectMembershipChecker.isMember(1L, 10L)).thenReturn(true);
+		when(meetingRepository.findByProjectIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(meeting));
+
+		MeetingParticipant host = MeetingParticipant.of(100L, 20L, ParticipantRole.HOST);
+		when(meetingParticipantRepository.findByMeetingIdInAndRole(List.of(100L), ParticipantRole.HOST))
+				.thenReturn(List.of(host));
+
+		User hostUser = User.ofLocal("호스트", "host@synq.com", "password-hash");
+		ReflectionTestUtils.setField(hostUser, "userId", 20L);
+		when(userRepository.findAllById(any())).thenReturn(List.of(hostUser));
+
+		when(meetingSummaryTopicsReader.findKeyTopicsByMeetingIds(List.of(100L)))
+				.thenReturn(Map.of(100L, List.of("근황토크", "일정조율")));
+
+		List<MeetingListResponse> result = meetingService.findAll(1L, 10L);
+
+		assertThat(result).hasSize(1);
+		MeetingListResponse response = result.get(0);
+		assertThat(response.meetingId()).isEqualTo(100L);
+		assertThat(response.host().userId()).isEqualTo(20L);
+		assertThat(response.host().name()).isEqualTo("호스트");
+		assertThat(response.keyTopics()).containsExactly("근황토크", "일정조율");
+		assertThat(response.durationSeconds()).isNotNull();
+	}
+
+	@Test
+	void 요약이_없으면_keyTopics는_null이고_진행중이면_durationSeconds도_null이다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		ReflectionTestUtils.setField(meeting, "id", 200L);
+
+		when(projectMembershipChecker.isMember(1L, 10L)).thenReturn(true);
+		when(meetingRepository.findByProjectIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdInAndRole(List.of(200L), ParticipantRole.HOST))
+				.thenReturn(List.of());
+		when(userRepository.findAllById(any())).thenReturn(List.of());
+		when(meetingSummaryTopicsReader.findKeyTopicsByMeetingIds(List.of(200L)))
+				.thenReturn(Map.of());
+
+		MeetingListResponse response = meetingService.findAll(1L, 10L).get(0);
+
+		assertThat(response.keyTopics()).isNull();
+		assertThat(response.durationSeconds()).isNull();
+		assertThat(response.host()).isNull();
 	}
 }
