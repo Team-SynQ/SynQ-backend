@@ -16,6 +16,8 @@ import com.synq.backend.domain.transcript.repository.TranscriptSegmentRepository
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -67,7 +69,7 @@ public class HintContextBuilder {
 				.orElseGet(LiveContextSnapshot::empty);
 
 		List<ChunkMatch> references = chunkSearcher.search(new ChunkSearchQuery(
-				projectId, windowText(window), properties.topK(), properties.minSimilarity()));
+				projectId, searchQuery(focus, window), properties.topK(), properties.minSimilarity()));
 
 		return new HintInput(
 				focus.getContent(),
@@ -94,11 +96,24 @@ public class HintContextBuilder {
 				.toList();
 	}
 
-	private String windowText(List<TranscriptSegment> window) {
-		// 조회 범위가 항상 focus 를 포함하므로 빈 문자열이 될 수 없다.
-		// ChunkSearchQuery 가 빈 질의를 거부하기 때문에 이 전제가 중요하다.
-		return window.stream()
-				.map(TranscriptSegment::getContent)
-				.collect(Collectors.joining("\n"));
+	/**
+	 * 검색 질의는 프롬프트 맥락과 다른 것을 원한다. 프롬프트는 LLM 이 무관한 발화를 알아서
+	 * 버리므로 넓을수록 좋지만, 질의는 벡터 하나로 압축돼 취사선택이 없으므로 좁고 초점이
+	 * 선명해야 한다. 그래서 searchWindow 로 좁히고 클릭한 발화를 focusRepeat 회 반복해 가중한다.
+	 *
+	 * <p>focusRepeat 이 1 이상이라 질의는 비지 않는다. ChunkSearchQuery 가 빈 질의를 거부한다.
+	 */
+	private String searchQuery(TranscriptSegment focus, List<TranscriptSegment> window) {
+		int focusIndex = focus.getSequenceIndex();
+
+		Stream<String> repeatedFocus = IntStream.range(0, properties.focusRepeat())
+				.mapToObj(index -> focus.getContent());
+		Stream<String> nearby = window.stream()
+				.filter(segment -> segment.getSequenceIndex() != focusIndex)
+				.filter(segment -> Math.abs(segment.getSequenceIndex() - focusIndex)
+						<= properties.searchWindow())
+				.map(TranscriptSegment::getContent);
+
+		return Stream.concat(repeatedFocus, nearby).collect(Collectors.joining("\n"));
 	}
 }
