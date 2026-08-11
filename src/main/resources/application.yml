@@ -43,6 +43,12 @@ spring:
           time_zone: Asia/Seoul
   lifecycle:
     timeout-per-shutdown-phase: 90s
+  task:
+    scheduling:
+      pool:
+        # 기본값 1이면 모든 @Scheduled 가 한 스레드를 공유한다. 세그먼트 유휴 flush 는 DB 쓰기까지
+        # 하므로, 그게 밀리면 WS ping/Soniox keepalive 가 뒤에서 굶어 연결이 그대로 끊긴다.
+        size: 4
 
 jwt:
   secret: ${JWT_SECRET}
@@ -129,6 +135,10 @@ soniox:
   segment-idle-timeout-ms: ${SONIOX_SEGMENT_IDLE_TIMEOUT_MS:5000}
   # 회의 종료 후 Soniox 가 남은 토큰을 flush 할 때까지 기다리는 최대 시간.
   close-flush-timeout-ms: ${SONIOX_CLOSE_FLUSH_TIMEOUT_MS:3000}
+  # Soniox 는 오디오도 keepalive 도 20초 이상 없으면 스트림을 끊는다. 마이크 음소거/일시정지/탭
+  # 백그라운드 등으로 오디오가 멎어도 스트림을 유지하려면 그 전에 keepalive 를 보내야 한다.
+  # 20초 상한의 절반으로 잡아 스케줄러가 한 번 밀려도 여유가 남게 한다.
+  keepalive-idle-ms: ${SONIOX_KEEPALIVE_IDLE_MS:10000}
 
 openai:
   # 실제 키는 OPENAI_API_KEY 환경변수로 주입한다.

@@ -143,6 +143,26 @@ public class SttSession implements SonioxStreamListener {
 		}
 	}
 
+	/**
+	 * 오디오가 멎어도 Soniox 스트림이 끊기지 않게 유지한다. 스케줄러 스레드에서 호출된다.
+	 * 프론트의 일시정지 구현(WS 종료 / 오디오만 중단)을 알 필요 없이 유휴 감지만으로 동작한다.
+	 */
+	public void keepSonioxStreamAlive() {
+		sonioxClient.sendKeepaliveIfIdle(properties.keepaliveIdleMs());
+	}
+
+	/**
+	 * 브라우저 연결을 붙잡아두기 위한 ping. 스케줄러 스레드에서 호출된다.
+	 *
+	 * <p>호스트는 오디오를 계속 올려보내지만 그건 클라이언트→서버 방향이라, 서버→클라이언트 방향만
+	 * 보는 nginx {@code proxy_read_timeout} 을 리셋하지 못한다. 발화가 없는 구간에는 내려보낼
+	 * 전사도 없어 연결이 유휴로 판정돼 끊긴다. ping 은 그 방향으로 흐르고, 브라우저가 자동 응답하는
+	 * pong 이 Tomcat 의 읽기 유휴 타이머까지 되돌린다.
+	 */
+	public void sendPing() {
+		SttSessionRegistry.pingQuietly(meetingId, browserSession);
+	}
+
 	/** {@code <end>} 가 오지 않을 때의 안전망. 스케줄러 스레드에서 호출된다. */
 	public void flushIfIdle(Instant now) {
 		buffer.flushIfIdle(now, properties.segmentIdleTimeout()).ifPresent(segment -> {

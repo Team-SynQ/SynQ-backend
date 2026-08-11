@@ -36,6 +36,9 @@ public class SonioxStreamClient extends WebSocketListener {
 	// 무한정 쌓여 OOM 으로 이어질 수 있어 상한을 둔다. 1프레임≈1초라 100이면 충분히 넉넉하다.
 	private static final int MAX_PENDING_AUDIO_FRAMES = 100;
 
+	// 무음 구간에 스트림을 붙잡아두는 제어 메시지. Soniox 실시간 API 규격이다.
+	private static final String KEEPALIVE_MESSAGE = "{\"type\":\"keepalive\"}";
+
 	// onOpen 전에 도착한 오디오를 담아둔다. webm 은 첫 청크에만 헤더가 있어 이걸 흘리면 스트림 전체가 깨진다.
 	private final Deque<ByteString> pendingAudio = new ArrayDeque<>();
 	private final CountDownLatch finishedLatch = new CountDownLatch(1);
@@ -43,6 +46,8 @@ public class SonioxStreamClient extends WebSocketListener {
 	private volatile WebSocket webSocket;
 	private volatile boolean open;
 	private volatile boolean closing;
+	// Soniox 로 마지막으로 뭔가 보낸 시각. 벽시계 점프에 흔들리지 않게 nanoTime 을 쓴다.
+	private volatile long lastSentAtNanos = System.nanoTime();
 
 	public SonioxStreamClient(Long meetingId, OkHttpClient httpClient, ObjectMapper objectMapper,
 							SonioxProperties properties, SonioxStreamListener listener) {
@@ -76,6 +81,29 @@ public class SonioxStreamClient extends WebSocketListener {
 			}
 		}
 		send(frame);
+	}
+
+	/**
+	 * 오디오가 끊긴 지 {@code idleThresholdMs} 가 지났으면 keepalive 를 보낸다. 스케줄러 스레드에서 호출된다.
+	 *
+	 * <p>Soniox 는 오디오도 keepalive 도 20초 이상 오지 않으면 스트림을 끊는다. 마이크 음소거, 회의
+	 * 일시정지, 탭 백그라운드 전환처럼 브라우저 연결은 멀쩡한데 오디오만 멎는 구간이 여기 걸린다.
+	 * OkHttpClient 의 pingInterval 은 WebSocket ping 프레임이라 트랜스포트만 살릴 뿐,
+	 * 애플리케이션 레벨인 이 규칙은 만족시키지 못한다.
+	 */
+	public void sendKeepaliveIfIdle(long idleThresholdMs) {
+		WebSocket socket = this.webSocket;
+		if (socket == null || !open || closing) {
+			// config 전송 전(onOpen 이전)이면 흘려보낼 스트림 자체가 없고, 여기서 먼저 보내면
+			// 프로토콜 순서가 깨진다. 종료 중인 스트림도 건드리지 않는다.
+			return;
+		}
+		if (TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastSentAtNanos) < idleThresholdMs) {
+			return;
+		}
+		// 경합으로 open 이 방금 false 가 됐어도 OkHttp 는 false 를 돌려줄 뿐 예외를 던지지 않는다.
+		lastSentAtNanos = System.nanoTime();
+		socket.send(KEEPALIVE_MESSAGE);
 	}
 
 	/**
@@ -135,6 +163,8 @@ public class SonioxStreamClient extends WebSocketListener {
 			while (!pendingAudio.isEmpty()) {
 				webSocket.send(pendingAudio.pollFirst());
 			}
+			// config + 대기분까지 흘린 시점을 기준으로 keepalive 유휴 시계를 시작한다.
+			lastSentAtNanos = System.nanoTime();
 		}
 	}
 
@@ -188,6 +218,7 @@ public class SonioxStreamClient extends WebSocketListener {
 		WebSocket socket = this.webSocket;
 		if (socket != null && !closing) {
 			socket.send(frame);
+			lastSentAtNanos = System.nanoTime();
 		}
 	}
 
