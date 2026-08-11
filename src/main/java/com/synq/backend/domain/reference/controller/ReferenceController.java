@@ -4,6 +4,8 @@ import com.synq.backend.domain.reference.dto.ReferenceFileCreateResponse;
 import com.synq.backend.domain.reference.dto.ReferenceListResponse;
 import com.synq.backend.domain.reference.dto.ReferenceLinkCreateRequest;
 import com.synq.backend.domain.reference.dto.ReferenceLinkCreateResponse;
+import com.synq.backend.domain.reference.dto.ReferenceNameUpdateRequest;
+import com.synq.backend.domain.reference.dto.ReferenceNameUpdateResponse;
 import com.synq.backend.domain.reference.service.ReferenceService;
 import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
@@ -37,6 +39,19 @@ public class ReferenceController implements ReferenceControllerDocs {
 	public ResponseEntity<Void> delete(Long projectId, Long referenceId, Long userId) {
 		referenceService.delete(projectId, referenceId, userId);
 		return ResponseEntity.noContent().build();
+	}
+
+	@Override
+	public ResponseEntity<ApiResponse<ReferenceNameUpdateResponse>> updateName(
+			Long projectId,
+			Long referenceId,
+			Long userId,
+			ReferenceNameUpdateRequest request
+	) {
+		ReferenceNameUpdateResponse response = referenceService.updateName(
+				projectId, referenceId, userId, request);
+		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
 	}
 
 	@Override

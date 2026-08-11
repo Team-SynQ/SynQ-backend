@@ -224,6 +224,30 @@ class ReferenceMaterialRepositoryTest extends PostgresTestContainer {
 		assertThat(referenceMaterialRepository.countByProjectId(project.getId())).isEqualTo(1);
 	}
 
+	@Test
+	void 참고자료_제목_변경을_저장하고_updatedAt을_갱신한다() {
+		User owner = saveUser("reference-update-repository@synq.com");
+		Project project = projectRepository.save(Project.of(owner.getUserId(), "SynQ", null));
+		ReferenceMaterial reference = referenceMaterialRepository.saveAndFlush(ReferenceMaterial.ofLink(
+				project.getId(), owner.getUserId(), "기존 제목", "https://example.com",
+				ReferenceStatus.AVAILABLE));
+		entityManager.clear();
+
+		ReferenceMaterial found = referenceMaterialRepository
+				.findByIdAndProjectId(reference.getId(), project.getId())
+				.orElseThrow();
+		found.updateName("수정 제목");
+		referenceMaterialRepository.flush();
+		assertThat(found.getUpdatedAt()).isNotNull();
+		entityManager.clear();
+
+		ReferenceMaterial updated = referenceMaterialRepository
+				.findByIdAndProjectId(reference.getId(), project.getId())
+				.orElseThrow();
+		assertThat(updated.getName()).isEqualTo("수정 제목");
+		assertThat(updated.getUpdatedAt()).isNotNull();
+	}
+
 	private User saveUser(String email) {
 		return userRepository.save(User.ofLocal("테스트", email, "password-hash"));
 	}

@@ -55,7 +55,9 @@ public class SecurityConfig {
 							.requestMatchers(HttpMethod.POST,
 									"/projects/*/references/links",
 									"/projects/*/references/files").authenticated()
-							.requestMatchers(HttpMethod.PATCH, "/projects/*").authenticated()
+							.requestMatchers(HttpMethod.PATCH,
+									"/projects/*",
+									"/projects/*/references/*").authenticated()
 							.requestMatchers(HttpMethod.DELETE,
 									"/projects/*",
 									"/projects/*/members/*",

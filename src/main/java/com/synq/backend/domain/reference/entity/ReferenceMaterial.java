@@ -130,6 +130,10 @@ public class ReferenceMaterial extends BaseEntity {
 		this.deletedAt = LocalDateTime.now();
 	}
 
+	public void updateName(String name) {
+		this.name = name;
+	}
+
 	/** 청킹·임베딩까지 끝나 AI 가 참고할 수 있는 상태. */
 	public void markAvailable() {
 		this.status = ReferenceStatus.AVAILABLE;
