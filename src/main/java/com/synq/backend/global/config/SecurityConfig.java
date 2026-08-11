@@ -47,6 +47,7 @@ public class SecurityConfig {
 									"/projects/*",
 									"/projects/*/members",
 									"/projects/*/join-requests",
+									"/projects/*/role-perspective",
 									"/projects/*/references").authenticated()
 							.requestMatchers(HttpMethod.POST,
 									"/projects",
@@ -61,6 +62,8 @@ public class SecurityConfig {
 									"/projects/*/references/*",
 									"/projects/*/join-requests/*/approve",
 									"/projects/*/join-requests/*/reject").authenticated()
+							.requestMatchers(HttpMethod.PUT,
+									"/projects/*/role-perspective").authenticated()
 							.requestMatchers(HttpMethod.DELETE,
 									"/projects/*",
 									"/projects/*/members/*",

@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -38,6 +39,11 @@ public class RoleProfileService {
 		return roleProfileRepository.findAllByUserIdOrderByCreatedAtAscIdAsc(userId).stream()
 				.map(profile -> toResponse(profile, findPerspectives(profile.getId())))
 				.toList();
+	}
+
+	public Optional<RoleProfileResponse> findDefaultRoleProfile(Long userId) {
+		return roleProfileRepository.findByUserIdAndIsDefaultTrue(userId)
+				.map(profile -> toResponse(profile, findPerspectives(profile.getId())));
 	}
 
 	@Transactional
