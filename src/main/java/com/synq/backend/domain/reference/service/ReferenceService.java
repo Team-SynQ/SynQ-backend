@@ -16,6 +16,8 @@ import com.synq.backend.domain.reference.dto.ReferenceResponse;
 import com.synq.backend.domain.reference.entity.ReferenceMaterial;
 import com.synq.backend.domain.reference.entity.ReferenceFileExtension;
 import com.synq.backend.domain.reference.entity.ReferenceStatus;
+import com.synq.backend.domain.reference.entity.ReferenceType;
+import com.synq.backend.domain.reference.event.ReferenceFileDeletedEvent;
 import com.synq.backend.domain.reference.event.ReferenceLinkCreatedEvent;
 import com.synq.backend.domain.reference.file.ExtractedFile;
 import com.synq.backend.domain.reference.file.FileExtractionFailureReason;
@@ -148,6 +150,10 @@ public class ReferenceService {
 
 		reference.softDelete();
 		documentIndexer.deleteIndex(referenceId);
+		if (reference.getType() == ReferenceType.FILE) {
+			eventPublisher.publishEvent(new ReferenceFileDeletedEvent(
+					referenceId, projectId, reference.getStorageKey()));
+		}
 	}
 
 	@Transactional

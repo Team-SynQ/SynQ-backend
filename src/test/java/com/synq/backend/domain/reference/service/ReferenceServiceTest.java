@@ -16,6 +16,7 @@ import com.synq.backend.domain.reference.dto.ReferenceResponse;
 import com.synq.backend.domain.reference.entity.ReferenceFileExtension;
 import com.synq.backend.domain.reference.entity.ReferenceMaterial;
 import com.synq.backend.domain.reference.entity.ReferenceStatus;
+import com.synq.backend.domain.reference.event.ReferenceFileDeletedEvent;
 import com.synq.backend.domain.reference.link.LinkPreflightChecker;
 import com.synq.backend.domain.reference.repository.ReferenceMaterialRepository;
 import com.synq.backend.domain.user.entity.User;
@@ -26,6 +27,8 @@ import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +39,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @Transactional
+@RecordApplicationEvents
 class ReferenceServiceTest extends PostgresTestContainer {
 
 	@Autowired
@@ -55,6 +59,9 @@ class ReferenceServiceTest extends PostgresTestContainer {
 
 	@Autowired
 	private DocumentChunkRepository documentChunkRepository;
+
+	@Autowired
+	private ApplicationEvents applicationEvents;
 
 	// 링크 등록이 실제 네트워크를 타지 않게 막는다.
 	// 이 클래스는 @Transactional 이라 커밋이 없어 AFTER_COMMIT 리스너는 실행되지 않는다.
@@ -89,6 +96,52 @@ class ReferenceServiceTest extends PostgresTestContainer {
 		referenceService.delete(project.getId(), reference.getId(), member.getUserId());
 
 		assertThat(reference.getDeletedAt()).isNotNull();
+	}
+
+	@Test
+	void FILE을_삭제하면_storageKey를_담은_S3_정리_이벤트를_발행한다() {
+		User owner = saveUser("소유자", "reference-delete-file-event@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		ReferenceMaterial reference = saveFile(project, owner);
+
+		referenceService.delete(project.getId(), reference.getId(), owner.getUserId());
+
+		assertThat(applicationEvents.stream(ReferenceFileDeletedEvent.class))
+				.singleElement()
+				.satisfies(event -> {
+					assertThat(event.referenceId()).isEqualTo(reference.getId());
+					assertThat(event.projectId()).isEqualTo(project.getId());
+					assertThat(event.storageKey()).isEqualTo(reference.getStorageKey());
+				});
+	}
+
+	@Test
+	void LINK를_삭제하면_S3_정리_이벤트를_발행하지_않는다() {
+		User owner = saveUser("소유자", "reference-delete-link-event@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		ReferenceMaterial reference = saveLink(project, owner);
+
+		referenceService.delete(project.getId(), reference.getId(), owner.getUserId());
+
+		assertThat(applicationEvents.stream(ReferenceFileDeletedEvent.class)).isEmpty();
+	}
+
+	@Test
+	void 삭제_권한_검증에_실패하면_S3_정리_이벤트를_발행하지_않는다() {
+		User owner = saveUser("소유자", "reference-delete-event-owner@synq.com");
+		User member = saveUser("멤버", "reference-delete-event-member@synq.com");
+		Project project = saveProject(owner);
+		saveMember(project, owner, ProjectMemberRole.OWNER);
+		saveMember(project, member, ProjectMemberRole.MEMBER);
+		ReferenceMaterial reference = saveFile(project, owner);
+
+		assertThatThrownBy(() -> referenceService.delete(
+				project.getId(), reference.getId(), member.getUserId()))
+				.isInstanceOf(GeneralException.class);
+
+		assertThat(applicationEvents.stream(ReferenceFileDeletedEvent.class)).isEmpty();
 	}
 
 	@Test

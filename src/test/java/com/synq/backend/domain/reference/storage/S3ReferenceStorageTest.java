@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -74,6 +75,15 @@ class S3ReferenceStorageTest {
 		verify(s3Client).deleteObject(request.capture());
 		assertThat(request.getValue().bucket()).isEqualTo("synq-bucket");
 		assertThat(request.getValue().key()).isEqualTo("references/1/file.pdf");
+	}
+
+	@Test
+	void 이미_없는_객체의_DeleteObject가_성공하면_정상_처리한다() {
+		when(s3Client.deleteObject(any(DeleteObjectRequest.class)))
+				.thenReturn(DeleteObjectResponse.builder().build());
+
+		assertThatCode(() -> storage.delete("references/1/already-deleted.pdf"))
+				.doesNotThrowAnyException();
 	}
 
 	@Test
