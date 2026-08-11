@@ -6,6 +6,8 @@ import com.synq.backend.domain.project.dto.ProjectCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectDetailResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateRequest;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
@@ -152,6 +154,24 @@ public interface ProjectControllerDocs {
 	ResponseEntity<ApiResponse<ProjectJoinResponse>> join(
 			@AuthenticationPrincipal(expression = "userId") Long userId,
 			@Valid @RequestBody ProjectJoinRequest request
+	);
+
+	@Operation(summary = "프로젝트 참여 요청 생성", description = "초대 링크를 통해 프로젝트 참여 요청을 PENDING 상태로 생성한다.")
+	@SecurityRequirement(name = "bearerAuth")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "프로젝트 참여 요청 생성 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "역할·관점 입력값 오류"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "사용자, 프로젝트 또는 초대 정보를 찾을 수 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "기존 멤버, 승인 대기 요청 또는 최대 인원 도달"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "410", description = "초대 링크 만료"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "프로젝트 참여 요청 생성 실패")
+	})
+	@PostMapping("/{projectId}/join-requests")
+	ResponseEntity<ApiResponse<ProjectJoinRequestCreateResponse>> createJoinRequest(
+			@PathVariable Long projectId,
+			@AuthenticationPrincipal(expression = "userId") Long userId,
+			@Valid @RequestBody ProjectJoinRequestCreateRequest request
 	);
 
 	@Operation(summary = "프로젝트 초대 링크 생성", description = "프로젝트 소유자가 초대 링크를 생성하거나 유효한 기존 링크를 조회한다.")

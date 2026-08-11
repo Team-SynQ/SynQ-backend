@@ -6,6 +6,8 @@ import com.synq.backend.domain.project.dto.ProjectCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectDetailResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateRequest;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
@@ -94,6 +96,17 @@ public class ProjectController implements ProjectControllerDocs {
 				: GeneralSuccessCode.REQUEST_OK;
 		return ResponseEntity.status(successCode.getStatus())
 				.body(ApiResponse.onSuccess(successCode, response));
+	}
+
+	@Override
+	public ResponseEntity<ApiResponse<ProjectJoinRequestCreateResponse>> createJoinRequest(
+			Long projectId,
+			Long userId,
+			ProjectJoinRequestCreateRequest request
+	) {
+		ProjectJoinRequestCreateResponse response = projectService.createJoinRequest(projectId, userId, request);
+		return ResponseEntity.status(GeneralSuccessCode.CREATED.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.CREATED, response));
 	}
 
 	@Override

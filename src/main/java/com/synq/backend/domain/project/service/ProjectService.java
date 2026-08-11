@@ -10,6 +10,8 @@ import com.synq.backend.domain.project.dto.ProjectCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectDetailResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateRequest;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
 import com.synq.backend.domain.project.dto.ProjectMemberListResponse;
@@ -19,21 +21,31 @@ import com.synq.backend.domain.project.dto.ProjectUpdateResponse;
 import com.synq.backend.domain.project.entity.Project;
 import com.synq.backend.domain.project.entity.ProjectMember;
 import com.synq.backend.domain.project.entity.ProjectMemberRole;
+import com.synq.backend.domain.project.entity.ProjectJoinRequestStatus;
+import com.synq.backend.domain.project.entity.ProjectParticipationRequest;
+import com.synq.backend.domain.project.entity.ProjectParticipationRequestPerspective;
 import com.synq.backend.domain.project.repository.ProjectMemberRepository;
+import com.synq.backend.domain.project.repository.ProjectParticipationRequestPerspectiveRepository;
+import com.synq.backend.domain.project.repository.ProjectParticipationRequestRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
-import com.synq.backend.domain.user.repository.UserRepository;
+import com.synq.backend.domain.user.entity.Role;
 import com.synq.backend.domain.user.entity.User;
+import com.synq.backend.domain.user.repository.UserRepository;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -45,6 +57,8 @@ public class ProjectService {
 
 	private final ProjectRepository projectRepository;
 	private final ProjectMemberRepository projectMemberRepository;
+	private final ProjectParticipationRequestRepository participationRequestRepository;
+	private final ProjectParticipationRequestPerspectiveRepository participationRequestPerspectiveRepository;
 	private final MeetingRepository meetingRepository;
 	private final UserRepository userRepository;
 	private final ProjectInvitationProperties projectInvitationProperties;
@@ -252,6 +266,65 @@ public class ProjectService {
 	}
 
 	@Transactional
+	public ProjectJoinRequestCreateResponse createJoinRequest(
+			Long projectId,
+			Long userId,
+			ProjectJoinRequestCreateRequest request
+	) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		validateUser(userId);
+
+		Project project = findActiveProjectById(projectId);
+		Project invitedProject = findProjectByInviteToken(request.inviteToken());
+		if (!invitedProject.getId().equals(project.getId())) {
+			throw new GeneralException(ProjectErrorCode.INVITATION_PROJECT_MISMATCH);
+		}
+		validateInvitationExpiration(invitedProject);
+
+		if (projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
+			throw new GeneralException(ProjectErrorCode.ALREADY_PROJECT_MEMBER);
+		}
+		if (participationRequestRepository.existsByProjectIdAndUserIdAndStatus(
+				projectId,
+				userId,
+				ProjectJoinRequestStatus.PENDING
+		)) {
+			throw new GeneralException(ProjectErrorCode.JOIN_REQUEST_ALREADY_EXISTS);
+		}
+		if (projectMemberRepository.countByProjectId(projectId) >= MAX_PROJECT_MEMBERS) {
+			throw new GeneralException(ProjectErrorCode.PROJECT_MEMBER_LIMIT_EXCEEDED);
+		}
+		validateJoinRequestRoleSetting(request);
+
+		ProjectParticipationRequest participationRequest;
+		try {
+			participationRequest = participationRequestRepository.saveAndFlush(
+					ProjectParticipationRequest.pending(
+							projectId,
+							userId,
+							request.settingSource(),
+							request.roleCategory(),
+							request.detailRole()
+					)
+			);
+		} catch (DataIntegrityViolationException exception) {
+			throw new GeneralException(ProjectErrorCode.JOIN_REQUEST_ALREADY_EXISTS, exception);
+		}
+
+		participationRequestPerspectiveRepository.saveAll(
+				request.perspectives().stream()
+						.map(perspective -> ProjectParticipationRequestPerspective.of(
+								participationRequest.getId(),
+								perspective
+						))
+						.toList()
+		);
+		return ProjectJoinRequestCreateResponse.from(participationRequest);
+	}
+
+	@Transactional
 	public ProjectInvitationResponse createInvitation(Long projectId, Long userId) {
 		if (userId == null) {
 			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
@@ -318,13 +391,34 @@ public class ProjectService {
 	}
 
 	private Project findProjectByValidInviteToken(String inviteToken) {
-		Project project = projectRepository.findByInviteToken(inviteToken)
+		Project project = findProjectByInviteToken(inviteToken);
+		validateInvitationExpiration(project);
+		return project;
+	}
+
+	private Project findProjectByInviteToken(String inviteToken) {
+		return projectRepository.findByInviteToken(inviteToken)
 				.orElseThrow(() -> new GeneralException(ProjectErrorCode.INVITATION_NOT_FOUND));
+	}
+
+	private void validateInvitationExpiration(Project project) {
 		if (project.getInviteTokenExpiresAt() == null
 				|| !project.getInviteTokenExpiresAt().isAfter(LocalDateTime.now())) {
 			throw new GeneralException(ProjectErrorCode.INVITATION_EXPIRED);
 		}
-		return project;
+	}
+
+	private void validateJoinRequestRoleSetting(ProjectJoinRequestCreateRequest request) {
+		if (request.settingSource() == null
+				|| request.roleCategory() == null
+				|| request.perspectives() == null
+				|| request.perspectives().size() > 3
+				|| new HashSet<>(request.perspectives()).size() != request.perspectives().size()
+				|| request.perspectives().stream().anyMatch(Objects::isNull)
+				|| (request.detailRole() != null && request.detailRole().length() > 30)
+				|| (request.roleCategory() == Role.ETC && !StringUtils.hasText(request.detailRole()))) {
+			throw new GeneralException(ProjectErrorCode.INVALID_JOIN_REQUEST_ROLE_SETTING);
+		}
 	}
 
 	private Project findActiveProjectById(Long projectId) {
