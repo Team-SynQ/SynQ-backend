@@ -52,6 +52,6 @@ class OpenAiLiveContextClientTest {
 		);
 		assertThat(promptCaptor.getValue())
 				.contains("[기존 현재 주제]\n없음")
-				.doesNotContain("null");
+				.contains("targetSegmentId는 null");
 	}
 }

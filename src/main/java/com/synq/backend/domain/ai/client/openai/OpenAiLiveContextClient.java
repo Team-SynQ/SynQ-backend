@@ -29,9 +29,11 @@ public class OpenAiLiveContextClient implements LiveContextAiClient {
 					"currentTopic", nullableStringSchema(),
 					"decisions", stringArraySchema(),
 					"actionItems", stringArraySchema(),
-					"openQuestions", stringArraySchema()
+					"openQuestions", stringArraySchema(),
+					"autoHintDecision", autoHintDecisionSchema()
 			),
-			"required", List.of("rollingSummary", "currentTopic", "decisions", "actionItems", "openQuestions")
+			"required", List.of("rollingSummary", "currentTopic", "decisions", "actionItems", "openQuestions",
+					"autoHintDecision")
 	);
 
 	private final OpenAiClient openAiClient;
@@ -76,8 +78,26 @@ public class OpenAiLiveContextClient implements LiveContextAiClient {
 		return Map.of("type", List.of("string", "null"));
 	}
 
+	private static Map<String, Object> nullableIntegerSchema() {
+		return Map.of("type", List.of("integer", "null"));
+	}
+
 	private static Map<String, Object> stringArraySchema() {
 		return Map.of("type", "array", "items", stringSchema());
+	}
+
+	private static Map<String, Object> autoHintDecisionSchema() {
+		return Map.of(
+				"type", "object",
+				"additionalProperties", false,
+				"properties", Map.of(
+						"shouldGenerate", Map.of("type", "boolean"),
+						"targetSegmentId", nullableIntegerSchema(),
+						"importance", Map.of("type", "integer"),
+						"triggerReason", stringSchema()
+				),
+				"required", List.of("shouldGenerate", "targetSegmentId", "importance", "triggerReason")
+		);
 	}
 
 	private String createPrompt(LiveContextSnapshot previousContext, TranscriptFinalizedEvent event) {
@@ -92,6 +112,10 @@ public class OpenAiLiveContextClient implements LiveContextAiClient {
 				당신은 실시간 회의 맥락 관리 도우미입니다. 기존 회의 맥락과 새로 확정된 발화를 반영해 최신 상태를 한국어로 갱신하세요.
 				이전에 결정된 사항은 유지하되, 새 발화가 이를 명시적으로 변경한 경우에만 수정하세요.
 				회의에 없는 사실을 추측하지 말고, 아직 답이 없는 의문은 openQuestions에 남기세요.
+				새 발화가 일정 변경·담당자 지정·의사결정·리스크·의존성·추가 확인처럼 참여자에게 즉시 알릴 만큼 중요하면
+				autoHintDecision.shouldGenerate를 true로 설정하세요. targetSegmentId에는 아래 새 확정 발화 중 핵심 세그먼트의 ID를 넣고,
+				importance는 0~100 정수, triggerReason은 판단 근거를 짧게 작성하세요.
+				그 외 발화는 shouldGenerate를 false, targetSegmentId는 null, importance는 낮게, triggerReason은 빈 문자열로 반환하세요.
 
 				[기존 누적 요약]
 				%s

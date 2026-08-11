@@ -7,6 +7,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -36,6 +38,19 @@ public class SegmentHint extends BaseEntity {
 	@Column(name = "user_id", nullable = false)
 	private Long userId;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 10)
+	private HintSource source;
+
+	@Column
+	private Integer importance;
+
+	@Column(name = "trigger_reason", columnDefinition = "text")
+	private String triggerReason;
+
+	@Column(name = "topic", columnDefinition = "text")
+	private String topic;
+
 	@Column(nullable = false, columnDefinition = "text")
 	private String meaning;
 
@@ -45,20 +60,60 @@ public class SegmentHint extends BaseEntity {
 	@Column(name = "team_question", nullable = false, columnDefinition = "text")
 	private String teamQuestion;
 
-	private SegmentHint(Long meetingId, Long segmentId, Long userId, HintResult result) {
+	private SegmentHint(
+			Long meetingId,
+			Long segmentId,
+			Long userId,
+			HintResult result,
+			HintSource source,
+			Integer importance,
+			String triggerReason,
+			String topic
+	) {
 		this.meetingId = meetingId;
 		this.segmentId = segmentId;
 		this.userId = userId;
+		this.source = source;
+		this.importance = importance;
+		this.triggerReason = triggerReason;
+		this.topic = topic;
 		this.meaning = result.meaning();
 		this.myImpact = result.myImpact();
 		this.teamQuestion = result.teamQuestion();
 	}
 
 	public static SegmentHint of(Long meetingId, Long segmentId, Long userId, HintResult result) {
-		return new SegmentHint(meetingId, segmentId, userId, result);
+		return new SegmentHint(meetingId, segmentId, userId, result, HintSource.MANUAL, null, null, null);
+	}
+
+	public static SegmentHint autoOf(
+			Long meetingId,
+			Long segmentId,
+			Long userId,
+			HintResult result,
+			int importance,
+			String triggerReason,
+			String topic
+	) {
+		return new SegmentHint(meetingId, segmentId, userId, result, HintSource.AUTO, importance, triggerReason, topic);
+	}
+
+	public static SegmentHint autoOf(
+			Long meetingId,
+			Long segmentId,
+			Long userId,
+			HintResult result,
+			int importance,
+			String triggerReason
+	) {
+		return autoOf(meetingId, segmentId, userId, result, importance, triggerReason, null);
 	}
 
 	public void overwrite(HintResult result) {
+		this.source = HintSource.MANUAL;
+		this.importance = null;
+		this.triggerReason = null;
+		this.topic = null;
 		this.meaning = result.meaning();
 		this.myImpact = result.myImpact();
 		this.teamQuestion = result.teamQuestion();

@@ -38,6 +38,15 @@ public class AiEventResultListener {
 	}
 
 	@EventListener
+	public void onAutoHintCreated(AutoHintCreatedEvent event) {
+		var hint = event.hint();
+		eventPublisher.publishToUser(event.meetingId(), event.userId(), AiEventType.AUTO_HINT_CREATED,
+				new AutoHintCreatedPayload(
+						event.meetingId(), hint.getSegmentId(), hint.getMeaning(), hint.getMyImpact(), hint.getTeamQuestion(),
+						hint.getImportance(), hint.getTriggerReason()));
+	}
+
+	@EventListener
 	public void onSummaryFailed(SummaryFailedEvent event) {
 		eventPublisher.publish(event.meetingId(), AiEventType.SUMMARY_FAILED,
 				Map.of("jobId", event.jobId(), "reason", event.reason()));

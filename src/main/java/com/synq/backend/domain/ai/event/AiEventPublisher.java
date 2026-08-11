@@ -19,6 +19,10 @@ public class AiEventPublisher {
 		emitterRegistry.send(meetingId, AiEventPayload.of(type, meetingId, data));
 	}
 
+	public void publishToUser(Long meetingId, Long userId, AiEventType type, Object data) {
+		emitterRegistry.sendToUser(meetingId, userId, AiEventPayload.of(type, meetingId, data));
+	}
+
 	public void publishHeartbeat(Long meetingId) {
 		publish(meetingId, AiEventType.HEARTBEAT, Map.of("status", "alive"));
 	}

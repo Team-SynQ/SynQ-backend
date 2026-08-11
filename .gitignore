@@ -52,5 +52,10 @@ CLAUDE.md
 AGENTS.md
 docs/superpowers/
 
+### 로컬 생성 산출물 ###
+.DS_Store
+/tmp/
+/output/
+
 # Nginx 동적 상태 파일
 infra/nginx/conf.d/active-env.inc

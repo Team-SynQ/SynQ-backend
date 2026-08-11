@@ -4,6 +4,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 import com.synq.backend.domain.ai.context.domain.LiveContextSnapshot;
+import com.synq.backend.domain.ai.assistant.domain.HintResult;
+import com.synq.backend.domain.ai.assistant.domain.SegmentHint;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -55,5 +57,18 @@ class AiEventResultListenerTest {
 		Map<?, ?> payload = (Map<?, ?>) payloadCaptor.getValue();
 		org.assertj.core.api.Assertions.assertThat(payload.get("jobId")).isEqualTo(jobId);
 		org.assertj.core.api.Assertions.assertThat(payload.get("reason")).isEqualTo("안전한 실패 메시지");
+	}
+
+	@Test
+	void 자동_힌트는_대상_사용자에게만_SSE_이벤트로_전달한다() {
+		SegmentHint hint = SegmentHint.autoOf(1L, 2L, 10L,
+				new HintResult("의미", "영향", "질문"), 80, "일정 확정");
+
+		listener.onAutoHintCreated(new AutoHintCreatedEvent(1L, 10L, hint));
+
+		verify(eventPublisher).publishToUser(eq(1L), eq(10L), eq(AiEventType.AUTO_HINT_CREATED),
+				Mockito.argThat(data -> data instanceof AutoHintCreatedPayload payload
+						&& payload.segmentId().equals(2L)
+						&& payload.importance() == 80));
 	}
 }

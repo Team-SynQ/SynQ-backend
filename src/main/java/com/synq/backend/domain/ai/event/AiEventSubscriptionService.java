@@ -38,7 +38,7 @@ public class AiEventSubscriptionService {
 			throw new GeneralException(AiEventErrorCode.NOT_MEETING_PARTICIPANT);
 		}
 
-		SseEmitter emitter = emitterRegistry.register(meetingId, properties.timeout().toMillis());
+		SseEmitter emitter = emitterRegistry.register(meetingId, userId, properties.timeout().toMillis());
 		emitterRegistry.sendTo(
 				emitter,
 				AiEventPayload.of(AiEventType.CONNECTED, meetingId, java.util.Map.of("status", "connected"))
