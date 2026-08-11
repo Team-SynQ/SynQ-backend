@@ -21,6 +21,10 @@ public interface TranscriptSegmentRepository extends JpaRepository<TranscriptSeg
 	List<TranscriptSegment> findByMeetingIdAndSequenceIndexGreaterThanOrderByStartMsAscSequenceIndexAsc(
 			Long meetingId, Integer afterSequenceIndex, Pageable pageable);
 
+	// Live Context 커서가 sequenceIndex 이므로 배치 조회도 같은 기준으로 정렬한다.
+	List<TranscriptSegment> findByMeetingIdAndSequenceIndexGreaterThanOrderBySequenceIndexAsc(
+			Long meetingId, Integer afterSequenceIndex, Pageable pageable);
+
 	List<TranscriptSegment> findByMeetingIdOrderByStartMsDescSequenceIndexDesc(Long meetingId, Pageable pageable);
 
 	List<TranscriptSegment> findByMeetingIdAndSequenceIndexBetweenOrderByStartMsAscSequenceIndexAsc(

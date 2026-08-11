@@ -118,7 +118,7 @@ public class LiveContextService {
 				.map(LiveContext::getLastSequenceIndex)
 				.orElse(-1);
 		List<TranscriptSegment> pending = transcriptSegmentRepository
-				.findByMeetingIdAndSequenceIndexGreaterThanOrderByStartMsAscSequenceIndexAsc(
+				.findByMeetingIdAndSequenceIndexGreaterThanOrderBySequenceIndexAsc(
 						meetingId,
 						lastSequenceIndex,
 						PageRequest.of(0, batchProperties.maxSegmentsPerRequest() + 1));

@@ -38,6 +38,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.event.EventListener;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -100,39 +101,64 @@ class OpenAiOneHourLiveContextIntegrationTest {
 	@Autowired
 	private EventCapture eventCapture;
 
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+
 	@Test
 	void 실제_OpenAI로_한시간_전사의_Live_Context와_자동_힌트를_검증하고_보고서를_남긴다() {
 		MeetingTranscriptTestFixture.Fixture meeting = fixture.create();
-		participantRepository.saveAndFlush(MeetingParticipant.of(
-				meeting.meetingId(), meeting.hostId(), ParticipantRole.HOST));
+		try {
+			participantRepository.saveAndFlush(MeetingParticipant.of(
+					meeting.meetingId(), meeting.hostId(), ParticipantRole.HOST));
 
-		Instant startedAt = Instant.now();
-		for (int sequence = 0; sequence < SEGMENT_COUNT; sequence++) {
-			publishFinalizedSegment(meeting.meetingId(), sequence);
-			if ((sequence + 1) % BATCH_SIZE == 0) {
-				int expectedSequence = sequence;
-				await("Live Context %d/%d".formatted((sequence + 1) / BATCH_SIZE, EXPECTED_REFRESH_COUNT),
-						Duration.ofMinutes(2),
-						() -> liveContextRepository.findByMeetingId(meeting.meetingId())
-								.map(context -> context.getLastSequenceIndex() == expectedSequence)
-								.orElse(false));
+			Instant startedAt = Instant.now();
+			for (int sequence = 0; sequence < SEGMENT_COUNT; sequence++) {
+				publishFinalizedSegment(meeting.meetingId(), sequence);
+				if ((sequence + 1) % BATCH_SIZE == 0) {
+					int expectedSequence = sequence;
+					await("Live Context %d/%d".formatted((sequence + 1) / BATCH_SIZE, EXPECTED_REFRESH_COUNT),
+							Duration.ofMinutes(2),
+							() -> liveContextRepository.findByMeetingId(meeting.meetingId())
+									.map(context -> context.getLastSequenceIndex() == expectedSequence)
+									.orElse(false));
+				}
 			}
+
+			await("Live Context 전체 처리", Duration.ofMinutes(2),
+					() -> eventCapture.liveContextsFor(meeting.meetingId()).size() == EXPECTED_REFRESH_COUNT);
+			await("자동 힌트 최초 생성", Duration.ofMinutes(2), () ->
+					!eventCapture.autoHintsFor(meeting.meetingId()).isEmpty()
+							&& !segmentHintRepository.findByMeetingIdAndUserIdOrderBySegmentIdAsc(
+							meeting.meetingId(), meeting.hostId()).isEmpty());
+			waitForHintsToSettle(meeting.meetingId());
+
+			List<TranscriptSegment> segments = transcriptSegmentRepository
+					.findByMeetingIdAndSequenceIndexGreaterThanOrderByStartMsAscSequenceIndexAsc(meeting.meetingId(), -1);
+			List<SegmentHint> hints = segmentHintRepository
+					.findByMeetingIdAndUserIdOrderBySegmentIdAsc(meeting.meetingId(), meeting.hostId());
+			List<LiveContextUpdatedEvent> updates = eventCapture.liveContextsFor(meeting.meetingId());
+
+			assertThat(updates).hasSize(EXPECTED_REFRESH_COUNT);
+			assertThat(eventCapture.autoHintsFor(meeting.meetingId())).isNotEmpty();
+			assertThat(hints).isNotEmpty();
+			assertThat(liveContextRepository.findByMeetingId(meeting.meetingId()).orElseThrow().getLastSequenceIndex())
+					.isEqualTo(SEGMENT_COUNT - 1);
+			writeReport(meeting.meetingId(), startedAt, segments, updates, hints);
+		} finally {
+			deleteFixture(meeting);
 		}
+	}
 
-		await("Live Context 전체 처리", Duration.ofMinutes(2),
-				() -> eventCapture.liveContextsFor(meeting.meetingId()).size() == EXPECTED_REFRESH_COUNT);
-		waitForHintsToSettle(meeting.meetingId());
-
-		List<TranscriptSegment> segments = transcriptSegmentRepository
-				.findByMeetingIdAndSequenceIndexGreaterThanOrderByStartMsAscSequenceIndexAsc(meeting.meetingId(), -1);
-		List<SegmentHint> hints = segmentHintRepository
-				.findByMeetingIdAndUserIdOrderBySegmentIdAsc(meeting.meetingId(), meeting.hostId());
-		List<LiveContextUpdatedEvent> updates = eventCapture.liveContextsFor(meeting.meetingId());
-
-		assertThat(updates).hasSize(EXPECTED_REFRESH_COUNT);
-		assertThat(liveContextRepository.findByMeetingId(meeting.meetingId()).orElseThrow().getLastSequenceIndex())
-				.isEqualTo(SEGMENT_COUNT - 1);
-		writeReport(meeting.meetingId(), startedAt, segments, updates, hints);
+	private void deleteFixture(MeetingTranscriptTestFixture.Fixture fixture) {
+		new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+			jdbcTemplate.update("DELETE FROM ai_segment_hint WHERE meeting_id = ?", fixture.meetingId());
+			jdbcTemplate.update("DELETE FROM meeting_live_context WHERE meeting_id = ?", fixture.meetingId());
+			jdbcTemplate.update("DELETE FROM transcript_segment WHERE meeting_id = ?", fixture.meetingId());
+			jdbcTemplate.update("DELETE FROM meeting_participant WHERE meeting_id = ?", fixture.meetingId());
+			jdbcTemplate.update("DELETE FROM meeting WHERE id = ?", fixture.meetingId());
+			jdbcTemplate.update("DELETE FROM project WHERE id = ?", fixture.projectId());
+			jdbcTemplate.update("DELETE FROM users WHERE user_id = ?", fixture.hostId());
+		});
 	}
 
 	private void publishFinalizedSegment(Long meetingId, int sequence) {

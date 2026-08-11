@@ -59,7 +59,7 @@ class OneHourLiveContextFlowTest {
 
 		when(liveContextRepository.findByMeetingId(MEETING_ID))
 				.thenAnswer(invocation -> Optional.ofNullable(stored.get()));
-		when(transcriptSegmentRepository.findByMeetingIdAndSequenceIndexGreaterThanOrderByStartMsAscSequenceIndexAsc(
+		when(transcriptSegmentRepository.findByMeetingIdAndSequenceIndexGreaterThanOrderBySequenceIndexAsc(
 				eq(MEETING_ID), anyInt(), any(Pageable.class)))
 				.thenAnswer(invocation -> segments.stream()
 						.filter(segment -> segment.getSequenceIndex() > invocation.getArgument(1, Integer.class))
