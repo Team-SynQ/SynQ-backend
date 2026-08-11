@@ -2,6 +2,7 @@ package com.synq.backend.domain.meeting.service;
 
 import com.synq.backend.domain.meeting.code.MeetingErrorCode;
 import com.synq.backend.domain.meeting.dto.MeetingListResponse;
+import com.synq.backend.domain.meeting.dto.MeetingParticipantResponse;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.MeetingStatus;
@@ -26,6 +27,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,6 +45,8 @@ class MeetingServiceTest {
 	private final UserRepository userRepository = mock(UserRepository.class);
 	private final ProfileImageService profileImageService = mock(ProfileImageService.class);
 	private final MeetingSummaryTopicsReader meetingSummaryTopicsReader = mock(MeetingSummaryTopicsReader.class);
+	private final MeetingParticipantAccessValidator participantAccessValidator =
+			mock(MeetingParticipantAccessValidator.class);
 	private final MeetingService meetingService = new MeetingService(
 			meetingRepository,
 			meetingParticipantRepository,
@@ -50,7 +54,8 @@ class MeetingServiceTest {
 			eventPublisher,
 			userRepository,
 			profileImageService,
-			meetingSummaryTopicsReader
+			meetingSummaryTopicsReader,
+			participantAccessValidator
 	);
 
 	@Test
@@ -326,5 +331,42 @@ class MeetingServiceTest {
 		assertThat(response.keyTopics()).isNull();
 		assertThat(response.durationSeconds()).isNull();
 		assertThat(response.host()).isNull();
+	}
+
+	@Test
+	void 참여자_목록_조회시_활성_참여자만_역할과_함께_반환한다() {
+		MeetingParticipant host = MeetingParticipant.of(5L, 10L, ParticipantRole.HOST);
+		MeetingParticipant member = MeetingParticipant.of(5L, 20L, ParticipantRole.MEMBER);
+		when(meetingParticipantRepository.findByMeetingIdAndLeftAtIsNull(5L)).thenReturn(List.of(host, member));
+
+		User hostUser = User.ofLocal("호스트", "host@synq.com", "password-hash");
+		ReflectionTestUtils.setField(hostUser, "userId", 10L);
+		User memberUser = User.ofLocal("멤버", "member@synq.com", "password-hash");
+		ReflectionTestUtils.setField(memberUser, "userId", 20L);
+		when(userRepository.findAllById(any())).thenReturn(List.of(hostUser, memberUser));
+		when(profileImageService.toUrl(any())).thenReturn("https://cdn.synq.com/profile.png");
+
+		List<MeetingParticipantResponse> result = meetingService.findParticipants(5L, 10L);
+
+		assertThat(result).hasSize(2);
+		assertThat(result).extracting(MeetingParticipantResponse::userId).containsExactlyInAnyOrder(10L, 20L);
+		MeetingParticipantResponse hostResponse = result.stream()
+				.filter(response -> response.userId().equals(10L)).findFirst().orElseThrow();
+		assertThat(hostResponse.role()).isEqualTo("HOST");
+		assertThat(hostResponse.name()).isEqualTo("호스트");
+		assertThat(hostResponse.profileImageUrl()).isEqualTo("https://cdn.synq.com/profile.png");
+		assertThat(hostResponse.joinedAt()).isEqualTo(host.getJoinedAt());
+	}
+
+	@Test
+	void 현재_참여자가_아니면_참여자_목록_조회시_인가_예외가_전파된다() {
+		doThrow(new GeneralException(MeetingErrorCode.NOT_MEETING_PARTICIPANT))
+				.when(participantAccessValidator).validateActiveParticipant(5L, 10L);
+
+		assertThatThrownBy(() -> meetingService.findParticipants(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.NOT_MEETING_PARTICIPANT));
+		verifyNoInteractions(meetingParticipantRepository);
 	}
 }

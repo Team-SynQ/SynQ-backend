@@ -2,6 +2,7 @@ package com.synq.backend.domain.meeting.service;
 
 import com.synq.backend.domain.meeting.code.MeetingErrorCode;
 import com.synq.backend.domain.meeting.dto.MeetingListResponse;
+import com.synq.backend.domain.meeting.dto.MeetingParticipantResponse;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.MeetingStatus;
@@ -43,6 +44,7 @@ public class MeetingService {
 	private final UserRepository userRepository;
 	private final ProfileImageService profileImageService;
 	private final MeetingSummaryTopicsReader meetingSummaryTopicsReader;
+	private final MeetingParticipantAccessValidator participantAccessValidator;
 
 	@Transactional
 	public Meeting create(Long projectId, Long userId, Boolean consentAgreed) {
@@ -207,6 +209,34 @@ public class MeetingService {
 		MeetingParticipant participant = meetingParticipantRepository.save(
 				MeetingParticipant.of(meetingId, userId, ParticipantRole.MEMBER));
 		return new MeetingJoinResult(meeting, participant);
+	}
+
+	// 현재 활성 참여자(leftAt이 null인 사람)만 반환한다. 나갔다가 다시 들어올 수 있으므로
+	// 나간 사람은 목록에서 빠지고, 연결이 순간적으로 끊겨도 leave API를 부르지 않는 한 남아있는다.
+	@Transactional(readOnly = true)
+	public List<MeetingParticipantResponse> findParticipants(Long meetingId, Long userId) {
+		participantAccessValidator.validateActiveParticipant(meetingId, userId);
+
+		List<MeetingParticipant> participants =
+				meetingParticipantRepository.findByMeetingIdAndLeftAtIsNull(meetingId);
+		Map<Long, User> userById = userRepository
+				.findAllById(participants.stream().map(MeetingParticipant::getUserId).toList()).stream()
+				.collect(Collectors.toMap(User::getUserId, Function.identity()));
+
+		return participants.stream()
+				.map(participant -> toParticipantResponse(participant, userById))
+				.toList();
+	}
+
+	private MeetingParticipantResponse toParticipantResponse(
+			MeetingParticipant participant, Map<Long, User> userById) {
+		User user = userById.get(participant.getUserId());
+		return new MeetingParticipantResponse(
+				participant.getUserId(),
+				user != null ? user.getName() : null,
+				user != null ? profileImageService.toUrl(user.getProfileImageKey()) : null,
+				participant.getRole().name(),
+				participant.getJoinedAt());
 	}
 
 	// AI 정리 완료/실패 이벤트를 받아 회의 상태를 확정하는 진입점.
