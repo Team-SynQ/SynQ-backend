@@ -395,7 +395,7 @@ public class ProjectService {
 		validateAuthenticatedUser(userId);
 		validateUser(userId);
 
-		Project project = findActiveProjectById(projectId);
+		Project project = findActiveProjectByIdForUpdate(projectId);
 		validateProjectOwner(project, userId);
 		ProjectParticipationRequest request = findJoinRequest(projectId, requestId);
 		validatePendingJoinRequest(request);
