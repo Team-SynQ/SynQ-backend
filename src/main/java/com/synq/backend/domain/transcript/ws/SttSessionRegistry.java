@@ -5,6 +5,7 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.PingMessage;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -93,6 +94,36 @@ public class SttSessionRegistry {
 		}
 		for (WebSocketSession session : meetingSubscribers) {
 			sendQuietly(meetingId, session, payload);
+		}
+	}
+
+	/**
+	 * 호스트/참여자 가릴 것 없이 열려 있는 모든 전사 연결에 ping 을 보낸다.
+	 *
+	 * <p>참여자는 확정 전사만 받고 캡션/연결상태는 받지 않아, 아무도 말하지 않는 구간에는
+	 * 서버→클라이언트 트래픽이 완전히 0 이 된다. 회의 중 침묵은 흔하므로 참여자 쪽이 먼저 끊긴다.
+	 */
+	public void pingAll() {
+		for (SttSession session : activeSessions()) {
+			session.sendPing();
+		}
+		subscribers.forEach((meetingId, meetingSubscribers) ->
+				meetingSubscribers.forEach(session -> pingQuietly(meetingId, session)));
+	}
+
+	/** ping 실패는 곧 끊긴 연결이라는 뜻이고, 정리는 afterConnectionClosed 가 한다. 여기선 로그만 남긴다. */
+	static void pingQuietly(Long meetingId, WebSocketSession session) {
+		if (!session.isOpen()) {
+			return;
+		}
+		try {
+			// 전송 직렬화 락은 전사 메시지 전송과 동일한 세션 객체를 쓴다. 다른 락을 쓰면 의미가 없다.
+			synchronized (session) {
+				session.sendMessage(new PingMessage());
+			}
+		} catch (IOException | RuntimeException e) {
+			log.debug("WebSocket ping 전송에 실패했습니다. meetingId={} wsSessionId={} reason={}",
+					meetingId, session.getId(), e.toString());
 		}
 	}
 

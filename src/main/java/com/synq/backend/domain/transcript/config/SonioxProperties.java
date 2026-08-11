@@ -17,8 +17,12 @@ public record SonioxProperties(
 		String audioFormat,
 		List<String> languageHints,
 		long segmentIdleTimeoutMs,
-		long closeFlushTimeoutMs
+		long closeFlushTimeoutMs,
+		long keepaliveIdleMs
 ) {
+
+	/** Soniox 가 오디오/keepalive 없이 버텨주는 상한. 이걸 넘겨 잡으면 keepalive 가 의미를 잃는다. */
+	private static final long SONIOX_INACTIVITY_LIMIT_MS = 20_000L;
 
 	public SonioxProperties {
 		if (segmentIdleTimeoutMs <= 0) {
@@ -26,6 +30,10 @@ public record SonioxProperties(
 		}
 		if (closeFlushTimeoutMs <= 0) {
 			throw new IllegalArgumentException("closeFlushTimeoutMs 는 1 이상이어야 합니다: " + closeFlushTimeoutMs);
+		}
+		if (keepaliveIdleMs <= 0 || keepaliveIdleMs >= SONIOX_INACTIVITY_LIMIT_MS) {
+			throw new IllegalArgumentException(
+					"keepaliveIdleMs 는 1 이상 %d 미만이어야 합니다: %d".formatted(SONIOX_INACTIVITY_LIMIT_MS, keepaliveIdleMs));
 		}
 	}
 
