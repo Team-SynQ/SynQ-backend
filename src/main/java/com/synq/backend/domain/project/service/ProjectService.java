@@ -12,6 +12,10 @@ import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestApproveResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestListResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestRejectResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
 import com.synq.backend.domain.project.dto.ProjectMemberListResponse;
@@ -47,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -324,6 +329,81 @@ public class ProjectService {
 		return ProjectJoinRequestCreateResponse.from(participationRequest);
 	}
 
+	@Transactional(readOnly = true)
+	public ProjectJoinRequestListResponse findPendingJoinRequests(Long projectId, Long userId) {
+		validateAuthenticatedUser(userId);
+		validateUser(userId);
+
+		Project project = findActiveProjectById(projectId);
+		validateProjectOwner(project, userId);
+
+		List<ProjectParticipationRequest> requests = participationRequestRepository
+				.findAllByProjectIdAndStatusOrderByRequestedAtAscIdAsc(
+						projectId,
+						ProjectJoinRequestStatus.PENDING
+				);
+		Map<Long, User> userById = userRepository.findAllById(
+					requests.stream()
+							.map(ProjectParticipationRequest::getUserId)
+							.distinct()
+							.toList()
+			).stream()
+				.collect(Collectors.toMap(User::getUserId, user -> user));
+		List<ProjectJoinRequestResponse> responses = requests.stream()
+				.map(request -> ProjectJoinRequestResponse.from(
+						request,
+						findJoinRequestUser(userById, request.getUserId())
+				))
+				.toList();
+		return ProjectJoinRequestListResponse.from(responses);
+	}
+
+	@Transactional
+	public ProjectJoinRequestApproveResponse approveJoinRequest(
+			Long projectId,
+			Long requestId,
+			Long userId
+	) {
+		validateAuthenticatedUser(userId);
+		validateUser(userId);
+
+		Project project = findActiveProjectByIdForUpdate(projectId);
+		validateProjectOwner(project, userId);
+		ProjectParticipationRequest request = findJoinRequest(projectId, requestId);
+		validatePendingJoinRequest(request);
+
+		if (projectMemberRepository.existsByProjectIdAndUserId(projectId, request.getUserId())) {
+			throw new GeneralException(ProjectErrorCode.ALREADY_PROJECT_MEMBER);
+		}
+		validateUserProjectLimit(request.getUserId());
+		if (projectMemberRepository.countByProjectId(projectId) >= MAX_PROJECT_MEMBERS) {
+			throw new GeneralException(ProjectErrorCode.PROJECT_MEMBER_LIMIT_EXCEEDED);
+		}
+
+		request.approve();
+		ProjectMember member = projectMemberRepository.save(
+				ProjectMember.of(projectId, request.getUserId(), ProjectMemberRole.MEMBER));
+		return ProjectJoinRequestApproveResponse.from(request, member);
+	}
+
+	@Transactional
+	public ProjectJoinRequestRejectResponse rejectJoinRequest(
+			Long projectId,
+			Long requestId,
+			Long userId
+	) {
+		validateAuthenticatedUser(userId);
+		validateUser(userId);
+
+		Project project = findActiveProjectById(projectId);
+		validateProjectOwner(project, userId);
+		ProjectParticipationRequest request = findJoinRequest(projectId, requestId);
+		validatePendingJoinRequest(request);
+
+		request.reject();
+		return ProjectJoinRequestRejectResponse.from(request);
+	}
+
 	@Transactional
 	public ProjectInvitationResponse createInvitation(Long projectId, Long userId) {
 		if (userId == null) {
@@ -384,6 +464,37 @@ public class ProjectService {
 		}
 	}
 
+	private void validateAuthenticatedUser(Long userId) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+	}
+
+	private void validateProjectOwner(Project project, Long userId) {
+		if (!project.getOwnerId().equals(userId)) {
+			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_OWNER);
+		}
+	}
+
+	private ProjectParticipationRequest findJoinRequest(Long projectId, Long requestId) {
+		return participationRequestRepository.findByIdAndProjectId(requestId, projectId)
+				.orElseThrow(() -> new GeneralException(ProjectErrorCode.JOIN_REQUEST_NOT_FOUND));
+	}
+
+	private void validatePendingJoinRequest(ProjectParticipationRequest request) {
+		if (request.getStatus() != ProjectJoinRequestStatus.PENDING) {
+			throw new GeneralException(ProjectErrorCode.JOIN_REQUEST_ALREADY_PROCESSED);
+		}
+	}
+
+	private User findJoinRequestUser(Map<Long, User> userById, Long userId) {
+		User user = userById.get(userId);
+		if (user == null) {
+			throw new GeneralException(ProjectErrorCode.USER_NOT_FOUND);
+		}
+		return user;
+	}
+
 	private void validateUserProjectLimit(Long userId) {
 		if (projectMemberRepository.countByUserId(userId) >= MAX_PROJECTS_PER_USER) {
 			throw new GeneralException(ProjectErrorCode.USER_PROJECT_LIMIT_EXCEEDED);
@@ -423,6 +534,12 @@ public class ProjectService {
 
 	private Project findActiveProjectById(Long projectId) {
 		return projectRepository.findById(projectId)
+				.filter(project -> !project.isDeleted())
+				.orElseThrow(() -> new GeneralException(ProjectErrorCode.PROJECT_NOT_FOUND));
+	}
+
+	private Project findActiveProjectByIdForUpdate(Long projectId) {
+		return projectRepository.findByIdForUpdate(projectId)
 				.filter(project -> !project.isDeleted())
 				.orElseThrow(() -> new GeneralException(ProjectErrorCode.PROJECT_NOT_FOUND));
 	}

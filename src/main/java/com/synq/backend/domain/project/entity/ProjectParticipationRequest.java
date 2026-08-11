@@ -76,4 +76,12 @@ public class ProjectParticipationRequest extends BaseEntity {
 	) {
 		return new ProjectParticipationRequest(projectId, userId, settingSource, role, detailRole);
 	}
+
+	public void approve() {
+		this.status = ProjectJoinRequestStatus.APPROVED;
+	}
+
+	public void reject() {
+		this.status = ProjectJoinRequestStatus.REJECTED;
+	}
 }
