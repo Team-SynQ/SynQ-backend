@@ -1,6 +1,7 @@
 package com.synq.backend.domain.ai.context.mock;
 
 import com.synq.backend.domain.ai.context.domain.LiveContextAiClient;
+import com.synq.backend.domain.ai.context.domain.AutoHintDecision;
 import com.synq.backend.domain.ai.context.domain.LiveContextResult;
 import com.synq.backend.domain.ai.context.domain.LiveContextSnapshot;
 import com.synq.backend.domain.transcript.event.TranscriptFinalizedEvent;
@@ -28,7 +29,8 @@ public class FakeLiveContextAiClient implements LiveContextAiClient {
 				"회의 진행 사항",
 				previousContext.decisions(),
 				previousContext.actionItems(),
-				List.of("다음 논의 항목을 확인한다.")
+				List.of("다음 논의 항목을 확인한다."),
+				new AutoHintDecision(true, event.segmentId(), 70, "새 확정 발화가 회의 맥락에 영향을 줍니다.")
 		);
 	}
 }

@@ -10,13 +10,25 @@ public record LiveContextResult(
         String currentTopic,
         List<String> decisions,
         List<String> actionItems,
-        List<String> openQuestions
+        List<String> openQuestions,
+        AutoHintDecision autoHintDecision
 ) {
+
+	public LiveContextResult(
+			String rollingSummary,
+			String currentTopic,
+			List<String> decisions,
+			List<String> actionItems,
+			List<String> openQuestions
+	) {
+		this(rollingSummary, currentTopic, decisions, actionItems, openQuestions, AutoHintDecision.none());
+	}
 
     public LiveContextResult {
         rollingSummary = rollingSummary == null ? "" : rollingSummary;
         decisions = decisions == null ? List.of() : List.copyOf(decisions);
         actionItems = actionItems == null ? List.of() : List.copyOf(actionItems);
         openQuestions = openQuestions == null ? List.of() : List.copyOf(openQuestions);
+        autoHintDecision = autoHintDecision == null ? AutoHintDecision.none() : autoHintDecision;
     }
 }

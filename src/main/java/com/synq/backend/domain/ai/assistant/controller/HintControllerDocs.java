@@ -40,6 +40,7 @@ public interface HintControllerDocs {
 
 	@Operation(summary = "내 3-hint 기록 조회", description = """
 			회의 기록 화면에서 쓴다. 내가 이 회의에서 생성했던 3-hint 를 세그먼트별로 반환한다.
+			중요 전사는 자동으로 생성될 수 있으며, source=AUTO 와 중요도·판단 근거를 함께 반환한다.
 			힌트는 사용자의 역할·관점에 따라 내용이 다르므로 본인 것만 조회된다.
 			같은 세그먼트를 여러 번 눌렀다면 마지막 결과 하나만 있다.
 			프론트는 segmentId 로 전사 목록과 머지한다. 회의 종료 후에도 조회할 수 있다.""")

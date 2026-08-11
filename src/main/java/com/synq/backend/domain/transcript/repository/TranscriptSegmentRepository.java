@@ -18,6 +18,9 @@ public interface TranscriptSegmentRepository extends JpaRepository<TranscriptSeg
 	List<TranscriptSegment> findByMeetingIdAndSequenceIndexGreaterThanOrderByStartMsAscSequenceIndexAsc(
 			Long meetingId, Integer afterSequenceIndex);
 
+	List<TranscriptSegment> findByMeetingIdAndSequenceIndexGreaterThanOrderByStartMsAscSequenceIndexAsc(
+			Long meetingId, Integer afterSequenceIndex, Pageable pageable);
+
 	List<TranscriptSegment> findByMeetingIdOrderByStartMsDescSequenceIndexDesc(Long meetingId, Pageable pageable);
 
 	List<TranscriptSegment> findByMeetingIdAndSequenceIndexBetweenOrderByStartMsAscSequenceIndexAsc(

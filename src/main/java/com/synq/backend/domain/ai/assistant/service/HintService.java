@@ -7,6 +7,7 @@ import com.synq.backend.domain.ai.assistant.domain.HintResult;
 import com.synq.backend.domain.ai.assistant.domain.SegmentHint;
 import com.synq.backend.domain.meeting.service.MeetingParticipantAccessValidator;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,42 @@ public class HintService {
 		HintResult result = hintAiClient.generate(input);
 		saveQuietly(meetingId, segmentId, userId, result);
 		return result;
+	}
+
+	/**
+	 * 자동 힌트는 이미 활성 참여자로 조회된 사용자에게만 호출된다. 이벤트 처리 경로에는
+	 * HTTP 요청 주체가 없으므로 접근 검증을 다시 거치지 않고 문맥 생성과 AI 호출만 수행한다.
+	 */
+	public HintResult generateAutomatically(Long userId, Long meetingId, Long segmentId) {
+		HintInput input = contextBuilder.build(userId, meetingId, segmentId);
+		return hintAiClient.generate(input);
+	}
+
+	public Optional<SegmentHint> saveAutomatically(
+			Long meetingId,
+			Long segmentId,
+			Long userId,
+			HintResult result,
+			int importance,
+			String triggerReason,
+			String topic
+	) {
+		return hintStore.saveAutomatically(meetingId, segmentId, userId, result, importance, triggerReason, topic);
+	}
+
+	public Optional<SegmentHint> saveAutomatically(
+			Long meetingId,
+			Long segmentId,
+			Long userId,
+			HintResult result,
+			int importance,
+			String triggerReason
+	) {
+		return saveAutomatically(meetingId, segmentId, userId, result, importance, triggerReason, null);
+	}
+
+	public boolean hasRecentAutomaticDuplicate(Long meetingId, Long userId, String topic, String triggerReason) {
+		return hintStore.hasRecentAutomaticDuplicate(meetingId, userId, topic, triggerReason);
 	}
 
 	/**

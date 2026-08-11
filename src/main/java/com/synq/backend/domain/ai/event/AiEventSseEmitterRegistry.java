@@ -35,10 +35,10 @@ public class AiEventSseEmitterRegistry {
 		this.properties = properties;
 	}
 
-	public SseEmitter register(Long meetingId, long timeoutMillis) {
+	public SseEmitter register(Long meetingId, Long userId, long timeoutMillis) {
 		SseEmitter emitter = new SseEmitter(timeoutMillis);
 		UUID connectionId = UUID.randomUUID();
-		SseConnection connection = new SseConnection(meetingId, connectionId, emitter);
+		SseConnection connection = new SseConnection(meetingId, userId, connectionId, emitter);
 
 		connectionsByMeeting
 				.computeIfAbsent(meetingId, ignored -> new ConcurrentHashMap<>())
@@ -57,6 +57,20 @@ public class AiEventSseEmitterRegistry {
 		}
 
 		connections.forEach((connectionId, connection) -> enqueue(meetingId, connectionId, connection, payload));
+	}
+
+	/** 개인 AI 결과는 같은 회의를 구독 중인 다른 참여자에게 노출하지 않는다. */
+	public void sendToUser(Long meetingId, Long userId, AiEventPayload payload) {
+		Map<UUID, SseConnection> connections = connectionsByMeeting.get(meetingId);
+		if (connections == null) {
+			return;
+		}
+
+		connections.forEach((connectionId, connection) -> {
+			if (connection.userId().equals(userId)) {
+				enqueue(meetingId, connectionId, connection, payload);
+			}
+		});
 	}
 
 	public void sendTo(SseEmitter emitter, AiEventPayload payload) {
@@ -112,19 +126,25 @@ public class AiEventSseEmitterRegistry {
 	private final class SseConnection {
 
 		private final Long meetingId;
+		private final Long userId;
 		private final UUID connectionId;
 		private final SseEmitter emitter;
 		private final Queue<AiEventPayload> pendingEvents = new ArrayDeque<>();
 		private boolean writing;
 
-		private SseConnection(Long meetingId, UUID connectionId, SseEmitter emitter) {
+		private SseConnection(Long meetingId, Long userId, UUID connectionId, SseEmitter emitter) {
 			this.meetingId = meetingId;
+			this.userId = userId;
 			this.connectionId = connectionId;
 			this.emitter = emitter;
 		}
 
 		private SseEmitter emitter() {
 			return emitter;
+		}
+
+		private Long userId() {
+			return userId;
 		}
 
 		private boolean enqueue(AiEventPayload payload) {

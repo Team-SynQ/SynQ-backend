@@ -176,6 +176,9 @@ ai:
       # 관련 문서 0.640~0.645 / 무관 문서 0.522~0.540 사이에 둔다.
       # 주의: 이 실측은 search-window/focus-repeat 도입 전 질의 구성으로 잰 값이다.
       min-similarity: ${AI_ASSISTANT_HINT_MIN_SIMILARITY:0.6}
+    auto-hint:
+      enabled: ${AI_ASSISTANT_AUTO_HINT_ENABLED:true}
+      importance-threshold: ${AI_ASSISTANT_AUTO_HINT_IMPORTANCE_THRESHOLD:60}
   summary:
     client: ${AI_SUMMARY_CLIENT:fake}
     model-name: ${AI_SUMMARY_MODEL:${OPENAI_MODEL:gpt-5.6-sol}}
@@ -198,6 +201,13 @@ ai:
     model: ${AI_LIVE_CONTEXT_MODEL:${OPENAI_MODEL:gpt-5.6-luna}}
     reasoning-effort: ${AI_LIVE_CONTEXT_REASONING_EFFORT:low}
     max-output-tokens: ${AI_LIVE_CONTEXT_MAX_OUTPUT_TOKENS:1200}
+    batch:
+      segment-count: ${AI_LIVE_CONTEXT_BATCH_SEGMENT_COUNT:2}
+      # 처리 지연으로 전사가 쌓여도 한 요청에 무제한으로 넣지 않는다.
+      max-segments-per-request: ${AI_LIVE_CONTEXT_MAX_SEGMENTS_PER_REQUEST:2}
+      max-delay: ${AI_LIVE_CONTEXT_BATCH_MAX_DELAY:10s}
+      # 배포 교체 또는 서버 재시작으로 메모리 대기열이 사라져도 미반영 전사를 회복한다.
+      recovery-delay: ${AI_LIVE_CONTEXT_BATCH_RECOVERY_DELAY:30s}
   event:
     sse:
       timeout: ${AI_EVENT_SSE_TIMEOUT:30m}

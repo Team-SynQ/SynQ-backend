@@ -8,6 +8,7 @@ public enum AiEventType {
 	CONNECTED("connected"),
 	HEARTBEAT("heartbeat"),
 	LIVE_CONTEXT_UPDATED("live-context.updated"),
+	AUTO_HINT_CREATED("hint.auto-created"),
 	SUMMARY_COMPLETED("summary.completed"),
 	SUMMARY_FAILED("summary.failed");
 

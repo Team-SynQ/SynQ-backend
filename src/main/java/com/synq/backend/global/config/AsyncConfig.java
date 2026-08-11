@@ -6,6 +6,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
 // proxyTargetClass=true: @Async 빈을 CGLIB(클래스) 프록시로 감싼다.
@@ -56,11 +57,29 @@ public class AsyncConfig {
 	@Bean(name = "liveContextExecutor")
 	public Executor liveContextExecutor() {
 		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-		executor.setCorePoolSize(1);
-		// 확정 전사 순서대로 기존 맥락을 이어야 하므로 병렬 처리하지 않는다.
-		executor.setMaxPoolSize(1);
+		// 같은 회의의 순서는 MeetingTaskExecutor가 보장하고, 서로 다른 회의는 병렬 처리한다.
+		executor.setCorePoolSize(3);
+		executor.setMaxPoolSize(6);
 		executor.setQueueCapacity(50);
+		// 큐가 포화되어도 전사 반영 작업을 유실하지 않도록 호출 스레드에서 처리한다.
+		executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
 		executor.setThreadNamePrefix("live-context-");
+		executor.initialize();
+		return executor;
+	}
+
+	/**
+	 * 중요 발화의 참여자별 힌트 생성 전용 풀. Live Context의 회의별 순차 처리를 막지 않는다.
+	 */
+	@Bean(name = "autoHintExecutor")
+	public Executor autoHintExecutor() {
+		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+		executor.setCorePoolSize(3);
+		executor.setMaxPoolSize(5);
+		executor.setQueueCapacity(100);
+		// 보조 기능이 포화되더라도 Live Context 처리 스레드를 점유하지 않는다.
+		executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
+		executor.setThreadNamePrefix("auto-hint-");
 		executor.initialize();
 		return executor;
 	}

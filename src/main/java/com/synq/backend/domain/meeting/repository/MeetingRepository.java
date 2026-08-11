@@ -19,6 +19,8 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
 	// 목록 조회에서도 방어적으로 여러 건일 가능성을 열어두고 호출부에서 최신 것만 취한다.
 	List<Meeting> findByProjectIdInAndStatus(List<Long> projectIds, MeetingStatus status);
 
+	List<Meeting> findByStatus(MeetingStatus status);
+
 	@Modifying(flushAutomatically = true, clearAutomatically = true)
 	@Query("""
 			UPDATE Meeting meeting
