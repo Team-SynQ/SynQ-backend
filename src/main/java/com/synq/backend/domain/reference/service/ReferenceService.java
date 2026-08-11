@@ -12,6 +12,8 @@ import com.synq.backend.domain.reference.ReferenceLimits;
 import com.synq.backend.domain.reference.dto.ReferenceFileCreateResponse;
 import com.synq.backend.domain.reference.dto.ReferenceFileExtractionFailure;
 import com.synq.backend.domain.reference.dto.ReferenceListResponse;
+import com.synq.backend.domain.reference.dto.ReferenceNameUpdateRequest;
+import com.synq.backend.domain.reference.dto.ReferenceNameUpdateResponse;
 import com.synq.backend.domain.reference.dto.ReferenceResponse;
 import com.synq.backend.domain.reference.entity.ReferenceMaterial;
 import com.synq.backend.domain.reference.entity.ReferenceFileExtension;
@@ -154,6 +156,39 @@ public class ReferenceService {
 			eventPublisher.publishEvent(new ReferenceFileDeletedEvent(
 					referenceId, projectId, reference.getStorageKey()));
 		}
+	}
+
+	@Transactional
+	public ReferenceNameUpdateResponse updateName(
+			Long projectId,
+			Long referenceId,
+			Long userId,
+			ReferenceNameUpdateRequest request
+	) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		validateUser(userId);
+
+		Project project = findActiveProjectById(projectId);
+		if (!projectMemberRepository.existsByProjectIdAndUserId(projectId, userId)) {
+			throw new GeneralException(ProjectErrorCode.NOT_PROJECT_MEMBER);
+		}
+
+		ReferenceMaterial reference = referenceMaterialRepository
+				.findByIdAndProjectId(referenceId, projectId)
+				.orElseThrow(() -> new GeneralException(ReferenceErrorCode.REFERENCE_NOT_FOUND));
+		if (!project.getOwnerId().equals(userId) && !reference.getUploaderId().equals(userId)) {
+			throw new GeneralException(ReferenceErrorCode.REFERENCE_UPDATE_FORBIDDEN);
+		}
+
+		String name = request.name();
+		if (name == null || name.isBlank() || name.length() > 30) {
+			throw new GeneralException(GeneralErrorCode.BAD_REQUEST);
+		}
+		reference.updateName(name);
+		referenceMaterialRepository.flush();
+		return ReferenceNameUpdateResponse.from(reference);
 	}
 
 	@Transactional

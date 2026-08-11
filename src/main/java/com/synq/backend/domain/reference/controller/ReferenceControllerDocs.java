@@ -4,6 +4,8 @@ import com.synq.backend.domain.reference.dto.ReferenceFileCreateResponse;
 import com.synq.backend.domain.reference.dto.ReferenceListResponse;
 import com.synq.backend.domain.reference.dto.ReferenceLinkCreateRequest;
 import com.synq.backend.domain.reference.dto.ReferenceLinkCreateResponse;
+import com.synq.backend.domain.reference.dto.ReferenceNameUpdateRequest;
+import com.synq.backend.domain.reference.dto.ReferenceNameUpdateResponse;
 import com.synq.backend.global.apipayload.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -16,6 +18,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -59,6 +62,24 @@ public interface ReferenceControllerDocs {
 			@PathVariable Long projectId,
 			@PathVariable Long referenceId,
 			@AuthenticationPrincipal(expression = "userId") Long userId
+	);
+
+	@Operation(summary = "참고자료 제목 수정", description = "프로젝트 소유자 또는 참고자료 등록자가 참고자료 제목을 수정한다.")
+	@SecurityRequirement(name = "bearerAuth")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "참고자료 제목 수정 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "참고자료 제목 입력값 오류"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "프로젝트 접근 또는 참고자료 수정 권한 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "사용자, 프로젝트 또는 참고자료 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "참고자료 제목 수정 실패")
+	})
+	@PatchMapping("/{referenceId}")
+	ResponseEntity<ApiResponse<ReferenceNameUpdateResponse>> updateName(
+			@PathVariable Long projectId,
+			@PathVariable Long referenceId,
+			@AuthenticationPrincipal(expression = "userId") Long userId,
+			@Valid @RequestBody ReferenceNameUpdateRequest request
 	);
 
 	@Operation(summary = "참고자료 링크 등록", description = "프로젝트 멤버가 링크 참고자료 정보를 등록한다.")
