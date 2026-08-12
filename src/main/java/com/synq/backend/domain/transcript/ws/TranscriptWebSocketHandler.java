@@ -38,6 +38,7 @@ public class TranscriptWebSocketHandler extends BinaryWebSocketHandler {
 	private final MeetingRepository meetingRepository;
 	private final SonioxProperties properties;
 	private final ObjectMapper objectMapper;
+	private final HostDisconnectGraceService hostDisconnectGraceService;
 
 	@Override
 	public void afterConnectionEstablished(WebSocketSession session) {
@@ -88,6 +89,10 @@ public class TranscriptWebSocketHandler extends BinaryWebSocketHandler {
 
 		session.getAttributes().put(SESSION_ATTRIBUTE, sttSession);
 		registry.register(sttSession);
+		// 세션이 레지스트리에 성공적으로 등록된 뒤에만 유예 타이머를 취소한다. 그 전에
+		// nextSequenceIndex/SttSession 생성이 실패하면 타이머를 그대로 살려 둬서, 재연결이
+		// 끝내 실패해도 회의가 IN_PROGRESS 로 영원히 남지 않게 한다.
+		hostDisconnectGraceService.cancel(meetingId);
 		sttSession.start();
 		log.info("호스트 오디오 전사 세션을 시작했습니다. meetingId={} wsSessionId={}", meetingId, session.getId());
 	}
@@ -107,13 +112,19 @@ public class TranscriptWebSocketHandler extends BinaryWebSocketHandler {
 	public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
 		SttSession sttSession = sttSession(session);
 		if (sttSession != null) {
-			log.info("호스트 오디오 전사 세션이 종료됐습니다. meetingId={} status={}", sttSession.meetingId(), status);
+			Long meetingId = sttSession.meetingId();
+			log.info("호스트 오디오 전사 세션이 종료됐습니다. meetingId={} status={}", meetingId, status);
 			try {
 				// 회의 종료(/end)가 아닌 단순 연결 끊김이다. 남은 토큰은 살리되 오래 기다리지 않는다.
 				sttSession.close(true);
 			} finally {
 				// close() 가 예외를 던지더라도 레지스트리에 좀비 세션이 남지 않도록 반드시 제거한다.
 				registry.remove(sttSession);
+			}
+			// registry 에 같은 meetingId 로 등록된 세션이 없다는 건 진행자가 재연결로 교체한 게
+			// 아니라 진짜로 끊겼다는 뜻이다(재연결이면 startHostSession 이 이미 새 세션을 등록했다).
+			if (registry.find(meetingId).isEmpty()) {
+				hostDisconnectGraceService.scheduleForceEnd(meetingId);
 			}
 			return;
 		}

@@ -45,4 +45,16 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
 			  )
 			""")
 	List<Meeting> findRecentMeetingsByProjectIds(@Param("projectIds") List<Long> projectIds);
+
+	// 정상 /end 와 진행자 연결 끊김에 의한 강제 종료가 동시에 들어와도 한쪽만 반영되도록,
+	// 상태 확인과 전환을 하나의 원자적 UPDATE 로 묶는다. 갱신된 row 수가 0이면 이미 종료된 것이다.
+	@Modifying(flushAutomatically = true, clearAutomatically = true)
+	@Query("""
+			UPDATE Meeting meeting
+			SET meeting.status = com.synq.backend.domain.meeting.entity.MeetingStatus.SUMMARIZING,
+			    meeting.endedAt = CURRENT_TIMESTAMP
+			WHERE meeting.id = :meetingId
+			  AND meeting.status = com.synq.backend.domain.meeting.entity.MeetingStatus.IN_PROGRESS
+			""")
+	int endIfInProgress(@Param("meetingId") Long meetingId);
 }

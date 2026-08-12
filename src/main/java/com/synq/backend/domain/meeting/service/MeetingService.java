@@ -130,19 +130,33 @@ public class MeetingService {
 	// MeetingEndedEvent 를 발행하면, ai.summary 도메인이 이를 수신해 AI 정리를 비동기로 시작한다.
 	@Transactional
 	public Meeting end(Long meetingId, Long userId) {
-		Meeting meeting = meetingRepository.findById(meetingId)
-				.orElseThrow(() -> new GeneralException(MeetingErrorCode.MEETING_NOT_FOUND));
+		if (!meetingRepository.existsById(meetingId)) {
+			throw new GeneralException(MeetingErrorCode.MEETING_NOT_FOUND);
+		}
 		if (!isHost(meetingId, userId)) {
 			throw new GeneralException(MeetingErrorCode.NOT_HOST);
 		}
-		if (meeting.getStatus() != MeetingStatus.IN_PROGRESS) {
+		// 정상 /end 와 유예 타이머의 forceEndByDisconnect 가 동시에 들어와도 한쪽만 반영되도록
+		// 원자적 조건부 UPDATE 로 상태를 전환한다.
+		if (meetingRepository.endIfInProgress(meetingId) == 0) {
 			throw new GeneralException(MeetingErrorCode.MEETING_ALREADY_ENDED);
 		}
 
-		meeting.end();
+		Meeting meeting = meetingRepository.findById(meetingId)
+				.orElseThrow(() -> new GeneralException(MeetingErrorCode.MEETING_NOT_FOUND));
 		// 커밋 이후 리스너가 요약을 시작하도록, 상태 저장이 확정된 뒤에 이벤트가 처리된다.
 		eventPublisher.publishEvent(new MeetingEndedEvent(meeting.getId()));
 		return meeting;
+	}
+
+	// 진행자 WS 연결이 끊긴 채 유예시간이 지나도 재연결이 없으면 시스템이 대신 회의를 종료한다.
+	// 호출 주체가 시스템이라 호스트 인가 체크가 없고, 이미 종료된 회의면 조용히 넘어간다
+	// (유예 타이머가 정상 /end 호출과 경합해도 예외를 던지지 않도록).
+	@Transactional
+	public void forceEndByDisconnect(Long meetingId) {
+		if (meetingRepository.endIfInProgress(meetingId) > 0) {
+			eventPublisher.publishEvent(new MeetingEndedEvent(meetingId));
+		}
 	}
 
 	// 진행자(HOST)만 회의를 삭제할 수 있다. 진행 중인 회의는 삭제할 수 없고 먼저 종료해야 한다.

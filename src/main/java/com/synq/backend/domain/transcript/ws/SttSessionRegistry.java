@@ -5,6 +5,7 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.PingMessage;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -109,6 +110,32 @@ public class SttSessionRegistry {
 		}
 		subscribers.forEach((meetingId, meetingSubscribers) ->
 				meetingSubscribers.forEach(session -> pingQuietly(meetingId, session)));
+	}
+
+	/**
+	 * 회의 종료 시 남은 구독자 연결을 서버가 먼저 정리한다. 더 이상 내려보낼 전사가 없으므로
+	 * 연결을 열어둔 채 다음 ping/유휴 타임아웃을 기다릴 이유가 없다.
+	 */
+	public void closeSubscribers(Long meetingId) {
+		Set<WebSocketSession> meetingSubscribers = subscribers.remove(meetingId);
+		if (meetingSubscribers == null) {
+			return;
+		}
+		for (WebSocketSession session : meetingSubscribers) {
+			closeQuietly(meetingId, session);
+		}
+	}
+
+	private void closeQuietly(Long meetingId, WebSocketSession session) {
+		if (!session.isOpen()) {
+			return;
+		}
+		try {
+			session.close(CloseStatus.NORMAL);
+		} catch (IOException e) {
+			log.debug("구독자 WebSocket 종료 중 오류: meetingId={} wsSessionId={} reason={}",
+					meetingId, session.getId(), e.getMessage());
+		}
 	}
 
 	/** ping 실패는 곧 끊긴 연결이라는 뜻이고, 정리는 afterConnectionClosed 가 한다. 여기선 로그만 남긴다. */
