@@ -30,6 +30,7 @@ import com.synq.backend.domain.project.entity.ProjectMember;
 import com.synq.backend.domain.project.entity.ProjectMemberPerspective;
 import com.synq.backend.domain.project.entity.ProjectMemberRole;
 import com.synq.backend.domain.project.entity.ProjectJoinRequestStatus;
+import com.synq.backend.domain.project.entity.ProjectJoinSettingSource;
 import com.synq.backend.domain.project.entity.ProjectParticipationRequest;
 import com.synq.backend.domain.project.entity.ProjectParticipationRequestPerspective;
 import com.synq.backend.domain.project.repository.ProjectMemberRepository;
@@ -84,7 +85,16 @@ public class ProjectService {
 		validateUserProjectLimit(userId);
 
 		Project project = projectRepository.save(Project.of(userId, request.title(), request.description()));
-		projectMemberRepository.save(ProjectMember.of(project.getId(), userId, ProjectMemberRole.OWNER));
+		ProjectMember owner = projectMemberRepository.save(
+				ProjectMember.of(project.getId(), userId, ProjectMemberRole.OWNER));
+		roleProfileService.findDefaultRoleProfile(userId)
+				.ifPresent(profile -> saveProjectRolePerspective(
+						owner,
+						true,
+						profile.role(),
+						profile.detailRole(),
+						profile.perspectives()
+				));
 		return ProjectCreateResponse.from(project);
 	}
 
@@ -209,14 +219,9 @@ public class ProjectService {
 			perspectives = request.perspectives() == null ? List.of() : request.perspectives();
 		}
 
-		member.updateRolePerspective(useDefault, roleCategory, detailRole);
 		projectMemberPerspectiveRepository.deleteAllByProjectMemberId(member.getId());
 		projectMemberPerspectiveRepository.flush();
-		projectMemberPerspectiveRepository.saveAll(
-				perspectives.stream()
-						.map(perspective -> ProjectMemberPerspective.of(member.getId(), perspective))
-						.toList()
-		);
+		saveProjectRolePerspective(member, useDefault, roleCategory, detailRole, perspectives);
 		projectMemberRepository.flush();
 		return ProjectRolePerspectiveUpdateResponse.from(member, perspectives);
 	}
@@ -468,6 +473,17 @@ public class ProjectService {
 		request.approve();
 		ProjectMember member = projectMemberRepository.save(
 				ProjectMember.of(projectId, request.getUserId(), ProjectMemberRole.MEMBER));
+		List<Perspective> perspectives = participationRequestPerspectiveRepository
+				.findAllByJoinRequestIdOrderByIdAsc(request.getId()).stream()
+				.map(ProjectParticipationRequestPerspective::getPerspective)
+				.toList();
+		saveProjectRolePerspective(
+				member,
+				request.getSettingSource() == ProjectJoinSettingSource.DEFAULT,
+				request.getRole(),
+				request.getDetailRole(),
+				perspectives
+		);
 		return ProjectJoinRequestApproveResponse.from(request, member);
 	}
 
@@ -661,6 +677,21 @@ public class ProjectService {
 	private String buildInviteUrl(String inviteToken) {
 		String frontendBaseUrl = projectInvitationProperties.frontendBaseUrl().replaceAll("/+$", "");
 		return "%s/invite/%s".formatted(frontendBaseUrl, inviteToken);
+	}
+
+	private void saveProjectRolePerspective(
+			ProjectMember member,
+			boolean useDefault,
+			Role roleCategory,
+			String detailRole,
+			List<Perspective> perspectives
+	) {
+		member.updateRolePerspective(useDefault, roleCategory, detailRole);
+		projectMemberPerspectiveRepository.saveAll(
+				perspectives.stream()
+						.map(perspective -> ProjectMemberPerspective.of(member.getId(), perspective))
+						.toList()
+		);
 	}
 
 	private LocalDateTime latest(LocalDateTime first, LocalDateTime second) {
