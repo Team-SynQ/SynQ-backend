@@ -8,6 +8,9 @@ import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestApproveResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestListResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestRejectResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
@@ -172,6 +175,55 @@ public interface ProjectControllerDocs {
 			@PathVariable Long projectId,
 			@AuthenticationPrincipal(expression = "userId") Long userId,
 			@Valid @RequestBody ProjectJoinRequestCreateRequest request
+	);
+
+	@Operation(summary = "프로젝트 참여 요청 목록 조회", description = "프로젝트 소유자가 승인 대기 중인 참여 요청 목록을 조회한다.")
+	@SecurityRequirement(name = "bearerAuth")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "참여 요청 목록 조회 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "프로젝트 소유자 권한 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "프로젝트를 찾을 수 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "참여 요청 목록 조회 실패")
+	})
+	@GetMapping("/{projectId}/join-requests")
+	ResponseEntity<ApiResponse<ProjectJoinRequestListResponse>> findPendingJoinRequests(
+			@PathVariable Long projectId,
+			@AuthenticationPrincipal(expression = "userId") Long userId
+	);
+
+	@Operation(summary = "프로젝트 참여 요청 승인", description = "프로젝트 소유자가 승인 대기 중인 참여 요청을 승인한다.")
+	@SecurityRequirement(name = "bearerAuth")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "참여 요청 승인 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "프로젝트 소유자 권한 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "프로젝트 또는 참여 요청을 찾을 수 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "프로젝트 최대 인원 도달 또는 이미 처리된 요청"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "참여 요청 승인 실패")
+	})
+	@PatchMapping("/{projectId}/join-requests/{requestId}/approve")
+	ResponseEntity<ApiResponse<ProjectJoinRequestApproveResponse>> approveJoinRequest(
+			@PathVariable Long projectId,
+			@PathVariable Long requestId,
+			@AuthenticationPrincipal(expression = "userId") Long userId
+	);
+
+	@Operation(summary = "프로젝트 참여 요청 거절", description = "프로젝트 소유자가 승인 대기 중인 참여 요청을 거절한다.")
+	@SecurityRequirement(name = "bearerAuth")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "참여 요청 거절 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "프로젝트 소유자 권한 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "프로젝트 또는 참여 요청을 찾을 수 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "이미 처리된 요청"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "참여 요청 거절 실패")
+	})
+	@PatchMapping("/{projectId}/join-requests/{requestId}/reject")
+	ResponseEntity<ApiResponse<ProjectJoinRequestRejectResponse>> rejectJoinRequest(
+			@PathVariable Long projectId,
+			@PathVariable Long requestId,
+			@AuthenticationPrincipal(expression = "userId") Long userId
 	);
 
 	@Operation(summary = "프로젝트 초대 링크 생성", description = "프로젝트 소유자가 초대 링크를 생성하거나 유효한 기존 링크를 조회한다.")

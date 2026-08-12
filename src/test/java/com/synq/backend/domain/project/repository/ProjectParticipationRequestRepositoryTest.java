@@ -15,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -69,6 +71,29 @@ class ProjectParticipationRequestRepositoryTest extends PostgresTestContainer {
 
 		assertThatThrownBy(() -> participationRequestRepository.saveAndFlush(pending(project, requester)))
 				.isInstanceOf(DataIntegrityViolationException.class);
+	}
+
+	@Test
+	void 프로젝트의_PENDING_요청만_요청_시각과_ID_오름차순으로_조회한다() {
+		User owner = saveUser("repository-list-owner@synq.com");
+		User firstUser = saveUser("repository-list-first@synq.com");
+		User secondUser = saveUser("repository-list-second@synq.com");
+		User processedUser = saveUser("repository-list-processed@synq.com");
+		Project project = projectRepository.save(Project.of(owner.getUserId(), "SynQ", null));
+		ProjectParticipationRequest first = participationRequestRepository.save(pending(project, firstUser));
+		ProjectParticipationRequest second = participationRequestRepository.save(pending(project, secondUser));
+		ProjectParticipationRequest processed = participationRequestRepository.save(pending(project, processedUser));
+		processed.approve();
+		participationRequestRepository.flush();
+
+		List<ProjectParticipationRequest> requests = participationRequestRepository
+				.findAllByProjectIdAndStatusOrderByRequestedAtAscIdAsc(
+						project.getId(), ProjectJoinRequestStatus.PENDING);
+
+		assertThat(requests).extracting(ProjectParticipationRequest::getId)
+				.containsExactly(first.getId(), second.getId());
+		assertThat(participationRequestRepository.findByIdAndProjectId(first.getId(), project.getId()))
+				.contains(first);
 	}
 
 	private ProjectParticipationRequest pending(Project project, User requester) {

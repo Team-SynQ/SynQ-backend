@@ -25,4 +25,11 @@ public interface ProjectParticipationRequestRepository extends JpaRepository<Pro
 			Long projectId,
 			Long userId
 	);
+
+	List<ProjectParticipationRequest> findAllByProjectIdAndStatusOrderByRequestedAtAscIdAsc(
+			Long projectId,
+			ProjectJoinRequestStatus status
+	);
+
+	Optional<ProjectParticipationRequest> findByIdAndProjectId(Long requestId, Long projectId);
 }

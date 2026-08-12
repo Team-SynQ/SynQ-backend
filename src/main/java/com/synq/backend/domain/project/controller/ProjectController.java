@@ -8,6 +8,9 @@ import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestApproveResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestListResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestRejectResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
@@ -107,6 +110,40 @@ public class ProjectController implements ProjectControllerDocs {
 		ProjectJoinRequestCreateResponse response = projectService.createJoinRequest(projectId, userId, request);
 		return ResponseEntity.status(GeneralSuccessCode.CREATED.getStatus())
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.CREATED, response));
+	}
+
+	@Override
+	public ResponseEntity<ApiResponse<ProjectJoinRequestListResponse>> findPendingJoinRequests(
+			Long projectId,
+			Long userId
+	) {
+		ProjectJoinRequestListResponse response = projectService.findPendingJoinRequests(projectId, userId);
+		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
+	}
+
+	@Override
+	public ResponseEntity<ApiResponse<ProjectJoinRequestApproveResponse>> approveJoinRequest(
+			Long projectId,
+			Long requestId,
+			Long userId
+	) {
+		ProjectJoinRequestApproveResponse response = projectService.approveJoinRequest(
+				projectId, requestId, userId);
+		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
+	}
+
+	@Override
+	public ResponseEntity<ApiResponse<ProjectJoinRequestRejectResponse>> rejectJoinRequest(
+			Long projectId,
+			Long requestId,
+			Long userId
+	) {
+		ProjectJoinRequestRejectResponse response = projectService.rejectJoinRequest(
+				projectId, requestId, userId);
+		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
 	}
 
 	@Override
