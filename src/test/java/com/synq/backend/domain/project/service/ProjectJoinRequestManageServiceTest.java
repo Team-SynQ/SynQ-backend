@@ -5,26 +5,34 @@ import com.synq.backend.domain.project.dto.ProjectJoinRequestApproveResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestListResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestRejectResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestResponse;
+import com.synq.backend.domain.project.dto.ProjectRolePerspectiveResponse;
 import com.synq.backend.domain.project.entity.Project;
 import com.synq.backend.domain.project.entity.ProjectJoinRequestStatus;
 import com.synq.backend.domain.project.entity.ProjectJoinSettingSource;
 import com.synq.backend.domain.project.entity.ProjectMember;
+import com.synq.backend.domain.project.entity.ProjectMemberPerspective;
 import com.synq.backend.domain.project.entity.ProjectMemberRole;
 import com.synq.backend.domain.project.entity.ProjectParticipationRequest;
 import com.synq.backend.domain.project.entity.ProjectParticipationRequestPerspective;
 import com.synq.backend.domain.project.repository.ProjectMemberRepository;
+import com.synq.backend.domain.project.repository.ProjectMemberPerspectiveRepository;
 import com.synq.backend.domain.project.repository.ProjectParticipationRequestPerspectiveRepository;
 import com.synq.backend.domain.project.repository.ProjectParticipationRequestRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.user.entity.Perspective;
 import com.synq.backend.domain.user.entity.Role;
+import com.synq.backend.domain.user.entity.RoleProfile;
+import com.synq.backend.domain.user.entity.RoleProfilePerspective;
 import com.synq.backend.domain.user.entity.User;
+import com.synq.backend.domain.user.repository.RoleProfilePerspectiveRepository;
+import com.synq.backend.domain.user.repository.RoleProfileRepository;
 import com.synq.backend.domain.user.repository.UserRepository;
 import com.synq.backend.global.apipayload.code.BaseCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,6 +51,9 @@ class ProjectJoinRequestManageServiceTest extends PostgresTestContainer {
 	private ProjectMemberRepository projectMemberRepository;
 
 	@Autowired
+	private ProjectMemberPerspectiveRepository projectMemberPerspectiveRepository;
+
+	@Autowired
 	private ProjectParticipationRequestRepository participationRequestRepository;
 
 	@Autowired
@@ -50,6 +61,15 @@ class ProjectJoinRequestManageServiceTest extends PostgresTestContainer {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	@Autowired
+	private RoleProfileRepository roleProfileRepository;
+
+	@Autowired
+	private RoleProfilePerspectiveRepository roleProfilePerspectiveRepository;
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
 
 	@Test
 	void OWNER는_PENDING_참여_요청만_이름과_요청_시각으로_조회한다() {
@@ -78,13 +98,22 @@ class ProjectJoinRequestManageServiceTest extends PostgresTestContainer {
 	}
 
 	@Test
-	void OWNER가_PENDING_요청을_승인하면_MEMBER를_생성하고_역할_관점_요청값은_보존한다() {
+	void OWNER가_PENDING_요청을_승인하면_MEMBER와_요청_시점의_역할_관점을_복사한다() {
 		User owner = saveUser("소유자", "manage-approve-owner@synq.com");
 		User requester = saveUser("요청자", "manage-approve-requester@synq.com");
 		Project project = saveProjectWithOwner(owner);
-		ProjectParticipationRequest request = savePending(project, requester);
-		perspectiveRepository.save(ProjectParticipationRequestPerspective.of(
-				request.getId(), Perspective.TECH_RISK));
+		ProjectParticipationRequest request = participationRequestRepository.save(
+				ProjectParticipationRequest.pending(
+						project.getId(),
+						requester.getUserId(),
+						ProjectJoinSettingSource.PROJECT_CUSTOM,
+						Role.DEV_TECH,
+						"백엔드 개발자"
+				));
+		perspectiveRepository.saveAll(java.util.List.of(
+				ProjectParticipationRequestPerspective.of(request.getId(), Perspective.TECH_RISK),
+				ProjectParticipationRequestPerspective.of(request.getId(), Perspective.ACTION_ITEM)
+		));
 
 		ProjectJoinRequestApproveResponse response = projectService.approveJoinRequest(
 				project.getId(), request.getId(), owner.getUserId());
@@ -100,10 +129,74 @@ class ProjectJoinRequestManageServiceTest extends PostgresTestContainer {
 		assertThat(response.status()).isEqualTo("APPROVED");
 		assertThat(response.joinedAt()).isEqualTo(member.getJoinedAt());
 		assertThat(request.getRole()).isEqualTo(Role.DEV_TECH);
+		assertThat(member.isUseDefault()).isFalse();
+		assertThat(member.getRoleCategory()).isEqualTo(Role.DEV_TECH);
+		assertThat(member.getDetailRole()).isEqualTo("백엔드 개발자");
+		assertThat(projectMemberPerspectiveRepository.findAllByProjectMemberIdOrderByIdAsc(member.getId()))
+				.extracting(ProjectMemberPerspective::getPerspective)
+				.containsExactly(Perspective.TECH_RISK, Perspective.ACTION_ITEM);
 		assertThat(perspectiveRepository.findAllByJoinRequestIdOrderByIdAsc(request.getId()))
-				.singleElement()
 				.extracting(ProjectParticipationRequestPerspective::getPerspective)
-				.isEqualTo(Perspective.TECH_RISK);
+				.containsExactly(Perspective.TECH_RISK, Perspective.ACTION_ITEM);
+	}
+
+	@Test
+	void DEFAULT_요청_승인_후_원본이_변경되어도_프로젝트_역할_관점_조회값은_유지된다() {
+		User owner = saveUser("소유자", "manage-default-copy-owner@synq.com");
+		User requester = saveUser("요청자", "manage-default-copy-requester@synq.com");
+		Project project = saveProjectWithOwner(owner);
+		RoleProfile defaultProfile = roleProfileRepository.save(
+				RoleProfile.of(requester.getUserId(), Role.DEV_TECH, "백엔드 개발자", true));
+		roleProfilePerspectiveRepository.saveAll(java.util.List.of(
+				RoleProfilePerspective.of(defaultProfile.getId(), Perspective.TECH_RISK),
+				RoleProfilePerspective.of(defaultProfile.getId(), Perspective.ACTION_ITEM)
+		));
+		ProjectParticipationRequest request = participationRequestRepository.save(
+				ProjectParticipationRequest.pending(
+						project.getId(),
+						requester.getUserId(),
+						ProjectJoinSettingSource.DEFAULT,
+						Role.DEV_TECH,
+						"백엔드 개발자"
+				));
+		perspectiveRepository.saveAll(java.util.List.of(
+				ProjectParticipationRequestPerspective.of(request.getId(), Perspective.TECH_RISK),
+				ProjectParticipationRequestPerspective.of(request.getId(), Perspective.ACTION_ITEM)
+		));
+
+		projectService.approveJoinRequest(project.getId(), request.getId(), owner.getUserId());
+
+		defaultProfile.update(Role.MARKETING_BRANDING, "마케터");
+		roleProfilePerspectiveRepository.deleteAllByRoleProfileId(defaultProfile.getId());
+		roleProfilePerspectiveRepository.save(
+				RoleProfilePerspective.of(defaultProfile.getId(), Perspective.CUSTOMER_REACTION));
+		roleProfileRepository.flush();
+		roleProfilePerspectiveRepository.flush();
+		participationRequestRepository.flush();
+		jdbcTemplate.update(
+				"UPDATE project_join_request SET role = ?, detail_role = ? WHERE id = ?",
+				"MARKETING_BRANDING",
+				"변경된 요청",
+				request.getId()
+		);
+		jdbcTemplate.update(
+				"DELETE FROM project_join_request_perspectives WHERE join_request_id = ?",
+				request.getId()
+		);
+		jdbcTemplate.update(
+				"INSERT INTO project_join_request_perspectives (join_request_id, perspective) VALUES (?, ?)",
+				request.getId(),
+				"CUSTOMER_REACTION"
+		);
+
+		ProjectRolePerspectiveResponse rolePerspective = projectService.findRolePerspective(
+				project.getId(), requester.getUserId());
+
+		assertThat(rolePerspective.useDefault()).isTrue();
+		assertThat(rolePerspective.roleCategory()).isEqualTo(Role.DEV_TECH);
+		assertThat(rolePerspective.detailRole()).isEqualTo("백엔드 개발자");
+		assertThat(rolePerspective.perspectives())
+				.containsExactly(Perspective.TECH_RISK, Perspective.ACTION_ITEM);
 	}
 
 	@Test
