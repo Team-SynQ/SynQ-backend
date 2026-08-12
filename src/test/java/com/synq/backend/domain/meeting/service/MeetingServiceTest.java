@@ -7,6 +7,7 @@ import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.MeetingStatus;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
+import com.synq.backend.domain.meeting.event.MeetingEndedEvent;
 import com.synq.backend.domain.meeting.port.MeetingSummaryTopicsReader;
 import com.synq.backend.domain.meeting.port.ProjectMembershipChecker;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
@@ -368,5 +369,37 @@ class MeetingServiceTest {
 						exception -> assertThat(exception.getCode())
 								.isEqualTo(MeetingErrorCode.NOT_MEETING_PARTICIPANT));
 		verifyNoInteractions(meetingParticipantRepository);
+	}
+
+	@Test
+	void 진행중인_회의는_강제종료시_SUMMARIZING으로_전환되고_이벤트가_발행된다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+
+		meetingService.forceEndByDisconnect(5L);
+
+		assertThat(meeting.getStatus()).isEqualTo(MeetingStatus.SUMMARIZING);
+		verify(eventPublisher).publishEvent(any(MeetingEndedEvent.class));
+	}
+
+	@Test
+	void 이미_종료된_회의는_강제종료를_호출해도_조용히_넘어간다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		meeting.end();
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+
+		meetingService.forceEndByDisconnect(5L);
+
+		assertThat(meeting.getStatus()).isEqualTo(MeetingStatus.SUMMARIZING);
+		verifyNoInteractions(eventPublisher);
+	}
+
+	@Test
+	void 존재하지_않는_회의를_강제종료해도_예외없이_넘어간다() {
+		when(meetingRepository.findById(5L)).thenReturn(Optional.empty());
+
+		meetingService.forceEndByDisconnect(5L);
+
+		verifyNoInteractions(eventPublisher);
 	}
 }

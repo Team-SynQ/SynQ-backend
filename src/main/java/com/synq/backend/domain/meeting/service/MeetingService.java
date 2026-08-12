@@ -145,6 +145,20 @@ public class MeetingService {
 		return meeting;
 	}
 
+	// 진행자 WS 연결이 끊긴 채 유예시간이 지나도 재연결이 없으면 시스템이 대신 회의를 종료한다.
+	// 호출 주체가 시스템이라 호스트 인가 체크가 없고, 이미 종료된 회의면 조용히 넘어간다
+	// (유예 타이머가 정상 /end 호출과 경합해도 예외를 던지지 않도록).
+	@Transactional
+	public void forceEndByDisconnect(Long meetingId) {
+		meetingRepository.findById(meetingId).ifPresent(meeting -> {
+			if (meeting.getStatus() != MeetingStatus.IN_PROGRESS) {
+				return;
+			}
+			meeting.end();
+			eventPublisher.publishEvent(new MeetingEndedEvent(meeting.getId()));
+		});
+	}
+
 	// 진행자(HOST)만 회의를 삭제할 수 있다. 진행 중인 회의는 삭제할 수 없고 먼저 종료해야 한다.
 	// 자식 데이터(참여자/전사/요약 등)는 meeting FK 의 ON DELETE CASCADE 가 처리한다.
 	@Transactional

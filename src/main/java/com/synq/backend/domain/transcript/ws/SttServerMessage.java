@@ -24,6 +24,7 @@ public record SttServerMessage(
 	private static final String TRANSCRIPT = "TRANSCRIPT";
 	private static final String CONNECTION_STATUS = "CONNECTION_STATUS";
 	private static final String TRANSCRIPT_INTERRUPTED = "TRANSCRIPT_INTERRUPTED";
+	private static final String MEETING_ENDED = "MEETING_ENDED";
 
 	public static SttServerMessage transcript(Long utteranceId, String text, int startTime, int sequence) {
 		return new SttServerMessage(TRANSCRIPT, utteranceId, text, startTime, sequence, true, null, null);
@@ -39,5 +40,10 @@ public record SttServerMessage(
 
 	public static SttServerMessage interrupted(String reason) {
 		return new SttServerMessage(TRANSCRIPT_INTERRUPTED, null, null, null, null, null, null, reason);
+	}
+
+	/** 회의가 종료(정상 /end 또는 진행자 연결 끊김에 의한 강제 종료)됐음을 참여자에게 알린다. */
+	public static SttServerMessage meetingEnded() {
+		return new SttServerMessage(MEETING_ENDED, null, null, null, null, null, null, null);
 	}
 }

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -86,5 +87,44 @@ class SttSessionRegistryTest {
 		registry.broadcastToSubscribers(1L, SttServerMessage.transcript(10L, "안녕", 0, 0));
 
 		verify(subscriber).sendMessage(any(TextMessage.class));
+	}
+
+	@Test
+	void 회의_종료시_열려있는_구독자_연결을_서버가_닫는다() throws IOException {
+		WebSocketSession subscriber = mock(WebSocketSession.class);
+		when(subscriber.isOpen()).thenReturn(true);
+		registry.registerSubscriber(1L, subscriber);
+
+		registry.closeSubscribers(1L);
+
+		verify(subscriber).close(CloseStatus.NORMAL);
+	}
+
+	@Test
+	void 회의_종료시_이미_닫힌_구독자_연결은_다시_닫지_않는다() throws IOException {
+		WebSocketSession subscriber = mock(WebSocketSession.class);
+		when(subscriber.isOpen()).thenReturn(false);
+		registry.registerSubscriber(1L, subscriber);
+
+		registry.closeSubscribers(1L);
+
+		verify(subscriber, never()).close(any(CloseStatus.class));
+	}
+
+	@Test
+	void 구독자가_없는_회의를_종료해도_예외없이_지나간다() {
+		registry.closeSubscribers(999L);
+	}
+
+	@Test
+	void 구독자_정리_후에는_같은_회의로_브로드캐스트해도_아무도_받지_않는다() throws IOException {
+		WebSocketSession subscriber = mock(WebSocketSession.class);
+		when(subscriber.isOpen()).thenReturn(true);
+		registry.registerSubscriber(1L, subscriber);
+
+		registry.closeSubscribers(1L);
+		registry.broadcastToSubscribers(1L, SttServerMessage.transcript(10L, "안녕", 0, 0));
+
+		verify(subscriber, never()).sendMessage(any(TextMessage.class));
 	}
 }
