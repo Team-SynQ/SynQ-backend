@@ -15,6 +15,9 @@ import com.synq.backend.domain.project.dto.ProjectJoinRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
 import com.synq.backend.domain.project.dto.ProjectMemberListResponse;
+import com.synq.backend.domain.project.dto.ProjectRolePerspectiveResponse;
+import com.synq.backend.domain.project.dto.ProjectRolePerspectiveUpdateRequest;
+import com.synq.backend.domain.project.dto.ProjectRolePerspectiveUpdateResponse;
 import com.synq.backend.domain.project.dto.ProjectUpdateRequest;
 import com.synq.backend.domain.project.dto.ProjectUpdateResponse;
 import com.synq.backend.global.apipayload.ApiResponse;
@@ -29,6 +32,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -95,6 +99,38 @@ public interface ProjectControllerDocs {
 	ResponseEntity<ApiResponse<ProjectMemberListResponse>> findMembers(
 			@PathVariable Long projectId,
 			@AuthenticationPrincipal(expression = "userId") Long userId
+	);
+
+	@Operation(summary = "프로젝트별 역할·관점 조회", description = "프로젝트 멤버가 자신에게 적용되는 역할·관점을 조회한다.")
+	@SecurityRequirement(name = "bearerAuth")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "프로젝트별 역할·관점 조회 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "프로젝트 접근 권한 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "프로젝트 또는 사용자 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "프로젝트별 역할·관점 조회 실패")
+	})
+	@GetMapping("/{projectId}/role-perspective")
+	ResponseEntity<ApiResponse<ProjectRolePerspectiveResponse>> findRolePerspective(
+			@PathVariable Long projectId,
+			@AuthenticationPrincipal(expression = "userId") Long userId
+	);
+
+	@Operation(summary = "프로젝트별 역할·관점 설정", description = "프로젝트 멤버가 해당 프로젝트에 적용할 자신의 역할·관점을 설정한다.")
+	@SecurityRequirement(name = "bearerAuth")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "프로젝트별 역할·관점 설정 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "역할·관점 입력값 오류"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "프로젝트 접근 권한 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "프로젝트 또는 사용자 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "프로젝트별 역할·관점 설정 실패")
+	})
+	@PutMapping("/{projectId}/role-perspective")
+	ResponseEntity<ApiResponse<ProjectRolePerspectiveUpdateResponse>> updateRolePerspective(
+			@PathVariable Long projectId,
+			@AuthenticationPrincipal(expression = "userId") Long userId,
+			@Valid @RequestBody ProjectRolePerspectiveUpdateRequest request
 	);
 
 	@Operation(summary = "프로젝트 수정", description = "프로젝트 소유자가 프로젝트명과 설명을 수정한다.")

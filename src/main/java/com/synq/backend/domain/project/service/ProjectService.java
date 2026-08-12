@@ -20,21 +20,29 @@ import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
 import com.synq.backend.domain.project.dto.ProjectMemberListResponse;
 import com.synq.backend.domain.project.dto.ProjectMemberResponse;
+import com.synq.backend.domain.project.dto.ProjectRolePerspectiveResponse;
+import com.synq.backend.domain.project.dto.ProjectRolePerspectiveUpdateRequest;
+import com.synq.backend.domain.project.dto.ProjectRolePerspectiveUpdateResponse;
 import com.synq.backend.domain.project.dto.ProjectUpdateRequest;
 import com.synq.backend.domain.project.dto.ProjectUpdateResponse;
 import com.synq.backend.domain.project.entity.Project;
 import com.synq.backend.domain.project.entity.ProjectMember;
+import com.synq.backend.domain.project.entity.ProjectMemberPerspective;
 import com.synq.backend.domain.project.entity.ProjectMemberRole;
 import com.synq.backend.domain.project.entity.ProjectJoinRequestStatus;
 import com.synq.backend.domain.project.entity.ProjectParticipationRequest;
 import com.synq.backend.domain.project.entity.ProjectParticipationRequestPerspective;
 import com.synq.backend.domain.project.repository.ProjectMemberRepository;
+import com.synq.backend.domain.project.repository.ProjectMemberPerspectiveRepository;
 import com.synq.backend.domain.project.repository.ProjectParticipationRequestPerspectiveRepository;
 import com.synq.backend.domain.project.repository.ProjectParticipationRequestRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
+import com.synq.backend.domain.user.entity.Perspective;
 import com.synq.backend.domain.user.entity.Role;
 import com.synq.backend.domain.user.entity.User;
+import com.synq.backend.domain.user.dto.RoleProfileResponse;
 import com.synq.backend.domain.user.repository.UserRepository;
+import com.synq.backend.domain.user.service.RoleProfileService;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
@@ -62,10 +70,12 @@ public class ProjectService {
 
 	private final ProjectRepository projectRepository;
 	private final ProjectMemberRepository projectMemberRepository;
+	private final ProjectMemberPerspectiveRepository projectMemberPerspectiveRepository;
 	private final ProjectParticipationRequestRepository participationRequestRepository;
 	private final ProjectParticipationRequestPerspectiveRepository participationRequestPerspectiveRepository;
 	private final MeetingRepository meetingRepository;
 	private final UserRepository userRepository;
+	private final RoleProfileService roleProfileService;
 	private final ProjectInvitationProperties projectInvitationProperties;
 
 	@Transactional
@@ -134,6 +144,81 @@ public class ProjectService {
 				Math.toIntExact(MAX_PROJECT_MEMBERS),
 				memberResponses
 		);
+	}
+
+	@Transactional(readOnly = true)
+	public ProjectRolePerspectiveResponse findRolePerspective(Long projectId, Long userId) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		validateUser(userId);
+		findActiveProjectById(projectId);
+
+		ProjectMember member = findProjectMember(projectId, userId);
+		if (member.isUseDefault() && member.getRoleCategory() == null) {
+			return roleProfileService.findDefaultRoleProfile(userId)
+					.map(profile -> ProjectRolePerspectiveResponse.from(
+							true,
+							profile.role(),
+							profile.detailRole(),
+							profile.perspectives()
+					))
+					.orElseGet(() -> ProjectRolePerspectiveResponse.from(
+							true,
+							null,
+							null,
+							List.of()
+					));
+		}
+
+		return ProjectRolePerspectiveResponse.from(
+				member.isUseDefault(),
+				member.getRoleCategory(),
+				member.getDetailRole(),
+				findProjectMemberPerspectives(member.getId())
+		);
+	}
+
+	@Transactional
+	public ProjectRolePerspectiveUpdateResponse updateRolePerspective(
+			Long projectId,
+			Long userId,
+			ProjectRolePerspectiveUpdateRequest request
+	) {
+		if (userId == null) {
+			throw new GeneralException(GeneralErrorCode.UNAUTHORIZED);
+		}
+		validateUser(userId);
+		findActiveProjectById(projectId);
+
+		ProjectMember member = findProjectMember(projectId, userId);
+		boolean useDefault = Boolean.TRUE.equals(request.useDefault());
+		Role roleCategory;
+		String detailRole;
+		List<Perspective> perspectives;
+		if (useDefault) {
+			RoleProfileResponse defaultProfile = roleProfileService.findDefaultRoleProfile(userId)
+					.orElse(null);
+			roleCategory = defaultProfile == null ? null : defaultProfile.role();
+			detailRole = defaultProfile == null ? null : defaultProfile.detailRole();
+			perspectives = defaultProfile == null ? List.of() : defaultProfile.perspectives();
+		} else {
+			validateProjectRolePerspective(request);
+			roleCategory = request.roleCategory();
+			detailRole = request.detailRole();
+			perspectives = request.perspectives() == null ? List.of() : request.perspectives();
+		}
+
+		member.updateRolePerspective(useDefault, roleCategory, detailRole);
+		projectMemberPerspectiveRepository.deleteAllByProjectMemberId(member.getId());
+		projectMemberPerspectiveRepository.flush();
+		projectMemberPerspectiveRepository.saveAll(
+				perspectives.stream()
+						.map(perspective -> ProjectMemberPerspective.of(member.getId(), perspective))
+						.toList()
+		);
+		projectMemberRepository.flush();
+		return ProjectRolePerspectiveUpdateResponse.from(member, perspectives);
 	}
 
 	@Transactional
@@ -530,6 +615,31 @@ public class ProjectService {
 				|| (request.roleCategory() == Role.ETC && !StringUtils.hasText(request.detailRole()))) {
 			throw new GeneralException(ProjectErrorCode.INVALID_JOIN_REQUEST_ROLE_SETTING);
 		}
+	}
+
+	private void validateProjectRolePerspective(ProjectRolePerspectiveUpdateRequest request) {
+		if (request.useDefault() == null
+				|| request.roleCategory() == null
+				|| (request.detailRole() != null && request.detailRole().length() > 30)
+				|| (request.roleCategory() == Role.ETC && !StringUtils.hasText(request.detailRole()))
+				|| (request.perspectives() != null && request.perspectives().size() > 3)
+				|| (request.perspectives() != null
+				&& new HashSet<>(request.perspectives()).size() != request.perspectives().size())
+				|| (request.perspectives() != null && request.perspectives().stream().anyMatch(Objects::isNull))) {
+			throw new GeneralException(ProjectErrorCode.INVALID_PROJECT_ROLE_PERSPECTIVE);
+		}
+	}
+
+	private ProjectMember findProjectMember(Long projectId, Long userId) {
+		return projectMemberRepository.findByProjectIdAndUserId(projectId, userId)
+				.orElseThrow(() -> new GeneralException(ProjectErrorCode.NOT_PROJECT_MEMBER));
+	}
+
+	private List<Perspective> findProjectMemberPerspectives(Long projectMemberId) {
+		return projectMemberPerspectiveRepository.findAllByProjectMemberIdOrderByIdAsc(projectMemberId)
+				.stream()
+				.map(ProjectMemberPerspective::getPerspective)
+				.toList();
 	}
 
 	private Project findActiveProjectById(Long projectId) {
