@@ -85,6 +85,8 @@ services:
       - SPRING_DATA_REDIS_PASSWORD=${PROD_REDIS_PASSWORD}
       # JWT
       - JWT_SECRET=${PROD_JWT_SECRET}
+      # Project invitation
+      - FRONTEND_BASE_URL=${FRONTEND_BASE_URL}
       # S3
       - S3_BUCKET=${S3_BUCKET}
       - AWS_REGION=${AWS_REGION}
@@ -159,6 +161,8 @@ services:
       - SPRING_DATA_REDIS_PASSWORD=${PROD_REDIS_PASSWORD}
       # JWT
       - JWT_SECRET=${PROD_JWT_SECRET}
+      # Project invitation
+      - FRONTEND_BASE_URL=${FRONTEND_BASE_URL}
       # S3
       - S3_BUCKET=${S3_BUCKET}
       - AWS_REGION=${AWS_REGION}

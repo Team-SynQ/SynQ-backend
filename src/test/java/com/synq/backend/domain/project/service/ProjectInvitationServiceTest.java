@@ -44,7 +44,7 @@ class ProjectInvitationServiceTest extends PostgresTestContainer {
 		assertThat(savedProject.getInviteTokenExpiresAt())
 				.isBetween(before.plusDays(7), LocalDateTime.now().plusDays(7));
 		assertThat(response.inviteUrl())
-				.isEqualTo("https://synq.app/invite/%s".formatted(savedProject.getInviteToken()));
+				.isEqualTo("https://synqai.co.kr/invite/%s".formatted(savedProject.getInviteToken()));
 		assertThat(response.expiresAt()).isEqualTo(savedProject.getInviteTokenExpiresAt());
 	}
 
