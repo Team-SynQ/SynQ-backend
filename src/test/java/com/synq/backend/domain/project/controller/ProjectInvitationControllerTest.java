@@ -37,7 +37,7 @@ class ProjectInvitationControllerTest extends ProjectControllerTestSupport {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.isSuccess").value(true))
 				.andExpect(jsonPath("$.result.inviteUrl").value(
-						org.hamcrest.Matchers.startsWith("https://synq.app/invite/")))
+						org.hamcrest.Matchers.startsWith("https://synqai.co.kr/invite/")))
 				.andExpect(jsonPath("$.result.expiresAt").isNotEmpty());
 	}
 

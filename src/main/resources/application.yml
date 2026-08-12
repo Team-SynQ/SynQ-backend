@@ -57,7 +57,7 @@ jwt:
 
 project:
   invitation:
-    frontend-base-url: ${FRONTEND_BASE_URL:https://synq.app}
+    frontend-base-url: ${FRONTEND_BASE_URL:https://synqai.co.kr}
     expiration-days: 7
 
 storage:
