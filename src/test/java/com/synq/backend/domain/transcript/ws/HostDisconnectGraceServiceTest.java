@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.TaskScheduler;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -63,5 +65,25 @@ class HostDisconnectGraceServiceTest {
 
 		verify(firstFuture).cancel(false);
 		verify(secondFuture, never()).cancel(false);
+	}
+
+	@Test
+	void 취소를_뚫고_실행된_오래된_콜백은_최신_타이머가_아니면_강제종료하지_않는다() {
+		List<Runnable> capturedTasks = new ArrayList<>();
+		doAnswer(invocation -> {
+			capturedTasks.add(invocation.getArgument(0));
+			return mock(ScheduledFuture.class);
+		}).when(taskScheduler).schedule(any(Runnable.class), any(Instant.class));
+
+		service.scheduleForceEnd(5L);
+		service.scheduleForceEnd(5L); // 재연결 유예 중 재스케줄(교체)된 상황을 흉내낸다.
+
+		// cancel(false) 는 이미 실행 중인 콜백을 못 멈추므로, 오래된 콜백이 뒤늦게 실행될 수 있다.
+		capturedTasks.get(0).run();
+		verify(meetingService, never()).forceEndByDisconnect(5L);
+
+		// 최신 타이머의 콜백은 정상적으로 강제 종료를 수행한다.
+		capturedTasks.get(1).run();
+		verify(meetingService).forceEndByDisconnect(5L);
 	}
 }

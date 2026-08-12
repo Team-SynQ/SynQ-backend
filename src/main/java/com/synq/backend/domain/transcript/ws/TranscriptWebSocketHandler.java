@@ -74,8 +74,6 @@ public class TranscriptWebSocketHandler extends BinaryWebSocketHandler {
 		// 이전 세션(재연결 전 연결)을 먼저 동기적으로 flush+정리한 뒤에 sequence 를 조회해야
 		// (meeting_id, sequence_index) 유니크 인덱스 충돌 없이 순번을 이어받을 수 있다.
 		registry.closeExisting(meetingId);
-		// 진행자가 유예시간 안에 재연결한 것이므로, 걸려있던 강제종료 타이머가 있으면 취소한다.
-		hostDisconnectGraceService.cancel(meetingId);
 
 		SttSession sttSession = new SttSession(
 				meetingId,
@@ -91,6 +89,10 @@ public class TranscriptWebSocketHandler extends BinaryWebSocketHandler {
 
 		session.getAttributes().put(SESSION_ATTRIBUTE, sttSession);
 		registry.register(sttSession);
+		// 세션이 레지스트리에 성공적으로 등록된 뒤에만 유예 타이머를 취소한다. 그 전에
+		// nextSequenceIndex/SttSession 생성이 실패하면 타이머를 그대로 살려 둬서, 재연결이
+		// 끝내 실패해도 회의가 IN_PROGRESS 로 영원히 남지 않게 한다.
+		hostDisconnectGraceService.cancel(meetingId);
 		sttSession.start();
 		log.info("호스트 오디오 전사 세션을 시작했습니다. meetingId={} wsSessionId={}", meetingId, session.getId());
 	}

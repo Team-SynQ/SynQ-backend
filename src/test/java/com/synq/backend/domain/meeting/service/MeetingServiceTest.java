@@ -372,31 +372,27 @@ class MeetingServiceTest {
 	}
 
 	@Test
-	void 진행중인_회의는_강제종료시_SUMMARIZING으로_전환되고_이벤트가_발행된다() {
-		Meeting meeting = Meeting.of(1L, "회의");
-		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+	void 진행중인_회의는_강제종료시_원자적_UPDATE로_전환되고_이벤트가_발행된다() {
+		when(meetingRepository.endIfInProgress(5L)).thenReturn(1);
 
 		meetingService.forceEndByDisconnect(5L);
 
-		assertThat(meeting.getStatus()).isEqualTo(MeetingStatus.SUMMARIZING);
-		verify(eventPublisher).publishEvent(any(MeetingEndedEvent.class));
+		verify(eventPublisher).publishEvent(new MeetingEndedEvent(5L));
 	}
 
 	@Test
 	void 이미_종료된_회의는_강제종료를_호출해도_조용히_넘어간다() {
-		Meeting meeting = Meeting.of(1L, "회의");
-		meeting.end();
-		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		// 원자적 UPDATE 의 WHERE 절(status = IN_PROGRESS)에 걸리지 않아 갱신 row 수가 0이다.
+		when(meetingRepository.endIfInProgress(5L)).thenReturn(0);
 
 		meetingService.forceEndByDisconnect(5L);
 
-		assertThat(meeting.getStatus()).isEqualTo(MeetingStatus.SUMMARIZING);
 		verifyNoInteractions(eventPublisher);
 	}
 
 	@Test
 	void 존재하지_않는_회의를_강제종료해도_예외없이_넘어간다() {
-		when(meetingRepository.findById(5L)).thenReturn(Optional.empty());
+		when(meetingRepository.endIfInProgress(5L)).thenReturn(0);
 
 		meetingService.forceEndByDisconnect(5L);
 
