@@ -97,4 +97,18 @@ public class AsyncConfig {
 		executor.initialize();
 		return executor;
 	}
+
+	/**
+	 * 녹음 세그먼트 S3 업로드 전용 풀. 회의 수만큼만 동시에 발생하므로 크지 않아도 된다.
+	 */
+	@Bean(name = "recordingExecutor")
+	public Executor recordingExecutor() {
+		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+		executor.setCorePoolSize(2);
+		executor.setMaxPoolSize(4);
+		executor.setQueueCapacity(50);
+		executor.setThreadNamePrefix("recording-");
+		executor.initialize();
+		return executor;
+	}
 }

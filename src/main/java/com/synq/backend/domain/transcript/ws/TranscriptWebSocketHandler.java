@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
+import com.synq.backend.domain.transcript.application.RecordingUploadService;
 import com.synq.backend.domain.transcript.config.SonioxProperties;
 import com.synq.backend.domain.transcript.service.TranscriptSegmentService;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class TranscriptWebSocketHandler extends BinaryWebSocketHandler {
 	private final SonioxProperties properties;
 	private final ObjectMapper objectMapper;
 	private final HostDisconnectGraceService hostDisconnectGraceService;
+	private final RecordingUploadService recordingUploadService;
 
 	@Override
 	public void afterConnectionEstablished(WebSocketSession session) {
@@ -84,7 +86,8 @@ public class TranscriptWebSocketHandler extends BinaryWebSocketHandler {
 				properties,
 				objectMapper,
 				sonioxClientFactory,
-				registry
+				registry,
+				recordingUploadService
 		);
 
 		session.getAttributes().put(SESSION_ATTRIBUTE, sttSession);
