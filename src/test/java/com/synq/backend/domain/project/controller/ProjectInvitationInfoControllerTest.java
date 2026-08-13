@@ -6,6 +6,7 @@ import com.synq.backend.domain.project.entity.ProjectMemberRole;
 import com.synq.backend.domain.project.repository.ProjectMemberRepository;
 import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.user.entity.User;
+import com.synq.backend.domain.user.entity.Role;
 import com.synq.backend.domain.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,11 +39,13 @@ class ProjectInvitationInfoControllerTest extends ProjectControllerTestSupport {
 
 	@Test
 	void 초대_정보를_조회하면_명세의_응답과_200을_반환한다() throws Exception {
-		User owner = saveUser("controller-info-owner@synq.com");
+		User owner = saveUser("박서은", "controller-info-owner@synq.com");
+		owner.updateProfileImageKey("profiles/owner.png");
 		User member = saveUser("controller-info-member@synq.com");
 		String inviteToken = UUID.randomUUID().toString();
 		Project project = saveProject(owner, inviteToken, LocalDateTime.now().plusDays(7));
-		saveMember(project, owner, ProjectMemberRole.OWNER);
+		ProjectMember ownerMember = saveMember(project, owner, ProjectMemberRole.OWNER);
+		ownerMember.updateRolePerspective(true, Role.PLANNING_OPERATION, "기획자");
 		saveMember(project, member, ProjectMemberRole.MEMBER);
 
 		mockMvc.perform(get("/projects/invitations/{inviteToken}", inviteToken)
@@ -54,7 +57,12 @@ class ProjectInvitationInfoControllerTest extends ProjectControllerTestSupport {
 				.andExpect(jsonPath("$.result.currentMemberCount").value(2))
 				.andExpect(jsonPath("$.result.maxMemberCount").value(10))
 				.andExpect(jsonPath("$.result.alreadyJoined").value(true))
-				.andExpect(jsonPath("$.result.expiresAt").isNotEmpty());
+				.andExpect(jsonPath("$.result.expiresAt").isNotEmpty())
+				.andExpect(jsonPath("$.result.owner.userId").value(owner.getUserId()))
+				.andExpect(jsonPath("$.result.owner.name").value("박서은"))
+				.andExpect(jsonPath("$.result.owner.profileImageUrl")
+						.value("http://localhost-cloudfront-not-configured/profiles/owner.png"))
+				.andExpect(jsonPath("$.result.owner.roleCategory").value("PLANNING_OPERATION"));
 	}
 
 	@Test
@@ -93,7 +101,12 @@ class ProjectInvitationInfoControllerTest extends ProjectControllerTestSupport {
 		mockMvc.perform(get("/v3/api-docs"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.paths['/projects/invitations/{inviteToken}'].get").exists())
-				.andExpect(jsonPath("$.paths['/projects/invitations/{inviteToken}'].get.security").isEmpty());
+				.andExpect(jsonPath("$.paths['/projects/invitations/{inviteToken}'].get.security").isEmpty())
+				.andExpect(jsonPath("$.components.schemas.ProjectInvitationInfoResponse.properties.owner").exists())
+				.andExpect(jsonPath("$.components.schemas.ProjectInvitationOwnerResponse.properties.userId").exists())
+				.andExpect(jsonPath("$.components.schemas.ProjectInvitationOwnerResponse.properties.name").exists())
+				.andExpect(jsonPath("$.components.schemas.ProjectInvitationOwnerResponse.properties.profileImageUrl").exists())
+				.andExpect(jsonPath("$.components.schemas.ProjectInvitationOwnerResponse.properties.roleCategory").exists());
 	}
 
 	private Project saveProject(User owner, String inviteToken, LocalDateTime expiresAt) {
@@ -102,11 +115,15 @@ class ProjectInvitationInfoControllerTest extends ProjectControllerTestSupport {
 		return projectRepository.save(project);
 	}
 
-	private void saveMember(Project project, User user, ProjectMemberRole role) {
-		projectMemberRepository.save(ProjectMember.of(project.getId(), user.getUserId(), role));
+	private ProjectMember saveMember(Project project, User user, ProjectMemberRole role) {
+		return projectMemberRepository.save(ProjectMember.of(project.getId(), user.getUserId(), role));
 	}
 
 	private User saveUser(String email) {
-		return userRepository.save(User.ofLocal("테스트", email, "password-hash"));
+		return saveUser("테스트", email);
+	}
+
+	private User saveUser(String name, String email) {
+		return userRepository.save(User.ofLocal(name, email, "password-hash"));
 	}
 }

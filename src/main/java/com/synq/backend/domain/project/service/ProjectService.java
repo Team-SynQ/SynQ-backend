@@ -9,6 +9,7 @@ import com.synq.backend.domain.project.dto.ProjectCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectDetailResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationInfoResponse;
+import com.synq.backend.domain.project.dto.ProjectInvitationOwnerResponse;
 import com.synq.backend.domain.project.dto.ProjectInvitationResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateResponse;
@@ -44,6 +45,7 @@ import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.dto.RoleProfileResponse;
 import com.synq.backend.domain.user.repository.UserRepository;
 import com.synq.backend.domain.user.service.RoleProfileService;
+import com.synq.backend.domain.user.service.ProfileImageService;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
@@ -77,6 +79,7 @@ public class ProjectService {
 	private final MeetingRepository meetingRepository;
 	private final UserRepository userRepository;
 	private final RoleProfileService roleProfileService;
+	private final ProfileImageService profileImageService;
 	private final ProjectInvitationProperties projectInvitationProperties;
 
 	@Transactional
@@ -539,12 +542,30 @@ public class ProjectService {
 		int currentMemberCount = Math.toIntExact(projectMemberRepository.countByProjectId(project.getId()));
 		boolean alreadyJoined = userId != null
 				&& projectMemberRepository.findByProjectIdAndUserId(project.getId(), userId).isPresent();
+		ProjectMember ownerMember = projectMemberRepository
+				.findByProjectIdAndRole(project.getId(), ProjectMemberRole.OWNER)
+				.orElseThrow(() -> new GeneralException(ProjectErrorCode.PROJECT_MEMBER_NOT_FOUND));
+		User owner = userRepository.findById(ownerMember.getUserId())
+				.orElseThrow(() -> new GeneralException(ProjectErrorCode.USER_NOT_FOUND));
+		Role ownerRoleCategory = ownerMember.getRoleCategory();
+		if (ownerMember.isUseDefault() && ownerRoleCategory == null) {
+			ownerRoleCategory = roleProfileService.findDefaultRoleProfile(ownerMember.getUserId())
+					.map(RoleProfileResponse::role)
+					.orElse(null);
+		}
+		ProjectInvitationOwnerResponse ownerResponse = ProjectInvitationOwnerResponse.from(
+				ownerMember,
+				owner,
+				profileImageService.toUrl(owner.getProfileImageKey()),
+				ownerRoleCategory
+		);
 
 		return ProjectInvitationInfoResponse.from(
 				project,
 				currentMemberCount,
 				Math.toIntExact(MAX_PROJECT_MEMBERS),
-				alreadyJoined
+				alreadyJoined,
+				ownerResponse
 		);
 	}
 
