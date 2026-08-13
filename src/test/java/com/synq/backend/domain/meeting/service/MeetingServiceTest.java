@@ -11,6 +11,7 @@ import com.synq.backend.domain.meeting.event.MeetingEndedEvent;
 import com.synq.backend.domain.meeting.event.MeetingPausedEvent;
 import com.synq.backend.domain.meeting.event.MeetingResumedEvent;
 import com.synq.backend.domain.meeting.port.MeetingSummaryTopicsReader;
+import com.synq.backend.domain.meeting.port.MeetingSummaryJobCreator;
 import com.synq.backend.domain.meeting.port.ProjectMembershipChecker;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
@@ -27,6 +28,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -49,6 +51,7 @@ class MeetingServiceTest {
 	private final UserRepository userRepository = mock(UserRepository.class);
 	private final ProfileImageService profileImageService = mock(ProfileImageService.class);
 	private final MeetingSummaryTopicsReader meetingSummaryTopicsReader = mock(MeetingSummaryTopicsReader.class);
+	private final MeetingSummaryJobCreator meetingSummaryJobCreator = mock(MeetingSummaryJobCreator.class);
 	private final MeetingParticipantAccessValidator participantAccessValidator =
 			mock(MeetingParticipantAccessValidator.class);
 	private final MeetingService meetingService = new MeetingService(
@@ -59,6 +62,7 @@ class MeetingServiceTest {
 			userRepository,
 			profileImageService,
 			meetingSummaryTopicsReader,
+			meetingSummaryJobCreator,
 			participantAccessValidator
 	);
 
@@ -396,12 +400,33 @@ class MeetingServiceTest {
 	}
 
 	@Test
+	void 진행자가_회의를_종료하면_접수한_요약_Job_ID를_종료_결과와_이벤트에_함께_전달한다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		ReflectionTestUtils.setField(meeting, "id", 5L);
+		UUID jobId = UUID.randomUUID();
+		when(meetingRepository.existsById(5L)).thenReturn(true);
+		when(meetingParticipantRepository.findByMeetingIdAndUserId(5L, 10L))
+				.thenReturn(List.of(MeetingParticipant.of(5L, 10L, ParticipantRole.HOST)));
+		when(meetingRepository.endIfInProgress(5L)).thenReturn(1);
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		when(meetingSummaryJobCreator.createQueuedJob(5L)).thenReturn(jobId);
+
+		MeetingService.MeetingEndResult result = meetingService.end(5L, 10L);
+
+		assertThat(result.meeting()).isSameAs(meeting);
+		assertThat(result.summaryJobId()).isEqualTo(jobId);
+		verify(eventPublisher).publishEvent(new MeetingEndedEvent(5L, jobId));
+	}
+
+	@Test
 	void 진행중인_회의는_강제종료시_원자적_UPDATE로_전환되고_이벤트가_발행된다() {
 		when(meetingRepository.endIfInProgress(5L)).thenReturn(1);
+		UUID jobId = UUID.randomUUID();
+		when(meetingSummaryJobCreator.createQueuedJob(5L)).thenReturn(jobId);
 
 		meetingService.forceEndByDisconnect(5L);
 
-		verify(eventPublisher).publishEvent(new MeetingEndedEvent(5L));
+		verify(eventPublisher).publishEvent(new MeetingEndedEvent(5L, jobId));
 	}
 
 	@Test
