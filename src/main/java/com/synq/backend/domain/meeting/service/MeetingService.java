@@ -8,6 +8,8 @@ import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.MeetingStatus;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
 import com.synq.backend.domain.meeting.event.MeetingEndedEvent;
+import com.synq.backend.domain.meeting.event.MeetingPausedEvent;
+import com.synq.backend.domain.meeting.event.MeetingResumedEvent;
 import com.synq.backend.domain.meeting.port.MeetingSummaryTopicsReader;
 import com.synq.backend.domain.meeting.port.ProjectMembershipChecker;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
@@ -157,6 +159,47 @@ public class MeetingService {
 		if (meetingRepository.endIfInProgress(meetingId) > 0) {
 			eventPublisher.publishEvent(new MeetingEndedEvent(meetingId));
 		}
+	}
+
+	// 진행자(HOST)만 회의를 일시정지할 수 있다. 참여자 타이머 동기화를 위해 그 시점의 누적 활성
+	// 시간(activeSeconds)을 이벤트에 실어 보낸다.
+	@Transactional
+	public Meeting pause(Long meetingId, Long userId) {
+		Meeting meeting = meetingRepository.findById(meetingId)
+				.orElseThrow(() -> new GeneralException(MeetingErrorCode.MEETING_NOT_FOUND));
+		if (!isHost(meetingId, userId)) {
+			throw new GeneralException(MeetingErrorCode.NOT_HOST_TO_PAUSE);
+		}
+		if (meeting.getStatus() != MeetingStatus.IN_PROGRESS) {
+			throw new GeneralException(MeetingErrorCode.MEETING_ALREADY_ENDED);
+		}
+		if (meeting.isPaused()) {
+			throw new GeneralException(MeetingErrorCode.MEETING_ALREADY_PAUSED);
+		}
+
+		meeting.pause();
+		eventPublisher.publishEvent(new MeetingPausedEvent(meeting.getId(), meeting.activeSeconds()));
+		return meeting;
+	}
+
+	// 진행자(HOST)만 회의를 재개할 수 있다.
+	@Transactional
+	public Meeting resume(Long meetingId, Long userId) {
+		Meeting meeting = meetingRepository.findById(meetingId)
+				.orElseThrow(() -> new GeneralException(MeetingErrorCode.MEETING_NOT_FOUND));
+		if (!isHost(meetingId, userId)) {
+			throw new GeneralException(MeetingErrorCode.NOT_HOST_TO_RESUME);
+		}
+		if (meeting.getStatus() != MeetingStatus.IN_PROGRESS) {
+			throw new GeneralException(MeetingErrorCode.MEETING_ALREADY_ENDED);
+		}
+		if (!meeting.isPaused()) {
+			throw new GeneralException(MeetingErrorCode.MEETING_NOT_PAUSED);
+		}
+
+		meeting.resume();
+		eventPublisher.publishEvent(new MeetingResumedEvent(meeting.getId(), meeting.activeSeconds()));
+		return meeting;
 	}
 
 	// 진행자(HOST)만 회의를 삭제할 수 있다. 진행 중인 회의는 삭제할 수 없고 먼저 종료해야 한다.

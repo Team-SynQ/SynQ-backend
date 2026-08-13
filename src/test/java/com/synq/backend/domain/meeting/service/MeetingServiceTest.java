@@ -8,6 +8,8 @@ import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.MeetingStatus;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
 import com.synq.backend.domain.meeting.event.MeetingEndedEvent;
+import com.synq.backend.domain.meeting.event.MeetingPausedEvent;
+import com.synq.backend.domain.meeting.event.MeetingResumedEvent;
 import com.synq.backend.domain.meeting.port.MeetingSummaryTopicsReader;
 import com.synq.backend.domain.meeting.port.ProjectMembershipChecker;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
@@ -17,6 +19,7 @@ import com.synq.backend.domain.user.repository.UserRepository;
 import com.synq.backend.domain.user.service.ProfileImageService;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -397,5 +400,148 @@ class MeetingServiceTest {
 		meetingService.forceEndByDisconnect(5L);
 
 		verifyNoInteractions(eventPublisher);
+	}
+
+	@Test
+	void 진행자가_일시정지하면_paused_상태가_되고_MeetingPausedEvent가_발행된다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		ReflectionTestUtils.setField(meeting, "id", 5L);
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdAndUserId(5L, 10L))
+				.thenReturn(List.of(MeetingParticipant.of(5L, 10L, ParticipantRole.HOST)));
+
+		Meeting result = meetingService.pause(5L, 10L);
+
+		assertThat(result.isPaused()).isTrue();
+		ArgumentCaptor<MeetingPausedEvent> captor = ArgumentCaptor.forClass(MeetingPausedEvent.class);
+		verify(eventPublisher).publishEvent(captor.capture());
+		assertThat(captor.getValue().meetingId()).isEqualTo(5L);
+		assertThat(captor.getValue().activeSeconds()).isEqualTo(meeting.activeSeconds());
+	}
+
+	@Test
+	void 진행자가_아니면_일시정지시_NOT_HOST_TO_PAUSE_예외를_발생시킨다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdAndUserId(5L, 10L))
+				.thenReturn(List.of(MeetingParticipant.of(5L, 10L, ParticipantRole.MEMBER)));
+
+		assertThatThrownBy(() -> meetingService.pause(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.NOT_HOST_TO_PAUSE));
+		verifyNoInteractions(eventPublisher);
+	}
+
+	@Test
+	void 진행중이_아닌_회의를_일시정지하려_하면_MEETING_ALREADY_ENDED_예외를_발생시킨다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		meeting.end();
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdAndUserId(5L, 10L))
+				.thenReturn(List.of(MeetingParticipant.of(5L, 10L, ParticipantRole.HOST)));
+
+		assertThatThrownBy(() -> meetingService.pause(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.MEETING_ALREADY_ENDED));
+		verifyNoInteractions(eventPublisher);
+	}
+
+	@Test
+	void 이미_일시정지된_회의를_다시_일시정지하려_하면_MEETING_ALREADY_PAUSED_예외를_발생시킨다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		meeting.pause();
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdAndUserId(5L, 10L))
+				.thenReturn(List.of(MeetingParticipant.of(5L, 10L, ParticipantRole.HOST)));
+
+		assertThatThrownBy(() -> meetingService.pause(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.MEETING_ALREADY_PAUSED));
+		verifyNoInteractions(eventPublisher);
+	}
+
+	@Test
+	void 존재하지_않는_회의면_일시정지시_MEETING_NOT_FOUND_예외를_발생시킨다() {
+		when(meetingRepository.findById(5L)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> meetingService.pause(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.MEETING_NOT_FOUND));
+	}
+
+	@Test
+	void 진행자가_재개하면_paused가_풀리고_MeetingResumedEvent가_발행된다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		meeting.pause();
+		ReflectionTestUtils.setField(meeting, "id", 5L);
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdAndUserId(5L, 10L))
+				.thenReturn(List.of(MeetingParticipant.of(5L, 10L, ParticipantRole.HOST)));
+
+		Meeting result = meetingService.resume(5L, 10L);
+
+		assertThat(result.isPaused()).isFalse();
+		ArgumentCaptor<MeetingResumedEvent> captor = ArgumentCaptor.forClass(MeetingResumedEvent.class);
+		verify(eventPublisher).publishEvent(captor.capture());
+		assertThat(captor.getValue().meetingId()).isEqualTo(5L);
+	}
+
+	@Test
+	void 진행자가_아니면_재개시_NOT_HOST_TO_RESUME_예외를_발생시킨다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		meeting.pause();
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdAndUserId(5L, 10L))
+				.thenReturn(List.of(MeetingParticipant.of(5L, 10L, ParticipantRole.MEMBER)));
+
+		assertThatThrownBy(() -> meetingService.resume(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.NOT_HOST_TO_RESUME));
+		verifyNoInteractions(eventPublisher);
+	}
+
+	@Test
+	void 진행중이_아닌_회의를_재개하려_하면_MEETING_ALREADY_ENDED_예외를_발생시킨다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		meeting.pause();
+		meeting.end();
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdAndUserId(5L, 10L))
+				.thenReturn(List.of(MeetingParticipant.of(5L, 10L, ParticipantRole.HOST)));
+
+		assertThatThrownBy(() -> meetingService.resume(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.MEETING_ALREADY_ENDED));
+		verifyNoInteractions(eventPublisher);
+	}
+
+	@Test
+	void 일시정지_상태가_아닌_회의를_재개하려_하면_MEETING_NOT_PAUSED_예외를_발생시킨다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		when(meetingRepository.findById(5L)).thenReturn(Optional.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdAndUserId(5L, 10L))
+				.thenReturn(List.of(MeetingParticipant.of(5L, 10L, ParticipantRole.HOST)));
+
+		assertThatThrownBy(() -> meetingService.resume(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.MEETING_NOT_PAUSED));
+		verifyNoInteractions(eventPublisher);
+	}
+
+	@Test
+	void 존재하지_않는_회의면_재개시_MEETING_NOT_FOUND_예외를_발생시킨다() {
+		when(meetingRepository.findById(5L)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> meetingService.resume(5L, 10L))
+				.isInstanceOfSatisfying(GeneralException.class,
+						exception -> assertThat(exception.getCode())
+								.isEqualTo(MeetingErrorCode.MEETING_NOT_FOUND));
 	}
 }

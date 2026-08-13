@@ -49,7 +49,19 @@ public enum MeetingErrorCode implements BaseCode {
 			"이미 진행 중인 회의가 있습니다. 프로젝트당 동시에 하나의 회의만 진행할 수 있습니다."),
 	NOT_PROJECT_MEMBER_TO_LIST(HttpStatus.FORBIDDEN,
 			"MEETING403_8",
-			"프로젝트 멤버만 회의 목록을 조회할 수 있습니다.");
+			"프로젝트 멤버만 회의 목록을 조회할 수 있습니다."),
+	NOT_HOST_TO_PAUSE(HttpStatus.FORBIDDEN,
+			"MEETING403_9",
+			"회의를 일시정지할 권한이 없습니다."),
+	NOT_HOST_TO_RESUME(HttpStatus.FORBIDDEN,
+			"MEETING403_10",
+			"회의를 재개할 권한이 없습니다."),
+	MEETING_ALREADY_PAUSED(HttpStatus.CONFLICT,
+			"MEETING409_4",
+			"이미 일시정지된 회의입니다."),
+	MEETING_NOT_PAUSED(HttpStatus.CONFLICT,
+			"MEETING409_5",
+			"일시정지 상태가 아닌 회의입니다.");
 
 	private final HttpStatus status;
 	private final String code;

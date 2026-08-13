@@ -13,7 +13,9 @@ public record MeetingJoinResponse(
 		String role,
 		LocalDateTime joinedAt,
 		LocalDateTime startedAt,
-		String wsUrl
+		String wsUrl,
+		boolean paused,
+		long activeSeconds
 ) {
 	public static MeetingJoinResponse from(MeetingJoinResult result, String wsUrl) {
 		Meeting meeting = result.meeting();
@@ -25,7 +27,9 @@ public record MeetingJoinResponse(
 				participant.getRole().name(),
 				participant.getJoinedAt(),
 				meeting.getStartedAt(),
-				wsUrl
+				wsUrl,
+				meeting.isPaused(),
+				meeting.activeSeconds()
 		);
 	}
 }
