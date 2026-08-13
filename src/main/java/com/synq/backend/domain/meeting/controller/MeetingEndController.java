@@ -1,7 +1,6 @@
 package com.synq.backend.domain.meeting.controller;
 
 import com.synq.backend.domain.meeting.dto.MeetingEndResponse;
-import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.service.MeetingService;
 import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
@@ -20,8 +19,9 @@ public class MeetingEndController implements MeetingEndControllerDocs {
 
 	@Override
 	public ResponseEntity<ApiResponse<MeetingEndResponse>> end(Long meetingId, Long userId) {
-		Meeting meeting = meetingService.end(meetingId, userId);
+		MeetingService.MeetingEndResult result = meetingService.end(meetingId, userId);
 		return ResponseEntity.ok(
-				ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, MeetingEndResponse.from(meeting)));
+				ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK,
+						MeetingEndResponse.from(result.meeting(), result.summaryJobId())));
 	}
 }

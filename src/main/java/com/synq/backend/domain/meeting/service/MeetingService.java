@@ -11,6 +11,7 @@ import com.synq.backend.domain.meeting.event.MeetingEndedEvent;
 import com.synq.backend.domain.meeting.event.MeetingPausedEvent;
 import com.synq.backend.domain.meeting.event.MeetingResumedEvent;
 import com.synq.backend.domain.meeting.port.MeetingSummaryTopicsReader;
+import com.synq.backend.domain.meeting.port.MeetingSummaryJobCreator;
 import com.synq.backend.domain.meeting.port.ProjectMembershipChecker;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
@@ -30,6 +31,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -46,6 +48,7 @@ public class MeetingService {
 	private final UserRepository userRepository;
 	private final ProfileImageService profileImageService;
 	private final MeetingSummaryTopicsReader meetingSummaryTopicsReader;
+	private final MeetingSummaryJobCreator meetingSummaryJobCreator;
 	private final MeetingParticipantAccessValidator participantAccessValidator;
 
 	@Transactional
@@ -133,7 +136,7 @@ public class MeetingService {
 	// 진행자(회의 HOST)만 회의를 종료할 수 있다. 종료 즉시 SUMMARIZING 으로 전환하고
 	// MeetingEndedEvent 를 발행하면, ai.summary 도메인이 이를 수신해 AI 정리를 비동기로 시작한다.
 	@Transactional
-	public Meeting end(Long meetingId, Long userId) {
+	public MeetingEndResult end(Long meetingId, Long userId) {
 		if (!meetingRepository.existsById(meetingId)) {
 			throw new GeneralException(MeetingErrorCode.MEETING_NOT_FOUND);
 		}
@@ -148,9 +151,11 @@ public class MeetingService {
 
 		Meeting meeting = meetingRepository.findById(meetingId)
 				.orElseThrow(() -> new GeneralException(MeetingErrorCode.MEETING_NOT_FOUND));
-		// 커밋 이후 리스너가 요약을 시작하도록, 상태 저장이 확정된 뒤에 이벤트가 처리된다.
-		eventPublisher.publishEvent(new MeetingEndedEvent(meeting.getId()));
-		return meeting;
+		// 응답에서 상태 조회에 쓸 Job ID를 돌려주기 위해, 종료 트랜잭션 안에서 Job을 먼저 접수한다.
+		// 실제 AI 호출은 커밋 뒤 이벤트 리스너가 시작하므로 /end 응답은 즉시 반환된다.
+		UUID summaryJobId = meetingSummaryJobCreator.createQueuedJob(meeting.getId());
+		eventPublisher.publishEvent(new MeetingEndedEvent(meeting.getId(), summaryJobId));
+		return new MeetingEndResult(meeting, summaryJobId);
 	}
 
 	// 진행자 WS 연결이 끊긴 채 유예시간이 지나도 재연결이 없으면 시스템이 대신 회의를 종료한다.
@@ -159,8 +164,12 @@ public class MeetingService {
 	@Transactional
 	public void forceEndByDisconnect(Long meetingId) {
 		if (meetingRepository.endIfInProgress(meetingId) > 0) {
-			eventPublisher.publishEvent(new MeetingEndedEvent(meetingId));
+			UUID summaryJobId = meetingSummaryJobCreator.createQueuedJob(meetingId);
+			eventPublisher.publishEvent(new MeetingEndedEvent(meetingId, summaryJobId));
 		}
+	}
+
+	public record MeetingEndResult(Meeting meeting, UUID summaryJobId) {
 	}
 
 	// 진행자(HOST)만 회의를 일시정지할 수 있다. 참여자 타이머 동기화를 위해 그 시점의 누적 활성

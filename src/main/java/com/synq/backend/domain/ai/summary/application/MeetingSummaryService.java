@@ -53,17 +53,31 @@ public class MeetingSummaryService {
 
 	public SummaryJob request(Long meetingId, Long userId) {
 		validateAccess(meetingId, userId);
-		return requestInternal(meetingId);
+		SummaryJob job = queueInternal(meetingId);
+		startAsync(job);
+		return job;
 	}
 
-	/**
-	 * 회의 종료 이벤트가 호출하는 내부 진입점이다. 외부 API는 사용자 검증이 포함된 오버로드를 사용한다.
-	 */
+	/** 이전 형식의 종료 이벤트를 처리하기 위한 호환 진입점이다. */
 	SummaryJob requestAfterMeetingEnd(Long meetingId) {
-		return requestInternal(meetingId);
+		SummaryJob job = queueInternal(meetingId);
+		startAsync(job);
+		return job;
 	}
 
-	private synchronized SummaryJob requestInternal(Long meetingId) {
+	/** 회의 종료 트랜잭션에서 Job을 접수하고, 커밋 뒤 이벤트 리스너가 실행을 시작한다. */
+	public SummaryJob queueAfterMeetingEnd(Long meetingId) {
+		return queueInternal(meetingId);
+	}
+
+	/** MeetingEndedEvent가 전달한 이미 생성된 Job을 비동기로 실행한다. */
+	public void startAfterMeetingEnd(UUID jobId) {
+		SummaryJob job = jobStore.findById(jobId)
+				.orElseThrow(() -> new GeneralException(GeneralErrorCode.NOT_FOUND));
+		startAsync(job);
+	}
+
+	private synchronized SummaryJob queueInternal(Long meetingId) {
 		// 종료되지 않은(진행 중이거나 존재하지 않는) 회의는 요약을 시작할 수 없다.
 		if (!meetingStatusReader.isEnded(meetingId)) {
 			throw new GeneralException(SummaryErrorCode.MEETING_NOT_ENDED);
@@ -87,7 +101,11 @@ public class MeetingSummaryService {
 			// 여러 서버가 동시에 요청해도 DB의 활성 Job 고유 인덱스로 중복 생성을 막는다.
 			throw new GeneralException(GeneralErrorCode.CONFLICT, e);
 		}
-		// 요청은 접수만 하고, 실제 생성은 비동기 Processor가 이어서 수행한다.
+		return job;
+	}
+
+	private void startAsync(SummaryJob job) {
+		// Job 저장과 AI 처리를 분리한다. 종료 API는 Job을 먼저 저장하고 커밋 후 이 메서드를 호출한다.
 		try {
 			processor.processAsync(job.id());
 		} catch (TaskRejectedException e) {
@@ -95,11 +113,10 @@ public class MeetingSummaryService {
 			if (jobStore.failIfActive(job.id(), errorMessage)) {
 				// 대기열 거절은 Processor가 이벤트를 발행할 기회가 없으므로 여기서 회의 실패 전이를 알린다.
 				eventPublisher.publishEvent(new SummaryFailedEvent(
-						meetingId, job.id(), errorMessage));
+						job.meetingId(), job.id(), errorMessage));
 			}
 			throw new GeneralException(GeneralErrorCode.SERVICE_UNAVAILABLE);
 		}
-		return job;
 	}
 
 	private SummaryJob getJob(Long meetingId, UUID jobId) {

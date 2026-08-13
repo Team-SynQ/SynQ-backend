@@ -56,7 +56,8 @@ class MeetingEndControllerTest extends PostgresTestContainer {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.result.meetingId").value(meetingId))
 				.andExpect(jsonPath("$.result.status").value("SUMMARIZING"))
-				.andExpect(jsonPath("$.result.endedAt").isNotEmpty());
+				.andExpect(jsonPath("$.result.endedAt").isNotEmpty())
+				.andExpect(jsonPath("$.result.summaryJobId").isNotEmpty());
 	}
 
 	@Test
