@@ -45,6 +45,9 @@ class AiSwaggerDocumentationTest {
 
 		assertThat(HintControllerDocs.class.getAnnotation(SecurityRequirement.class).name())
 				.isEqualTo("bearerAuth");
+		assertThat(responseCodes(HintControllerDocs.class.getMethod(
+				"generate", Long.class, Long.class, String.class)))
+				.contains("200", "400", "401", "403", "404", "502");
 		assertThat(LiveContextController.class.getAnnotation(Tag.class).name()).isEqualTo("Live Context");
 		assertThat(DocumentReindexController.class.getAnnotation(Tag.class).name()).isEqualTo("RAG");
 	}
