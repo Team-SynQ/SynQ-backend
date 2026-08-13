@@ -6,6 +6,7 @@ import com.synq.backend.domain.transcript.client.soniox.SonioxStreamClient;
 import com.synq.backend.domain.transcript.client.soniox.SonioxStreamListener;
 import com.synq.backend.domain.transcript.client.soniox.SonioxToken;
 import com.synq.backend.domain.transcript.client.soniox.SonioxTokenBuffer;
+import com.synq.backend.domain.transcript.application.RecordingUploadService;
 import com.synq.backend.domain.transcript.config.SonioxProperties;
 import com.synq.backend.domain.transcript.entity.TranscriptSegment;
 import com.synq.backend.domain.transcript.service.TranscriptSegmentService;
@@ -45,6 +46,8 @@ public class SttSession implements SonioxStreamListener {
 	private final SonioxProperties properties;
 	private final ObjectMapper objectMapper;
 	private final SttSessionRegistry registry;
+	private final RecordingUploadService recordingUploadService;
+	private final RecordingWriter recordingWriter;
 
 	private volatile boolean firstAudioFrameSeen;
 	private volatile boolean streamRejected;
@@ -52,7 +55,8 @@ public class SttSession implements SonioxStreamListener {
 
 	public SttSession(Long meetingId, WebSocketSession browserSession, MeetingTimeline timeline, int startSequence,
 					TranscriptSegmentService transcriptSegmentService, SonioxProperties properties,
-					ObjectMapper objectMapper, SonioxClientFactory sonioxClientFactory, SttSessionRegistry registry) {
+					ObjectMapper objectMapper, SonioxClientFactory sonioxClientFactory, SttSessionRegistry registry,
+					RecordingUploadService recordingUploadService) {
 		this.meetingId = meetingId;
 		this.browserSession = browserSession;
 		this.timeline = timeline;
@@ -62,6 +66,8 @@ public class SttSession implements SonioxStreamListener {
 		this.objectMapper = objectMapper;
 		this.registry = registry;
 		this.sonioxClient = sonioxClientFactory.create(meetingId, this);
+		this.recordingUploadService = recordingUploadService;
+		this.recordingWriter = new RecordingWriter(meetingId);
 	}
 
 	public Long meetingId() {
@@ -85,6 +91,7 @@ public class SttSession implements SonioxStreamListener {
 		if (!verifyStreamHeader(payload)) {
 			return;
 		}
+		recordingWriter.append(payload);
 		sonioxClient.sendAudio(payload);
 	}
 
@@ -202,6 +209,8 @@ public class SttSession implements SonioxStreamListener {
 		} finally {
 			// Soniox 쪽 종료가 실패하더라도 이미 확정된 토큰은 반드시 저장한다.
 			buffer.flushRemaining().ifPresent(this::persist);
+			// 이 세션(webm 스트림) 하나가 녹음 세그먼트 하나다. 업로드는 비동기라 여기서 블로킹하지 않는다.
+			recordingWriter.finish().ifPresent(file -> recordingUploadService.uploadAsync(meetingId, file));
 		}
 	}
 
