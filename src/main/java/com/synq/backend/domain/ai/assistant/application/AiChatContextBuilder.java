@@ -1,5 +1,7 @@
 package com.synq.backend.domain.ai.assistant.application;
 
+import com.synq.backend.domain.ai.personalization.MemberProfile;
+import com.synq.backend.domain.ai.personalization.MemberProfileReader;
 import com.synq.backend.domain.ai.assistant.code.AiChatErrorCode;
 import com.synq.backend.domain.ai.assistant.domain.AiChatContext;
 import com.synq.backend.domain.ai.assistant.domain.AiChatMessage;
