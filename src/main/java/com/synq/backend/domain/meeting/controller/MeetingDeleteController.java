@@ -1,6 +1,8 @@
 package com.synq.backend.domain.meeting.controller;
 
 import com.synq.backend.domain.meeting.service.MeetingService;
+import com.synq.backend.global.apipayload.ApiResponse;
+import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,8 +17,8 @@ public class MeetingDeleteController implements MeetingDeleteControllerDocs {
 	private final MeetingService meetingService;
 
 	@Override
-	public ResponseEntity<Void> delete(Long meetingId, Long userId) {
+	public ResponseEntity<ApiResponse<Void>> delete(Long meetingId, Long userId) {
 		meetingService.delete(meetingId, userId);
-		return ResponseEntity.noContent().build();
+		return ResponseEntity.ok(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, null));
 	}
 }

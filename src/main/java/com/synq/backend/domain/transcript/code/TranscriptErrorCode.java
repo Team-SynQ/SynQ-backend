@@ -25,7 +25,7 @@ public enum TranscriptErrorCode implements BaseCode {
 			"전사 서비스에 연결할 수 없습니다."),
 	NOT_PARTICIPANT(HttpStatus.FORBIDDEN,
 			"TRANSCRIPT403_2",
-			"회의 참가자만 전사를 수정할 수 있습니다."),
+			"회의 참여자만 전사를 수정할 수 있습니다."),
 	SEGMENT_NOT_FOUND(HttpStatus.NOT_FOUND,
 			"TRANSCRIPT404_2",
 			"존재하지 않는 전사 세그먼트입니다."),
@@ -34,7 +34,7 @@ public enum TranscriptErrorCode implements BaseCode {
 			"진행 중인 회의의 전사만 수정할 수 있습니다."),
 	NOT_PARTICIPANT_TO_VIEW_RECORDINGS(HttpStatus.FORBIDDEN,
 			"TRANSCRIPT403_3",
-			"회의 참가자만 녹음을 조회할 수 있습니다.");
+			"회의 참여자만 녹음을 조회할 수 있습니다.");
 
 	private final HttpStatus status;
 	private final String code;

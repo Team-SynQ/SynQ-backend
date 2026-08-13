@@ -50,12 +50,13 @@ class MeetingLeaveControllerTest extends PostgresTestContainer {
 	}
 
 	@Test
-	void 활성_참여자가_나가면_204를_반환하고_leftAt이_세팅된다() throws Exception {
+	void 활성_참여자가_나가면_200을_반환하고_leftAt이_세팅된다() throws Exception {
 		Long meetingId = createInProgressMeetingWithHostAndMember();
 
 		mockMvc.perform(post("/meetings/{meetingId}/leave", meetingId)
 						.header(HttpHeaders.AUTHORIZATION, bearer(MEMBER_ID)))
-				.andExpect(status().isNoContent());
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.isSuccess").value(true));
 
 		assertThat(meetingParticipantRepository.existsByMeetingIdAndUserIdAndLeftAtIsNull(meetingId, MEMBER_ID))
 				.isFalse();
@@ -67,7 +68,7 @@ class MeetingLeaveControllerTest extends PostgresTestContainer {
 
 		mockMvc.perform(post("/meetings/{meetingId}/leave", meetingId)
 						.header(HttpHeaders.AUTHORIZATION, bearer(MEMBER_ID)))
-				.andExpect(status().isNoContent());
+				.andExpect(status().isOk());
 
 		mockMvc.perform(post("/meetings/{meetingId}/join", meetingId)
 						.header(HttpHeaders.AUTHORIZATION, bearer(MEMBER_ID)))

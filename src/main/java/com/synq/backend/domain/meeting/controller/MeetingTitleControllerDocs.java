@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@Tag(name = "Meeting", description = "미팅 API")
+@Tag(name = "Meeting", description = "회의 API")
 public interface MeetingTitleControllerDocs {
 
 	@SecurityRequirement(name = "bearerAuth")

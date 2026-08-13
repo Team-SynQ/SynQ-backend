@@ -56,12 +56,13 @@ class MeetingDeleteControllerTest extends PostgresTestContainer {
 	}
 
 	@Test
-	void 진행자가_종료된_회의를_삭제하면_204를_반환하고_참여자도_함께_삭제된다() throws Exception {
+	void 진행자가_종료된_회의를_삭제하면_200을_반환하고_참여자도_함께_삭제된다() throws Exception {
 		Long meetingId = createEndedMeetingWithHost();
 
 		mockMvc.perform(delete("/meetings/{meetingId}", meetingId)
 						.header(HttpHeaders.AUTHORIZATION, bearer(HOST_ID)))
-				.andExpect(status().isNoContent());
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.isSuccess").value(true));
 
 		assertThat(meetingRepository.existsById(meetingId)).isFalse();
 		assertThat(meetingParticipantRepository.findByMeetingIdAndUserId(meetingId, HOST_ID)).isEmpty();

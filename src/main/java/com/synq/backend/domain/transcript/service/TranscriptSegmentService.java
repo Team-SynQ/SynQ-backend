@@ -59,7 +59,7 @@ public class TranscriptSegmentService {
 		return transcriptSegmentRepository.findMaxSequenceByMeetingId(meetingId).orElse(-1) + 1;
 	}
 
-	// 오타/오인식 교정. 호스트 제한 없이 회의에 남아있는 참가자면 누구나 수정할 수 있다.
+	// 오타/오인식 교정. 호스트 제한 없이 회의에 남아있는 참여자면 누구나 수정할 수 있다.
 	// 회의가 끝나면(IN_PROGRESS 가 아니면) 더 이상 수정할 수 없다 — summary retry 로 우회 반영하는 방식은 채택하지 않았다.
 	@Transactional
 	public TranscriptSegment update(Long meetingId, Long segmentId, Long userId, String content) {

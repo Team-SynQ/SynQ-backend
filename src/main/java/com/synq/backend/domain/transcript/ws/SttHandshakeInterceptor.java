@@ -72,7 +72,7 @@ public class SttHandshakeInterceptor implements HandshakeInterceptor {
 		Optional<ParticipantRole> role = activeParticipantRole(meetingId.get(), userId.get());
 		if (role.isEmpty()) {
 			return reject(response, HttpStatus.FORBIDDEN,
-					"회의 참가자가 아닙니다. meetingId=%d userId=%d".formatted(meetingId.get(), userId.get()));
+					"회의 참여자가 아닙니다. meetingId=%d userId=%d".formatted(meetingId.get(), userId.get()));
 		}
 
 		attributes.put(ATTRIBUTE_MEETING_ID, meetingId.get());

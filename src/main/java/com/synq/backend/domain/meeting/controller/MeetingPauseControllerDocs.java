@@ -11,7 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 
-@Tag(name = "Meeting", description = "미팅 API")
+@Tag(name = "Meeting", description = "회의 API")
 public interface MeetingPauseControllerDocs {
 
 	@SecurityRequirement(name = "bearerAuth")
