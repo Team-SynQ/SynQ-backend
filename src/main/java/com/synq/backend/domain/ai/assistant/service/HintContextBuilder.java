@@ -1,7 +1,7 @@
 package com.synq.backend.domain.ai.assistant.service;
 
-import com.synq.backend.domain.ai.assistant.application.MemberProfile;
-import com.synq.backend.domain.ai.assistant.application.MemberProfileReader;
+import com.synq.backend.domain.ai.personalization.MemberProfile;
+import com.synq.backend.domain.ai.personalization.MemberProfileReader;
 import com.synq.backend.domain.ai.assistant.code.AssistantErrorCode;
 import com.synq.backend.domain.ai.assistant.domain.HintInput;
 import com.synq.backend.domain.ai.context.domain.LiveContextSnapshot;

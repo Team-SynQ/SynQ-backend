@@ -1,10 +1,10 @@
-package com.synq.backend.domain.ai.assistant.application;
+package com.synq.backend.domain.ai.personalization;
 
 import java.util.List;
 
 /**
- * 프롬프트에 넣을 사용자 역할·관점. 값은 user 도메인 enum 의 원본 코드다.
- * 한글 라벨 변환은 프롬프트 렌더링 책임이라 여기서 하지 않는다.
+ * AI 프롬프트에 사용할 사용자의 역할과 관심 관점이다.
+ * 값은 user 도메인 enum의 원본 코드를 유지하고, 표시 문구 변환은 프롬프트에서 담당한다.
  */
 public record MemberProfile(String role, String detailRole, List<String> perspectives) {
 
@@ -14,7 +14,6 @@ public record MemberProfile(String role, String detailRole, List<String> perspec
 		perspectives = perspectives == null ? List.of() : List.copyOf(perspectives);
 	}
 
-	/** 역할·관점을 등록하지 않은 사용자. 힌트는 일반적인 톤으로 나가되 기능이 끊기지는 않는다. */
 	public static MemberProfile empty() {
 		return new MemberProfile("", "", List.of());
 	}
