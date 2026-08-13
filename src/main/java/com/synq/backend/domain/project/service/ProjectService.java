@@ -16,6 +16,7 @@ import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestApproveResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestListResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestRejectResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestResultResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
@@ -55,6 +56,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -449,6 +451,22 @@ public class ProjectService {
 				))
 				.toList();
 		return ProjectJoinRequestListResponse.from(responses);
+	}
+
+	@Transactional(readOnly = true)
+	public List<ProjectJoinRequestResultResponse> findMyJoinRequestResults(Long userId) {
+		validateAuthenticatedUser(userId);
+		validateUser(userId);
+
+		return participationRequestRepository.findAllProcessedByUserId(userId).stream()
+				.map(request -> new ProjectJoinRequestResultResponse(
+						request.getRequestId(),
+						request.getProjectId(),
+						request.getProjectTitle(),
+						request.getStatus(),
+						request.getDecidedAt().atOffset(ZoneOffset.UTC)
+				))
+				.toList();
 	}
 
 	@Transactional

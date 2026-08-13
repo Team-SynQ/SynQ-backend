@@ -11,6 +11,7 @@ import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestApproveResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestListResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestRejectResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestResultResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
@@ -225,6 +226,18 @@ public interface ProjectControllerDocs {
 	@GetMapping("/{projectId}/join-requests")
 	ResponseEntity<ApiResponse<ProjectJoinRequestListResponse>> findPendingJoinRequests(
 			@PathVariable Long projectId,
+			@AuthenticationPrincipal(expression = "userId") Long userId
+	);
+
+	@Operation(summary = "내 프로젝트 참여 요청 결과 조회", description = "로그인 사용자의 승인·거절된 프로젝트 참여 요청을 최근 처리 순으로 조회한다.")
+	@SecurityRequirement(name = "bearerAuth")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "내 참여 요청 결과 조회 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "내 참여 요청 결과 조회 실패")
+	})
+	@GetMapping("/join-requests/me")
+	ResponseEntity<ApiResponse<List<ProjectJoinRequestResultResponse>>> findMyJoinRequestResults(
 			@AuthenticationPrincipal(expression = "userId") Long userId
 	);
 
