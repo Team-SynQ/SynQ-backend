@@ -17,8 +17,8 @@ class ApiErrorResponseDocumentationTest {
 				"com.synq.backend.domain.project.controller.ProjectControllerDocs");
 		assertThat(responseCodes(method(projectDocs, "create")))
 				.contains("201", "400", "401", "404", "409");
-		assertThat(responseCodes(method(projectDocs, "join")))
-				.contains("200", "201", "400", "401", "404", "409", "410");
+		assertThat(responseCodes(method(projectDocs, "createJoinRequest")))
+				.contains("201", "400", "401", "404", "409", "410", "500");
 
 		Class<?> meetingDocs = Class.forName(
 				"com.synq.backend.domain.meeting.controller.MeetingControllerDocs");
