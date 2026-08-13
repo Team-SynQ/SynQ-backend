@@ -16,6 +16,7 @@ import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestApproveResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestListResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestRejectResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestResultResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
@@ -449,6 +450,31 @@ public class ProjectService {
 				))
 				.toList();
 		return ProjectJoinRequestListResponse.from(responses);
+	}
+
+	@Transactional(readOnly = true)
+	public List<ProjectJoinRequestResultResponse> findMyJoinRequestResults(Long userId) {
+		validateAuthenticatedUser(userId);
+		validateUser(userId);
+
+		List<ProjectParticipationRequest> requests = participationRequestRepository.findAllProcessedByUserId(
+				userId,
+				List.of(ProjectJoinRequestStatus.APPROVED, ProjectJoinRequestStatus.REJECTED)
+		);
+		Map<Long, Project> projectById = projectRepository.findAllById(
+				requests.stream()
+						.map(ProjectParticipationRequest::getProjectId)
+						.distinct()
+						.toList()
+		).stream().collect(Collectors.toMap(Project::getId, project -> project));
+
+		return requests.stream()
+				.filter(request -> projectById.containsKey(request.getProjectId()))
+				.map(request -> ProjectJoinRequestResultResponse.from(
+						request,
+						projectById.get(request.getProjectId())
+				))
+				.toList();
 	}
 
 	@Transactional

@@ -45,6 +45,7 @@ public class SecurityConfig {
 							.requestMatchers(HttpMethod.GET,
 									"/projects",
 									"/projects/*",
+									"/projects/join-requests/me",
 									"/projects/*/members",
 									"/projects/*/join-requests",
 									"/projects/*/role-perspective",

@@ -11,6 +11,7 @@ import com.synq.backend.domain.project.dto.ProjectJoinRequestCreateResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestApproveResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestListResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestRejectResponse;
+import com.synq.backend.domain.project.dto.ProjectJoinRequestResultResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequest;
 import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
@@ -146,6 +147,13 @@ public class ProjectController implements ProjectControllerDocs {
 			Long userId
 	) {
 		ProjectJoinRequestListResponse response = projectService.findPendingJoinRequests(projectId, userId);
+		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
+	}
+
+	@Override
+	public ResponseEntity<ApiResponse<List<ProjectJoinRequestResultResponse>>> findMyJoinRequestResults(Long userId) {
+		List<ProjectJoinRequestResultResponse> response = projectService.findMyJoinRequestResults(userId);
 		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
 	}
