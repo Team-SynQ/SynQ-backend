@@ -56,6 +56,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -457,22 +458,13 @@ public class ProjectService {
 		validateAuthenticatedUser(userId);
 		validateUser(userId);
 
-		List<ProjectParticipationRequest> requests = participationRequestRepository.findAllProcessedByUserId(
-				userId,
-				List.of(ProjectJoinRequestStatus.APPROVED, ProjectJoinRequestStatus.REJECTED)
-		);
-		Map<Long, Project> projectById = projectRepository.findAllById(
-				requests.stream()
-						.map(ProjectParticipationRequest::getProjectId)
-						.distinct()
-						.toList()
-		).stream().collect(Collectors.toMap(Project::getId, project -> project));
-
-		return requests.stream()
-				.filter(request -> projectById.containsKey(request.getProjectId()))
-				.map(request -> ProjectJoinRequestResultResponse.from(
-						request,
-						projectById.get(request.getProjectId())
+		return participationRequestRepository.findAllProcessedByUserId(userId).stream()
+				.map(request -> new ProjectJoinRequestResultResponse(
+						request.getRequestId(),
+						request.getProjectId(),
+						request.getProjectTitle(),
+						request.getStatus(),
+						request.getDecidedAt().atOffset(ZoneOffset.UTC)
 				))
 				.toList();
 	}

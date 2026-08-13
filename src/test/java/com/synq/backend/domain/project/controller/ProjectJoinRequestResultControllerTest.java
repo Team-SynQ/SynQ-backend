@@ -10,6 +10,7 @@ import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.user.entity.Role;
 import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -19,8 +20,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.persistence.EntityManager;
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -133,8 +132,8 @@ class ProjectJoinRequestResultControllerTest extends ProjectControllerTestSuppor
 
 	private void setUpdatedAt(Long requestId, LocalDateTime updatedAt) {
 		jdbcTemplate.update(
-				"UPDATE project_join_request SET updated_at = ? WHERE id = ?",
-				Timestamp.valueOf(updatedAt),
+				"UPDATE project_join_request SET updated_at = CAST(? AS timestamp) WHERE id = ?",
+				updatedAt.toString(),
 				requestId
 		);
 	}

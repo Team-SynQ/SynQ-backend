@@ -16,7 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -128,11 +128,13 @@ class ProjectJoinRequestResultServiceTest extends PostgresTestContainer {
 		setUpdatedAt(rejectedRequest.getId(), previousUpdatedAt);
 		entityManager.clear();
 
+		Instant beforeDecision = Instant.now();
 		projectService.approveJoinRequest(
 				approvedProject.getId(), approvedRequest.getId(), owner.getUserId());
 		projectService.rejectJoinRequest(
 				rejectedProject.getId(), rejectedRequest.getId(), owner.getUserId());
 		participationRequestRepository.flush();
+		Instant afterDecision = Instant.now();
 		entityManager.clear();
 
 		ProjectParticipationRequest processedApproved = participationRequestRepository
@@ -141,30 +143,34 @@ class ProjectJoinRequestResultServiceTest extends PostgresTestContainer {
 				.findById(rejectedRequest.getId()).orElseThrow();
 		List<ProjectJoinRequestResultResponse> responses =
 				projectService.findMyJoinRequestResults(requester.getUserId());
+		Instant approvedDecisionInstant = findDecisionInstant(approvedRequest.getId());
+		Instant rejectedDecisionInstant = findDecisionInstant(rejectedRequest.getId());
 		assertThat(processedApproved.getUpdatedAt()).isAfter(previousUpdatedAt);
 		assertThat(processedRejected.getUpdatedAt()).isAfter(previousUpdatedAt);
+		assertThat(approvedDecisionInstant).isBetween(beforeDecision, afterDecision);
+		assertThat(rejectedDecisionInstant).isBetween(beforeDecision, afterDecision);
 		assertThat(responses).filteredOn(response -> response.requestId().equals(approvedRequest.getId()))
 				.singleElement()
 				.extracting(ProjectJoinRequestResultResponse::decidedAt)
-				.satisfies(decidedAt -> assertThat(decidedAt.toInstant()).isEqualTo(
-						processedApproved.getUpdatedAt()
-								.atZone(java.time.ZoneId.of("Asia/Seoul"))
-								.toInstant()
-				));
+				.satisfies(decidedAt -> assertThat(decidedAt.toInstant()).isEqualTo(approvedDecisionInstant));
 		assertThat(responses).filteredOn(response -> response.requestId().equals(rejectedRequest.getId()))
 				.singleElement()
 				.extracting(ProjectJoinRequestResultResponse::decidedAt)
-				.satisfies(decidedAt -> assertThat(decidedAt.toInstant()).isEqualTo(
-						processedRejected.getUpdatedAt()
-								.atZone(java.time.ZoneId.of("Asia/Seoul"))
-								.toInstant()
-				));
+				.satisfies(decidedAt -> assertThat(decidedAt.toInstant()).isEqualTo(rejectedDecisionInstant));
+	}
+
+	private Instant findDecisionInstant(Long requestId) {
+		return jdbcTemplate.queryForObject(
+				"SELECT updated_at AT TIME ZONE 'Asia/Seoul' FROM project_join_request WHERE id = ?",
+				(resultSet, rowNumber) -> resultSet.getObject(1, OffsetDateTime.class).toInstant(),
+				requestId
+		);
 	}
 
 	private void setUpdatedAt(Long requestId, LocalDateTime updatedAt) {
 		jdbcTemplate.update(
-				"UPDATE project_join_request SET updated_at = ? WHERE id = ?",
-				Timestamp.valueOf(updatedAt),
+				"UPDATE project_join_request SET updated_at = CAST(? AS timestamp) WHERE id = ?",
+				updatedAt.toString(),
 				requestId
 		);
 	}
