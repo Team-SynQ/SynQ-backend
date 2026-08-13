@@ -135,10 +135,10 @@ public class AiChatService {
 
 	private void validateSendAccess(Long meetingId, Long userId, Long linkedSegmentId) {
 		Meeting meeting = findMeeting(meetingId);
-		if (meeting.getStatus() != MeetingStatus.IN_PROGRESS) {
-			throw new GeneralException(AiChatErrorCode.CHAT_NOT_AVAILABLE);
-		}
-		if (!meetingParticipantRepository.existsByMeetingIdAndUserIdAndLeftAtIsNull(meetingId, userId)) {
+		boolean isParticipant = meeting.getStatus() == MeetingStatus.IN_PROGRESS
+				? meetingParticipantRepository.existsByMeetingIdAndUserIdAndLeftAtIsNull(meetingId, userId)
+				: meetingParticipantRepository.existsByMeetingIdAndUserId(meetingId, userId);
+		if (!isParticipant) {
 			throw new GeneralException(AiChatErrorCode.NOT_MEETING_PARTICIPANT);
 		}
 	}

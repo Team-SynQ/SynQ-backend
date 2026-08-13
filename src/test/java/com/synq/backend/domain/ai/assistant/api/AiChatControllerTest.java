@@ -257,7 +257,7 @@ class AiChatControllerTest extends PostgresTestContainer {
 	}
 
 	@Test
-	void 종료된_회의에는_새_질문을_보낼_수_없다() throws Exception {
+	void 종료된_회의_참여자는_새_질문을_보낼_수_있다() throws Exception {
 		User user = saveUser("종료 회의 사용자", "ended-chat@synq.com");
 		Meeting meeting = saveMeetingWithParticipant(user.getUserId());
 		meeting.end();
@@ -267,8 +267,47 @@ class AiChatControllerTest extends PostgresTestContainer {
 						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId()))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(requestBody("종료 후 질문", null, UUID.randomUUID())))
-				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.code").value("AI_CHAT409_1"));
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.result.status").value("COMPLETED"));
+	}
+
+	@Test
+	void 종료된_회의의_퇴장한_참여자는_새_질문과_추천_질문을_이용할_수_있다() throws Exception {
+		User user = saveUser("종료 후 퇴장 사용자", "ended-left-chat@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(user.getUserId());
+		MeetingParticipant participant = meetingParticipantRepository
+				.findByMeetingIdAndUserId(meeting.getId(), user.getUserId())
+				.get(0);
+		participant.leave();
+		meeting.end();
+		meetingRepository.save(meeting);
+
+		mockMvc.perform(post("/meetings/{meetingId}/chat-messages", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody("종료 후 퇴장 질문", null, UUID.randomUUID())))
+				.andExpect(status().isCreated());
+
+		mockMvc.perform(get("/meetings/{meetingId}/chat-messages/suggestions", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId())))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result.suggestedQuestions.length()").value(2));
+	}
+
+	@Test
+	void 종료된_회의의_비참여자는_새_질문을_보낼_수_없다() throws Exception {
+		User participant = saveUser("종료 회의 참여자", "ended-participant-chat@synq.com");
+		User outsider = saveUser("종료 회의 비참여자", "ended-outsider-chat@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(participant.getUserId());
+		meeting.end();
+		meetingRepository.save(meeting);
+
+		mockMvc.perform(post("/meetings/{meetingId}/chat-messages", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(outsider.getUserId()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody("종료 회의 비참여자 질문", null, UUID.randomUUID())))
+				.andExpect(status().isForbidden())
+				.andExpect(jsonPath("$.code").value("AI_CHAT403_1"));
 	}
 
 	@Test
