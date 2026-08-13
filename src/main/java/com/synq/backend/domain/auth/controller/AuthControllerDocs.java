@@ -89,7 +89,8 @@ interface NaverAuthControllerDocs {
 					+ "프론트는 이 값을 인가 요청의 state 파라미터로 사용하고, 콜백에서 받은 state를 그대로 로그인 API에 전달해야 한다. "
 					+ "발급된 state는 일정 시간이 지나면 만료된다. ")
 	@ApiResponses({
-			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "발급 성공")
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "발급 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "state 저장 실패")
 	})
 	ResponseEntity<ApiResponse<NaverStateResponse>> issueState();
 

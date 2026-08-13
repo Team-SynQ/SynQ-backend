@@ -177,7 +177,13 @@ public interface ProjectControllerDocs {
 
 	@Operation(summary = "프로젝트 생성", description = "프로젝트를 생성하고 생성자를 OWNER로 등록한다.")
 	@SecurityRequirement(name = "bearerAuth")
-	@ApiResponses(@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "프로젝트 생성 성공"))
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "프로젝트 생성 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "프로젝트 입력값 오류"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "사용자별 프로젝트 생성 한도 초과")
+	})
 	@PostMapping
 	ResponseEntity<ApiResponse<ProjectCreateResponse>> create(
 			@AuthenticationPrincipal(expression = "userId") Long userId,
@@ -188,7 +194,13 @@ public interface ProjectControllerDocs {
 	@SecurityRequirement(name = "bearerAuth")
 	@ApiResponses({
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "프로젝트 참여 성공"),
-			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "이미 참여 중인 프로젝트")
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "이미 참여 중인 프로젝트"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "초대 토큰 입력값 오류"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "사용자 또는 초대 정보를 찾을 수 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
+					description = "프로젝트 최대 인원 또는 사용자별 프로젝트 참여 한도 초과"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "410", description = "초대 링크 만료")
 	})
 	@PostMapping("/join")
 	ResponseEntity<ApiResponse<ProjectJoinResponse>> join(
