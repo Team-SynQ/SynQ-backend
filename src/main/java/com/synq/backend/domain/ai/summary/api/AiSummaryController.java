@@ -80,15 +80,15 @@ public class AiSummaryController {
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 회의 또는 요약 작업")
 	})
 	@GetMapping("/ai-summary/status")
-	public ApiResponse<SummaryJobResponse> getStatus(
+	public ResponseEntity<ApiResponse<SummaryJobResponse>> getStatus(
 			@PathVariable @Positive Long meetingId,
 			@RequestParam UUID jobId,
 			@Parameter(hidden = true)
 			@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
 	) {
 		Long userId = currentUserIdResolver.resolve(authorization);
-		return ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK,
-				SummaryJobResponse.from(meetingSummaryService.getJob(meetingId, jobId, userId)));
+		return ResponseEntity.ok(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK,
+				SummaryJobResponse.from(meetingSummaryService.getJob(meetingId, jobId, userId))));
 	}
 
 	@Operation(summary = "회의 종료 후 AI 요약 조회")
@@ -99,14 +99,14 @@ public class AiSummaryController {
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 회의 또는 생성된 요약 없음")
 	})
 	@GetMapping("/summary")
-	public ApiResponse<MeetingSummaryResponse> getSummary(
+	public ResponseEntity<ApiResponse<MeetingSummaryResponse>> getSummary(
 			@PathVariable @Positive Long meetingId,
 			@Parameter(hidden = true)
 			@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
 	) {
 		Long userId = currentUserIdResolver.resolve(authorization);
-		return ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK,
-				MeetingSummaryResponse.from(meetingSummaryService.getLatestSummary(meetingId, userId)));
+		return ResponseEntity.ok(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK,
+				MeetingSummaryResponse.from(meetingSummaryService.getLatestSummary(meetingId, userId))));
 	}
 
 	@Operation(summary = "회의 종료 후 내 개인 요약 조회")
@@ -117,16 +117,16 @@ public class AiSummaryController {
 			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "존재하지 않는 회의 또는 생성된 개인 요약 없음")
 	})
 	@GetMapping("/summary/me")
-	public ApiResponse<PersonalSummaryResponse> getMySummary(
+	public ResponseEntity<ApiResponse<PersonalSummaryResponse>> getMySummary(
 			@PathVariable @Positive Long meetingId,
 			@Parameter(hidden = true)
 			@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization
 	) {
 		Long userId = currentUserIdResolver.resolve(authorization);
 		meetingSummaryService.validateAccess(meetingId, userId);
-		return ApiResponse.onSuccess(
+		return ResponseEntity.ok(ApiResponse.onSuccess(
 				GeneralSuccessCode.REQUEST_OK,
 				PersonalSummaryResponse.from(personalSummaryQueryService.getLatest(meetingId, userId))
-		);
+		));
 	}
 }
