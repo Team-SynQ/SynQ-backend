@@ -45,6 +45,8 @@ class ProjectInvitationServiceTest extends PostgresTestContainer {
 				.isBetween(before.plusDays(7), LocalDateTime.now().plusDays(7));
 		assertThat(response.inviteUrl())
 				.isEqualTo("https://synqai.co.kr/invite/%s".formatted(savedProject.getInviteToken()));
+		assertThat(response.inviteUrl()).doesNotContain("/login");
+		assertThat(response.inviteUrl()).doesNotContain("//invite");
 		assertThat(response.expiresAt()).isEqualTo(savedProject.getInviteTokenExpiresAt());
 	}
 
