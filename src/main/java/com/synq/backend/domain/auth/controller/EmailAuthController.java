@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+// 개발·테스트 편의용 API. 실제 서비스는 카카오/네이버/구글 소셜 로그인만 지원하며 운영 환경에서는 사용하지 않는다.
 @RestController
 @RequestMapping("/auth")
 public class EmailAuthController implements EmailAuthControllerDocs {

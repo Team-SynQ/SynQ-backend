@@ -12,7 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// dev 임시 이메일 로그인
+// 개발·테스트 편의용. 실제 서비스는 카카오/네이버/구글 소셜 로그인만 지원하며 운영 환경에서는 사용하지 않는다.
 @Service
 public class EmailAuthService {
 
