@@ -52,7 +52,6 @@ public class SecurityConfig {
 									"/projects/*/references").authenticated()
 							.requestMatchers(HttpMethod.POST,
 									"/projects",
-									"/projects/join",
 									"/projects/*/invitation",
 									"/projects/*/join-requests").authenticated()
 							.requestMatchers(HttpMethod.POST,

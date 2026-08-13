@@ -12,8 +12,6 @@ import com.synq.backend.domain.project.dto.ProjectJoinRequestApproveResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestListResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestRejectResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestResultResponse;
-import com.synq.backend.domain.project.dto.ProjectJoinRequest;
-import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
 import com.synq.backend.domain.project.dto.ProjectMemberListResponse;
 import com.synq.backend.domain.project.dto.ProjectRolePerspectiveResponse;
@@ -118,16 +116,6 @@ public class ProjectController implements ProjectControllerDocs {
 		ProjectCreateResponse response = projectService.create(userId, request);
 		return ResponseEntity.status(GeneralSuccessCode.CREATED.getStatus())
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.CREATED, response));
-	}
-
-	@Override
-	public ResponseEntity<ApiResponse<ProjectJoinResponse>> join(Long userId, ProjectJoinRequest request) {
-		ProjectJoinResponse response = projectService.join(userId, request.inviteToken());
-		GeneralSuccessCode successCode = response.newlyJoined()
-				? GeneralSuccessCode.CREATED
-				: GeneralSuccessCode.REQUEST_OK;
-		return ResponseEntity.status(successCode.getStatus())
-				.body(ApiResponse.onSuccess(successCode, response));
 	}
 
 	@Override
