@@ -25,6 +25,11 @@ import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
 import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
+import com.synq.backend.domain.project.entity.Project;
+import com.synq.backend.domain.project.entity.ProjectMember;
+import com.synq.backend.domain.project.entity.ProjectMemberRole;
+import com.synq.backend.domain.project.repository.ProjectMemberRepository;
+import com.synq.backend.domain.project.repository.ProjectRepository;
 import com.synq.backend.domain.transcript.entity.TranscriptSegment;
 import com.synq.backend.domain.transcript.repository.TranscriptSegmentRepository;
 import com.synq.backend.domain.user.entity.User;
@@ -33,6 +38,7 @@ import com.synq.backend.global.apipayload.exception.GeneralException;
 import com.synq.backend.support.PostgresTestContainer;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,6 +66,12 @@ class AiChatControllerTest extends PostgresTestContainer {
 	private MeetingParticipantRepository meetingParticipantRepository;
 
 	@Autowired
+	private ProjectRepository projectRepository;
+
+	@Autowired
+	private ProjectMemberRepository projectMemberRepository;
+
+	@Autowired
 	private AiChatMessageRepository aiChatMessageRepository;
 
 	@Autowired
@@ -84,12 +96,23 @@ class AiChatControllerTest extends PostgresTestContainer {
 	void cleanUp() {
 		reset(fakeAiChatClient);
 		reset(chunkSearcher);
+		deleteTestData();
+	}
+
+	@AfterEach
+	void cleanUpAfterTest() {
+		deleteTestData();
+	}
+
+	private void deleteTestData() {
 		aiChatMessageRepository.deleteAll();
 		transcriptSegmentRepository.deleteAll();
 		// 다른 테스트가 남긴 Live Context 가 meeting 삭제의 FK 제약에 걸린다.
 		liveContextRepository.deleteAll();
 		meetingParticipantRepository.deleteAll();
 		meetingRepository.deleteAll();
+		projectMemberRepository.deleteAll();
+		projectRepository.deleteAll();
 		userRepository.deleteAll();
 	}
 
@@ -170,6 +193,7 @@ class AiChatControllerTest extends PostgresTestContainer {
 		User firstUser = saveUser("첫 사용자", "first-chat@synq.com");
 		User secondUser = saveUser("둘 사용자", "second-chat@synq.com");
 		Meeting meeting = saveMeetingWithParticipant(firstUser.getUserId());
+		addProjectMember(meeting, secondUser.getUserId());
 		meetingParticipantRepository.save(
 				MeetingParticipant.of(meeting.getId(), secondUser.getUserId(), ParticipantRole.MEMBER)
 		);
@@ -191,7 +215,7 @@ class AiChatControllerTest extends PostgresTestContainer {
 	}
 
 	@Test
-	void 회의_비참여자는_AI_채팅을_이용할_수_없다() throws Exception {
+	void 프로젝트_비멤버는_AI_채팅을_이용할_수_없다() throws Exception {
 		User participant = saveUser("참여 사용자", "participant-chat@synq.com");
 		User outsider = saveUser("외부 사용자", "outsider-chat@synq.com");
 		Meeting meeting = saveMeetingWithParticipant(participant.getUserId());
@@ -202,6 +226,25 @@ class AiChatControllerTest extends PostgresTestContainer {
 						.content(requestBody("회의 내용을 알려줘", null, UUID.randomUUID())))
 				.andExpect(status().isForbidden())
 				.andExpect(jsonPath("$.code").value("AI_CHAT403_1"));
+	}
+
+	@Test
+	void 프로젝트_멤버는_회의_참여_이력이_없어도_AI_채팅을_이용할_수_있다() throws Exception {
+		User host = saveUser("호스트 사용자", "host-project-member-chat@synq.com");
+		User projectMember = saveUser("프로젝트 멤버", "project-member-chat@synq.com");
+		Meeting meeting = saveMeetingWithParticipant(host.getUserId());
+		addProjectMember(meeting, projectMember.getUserId());
+
+		mockMvc.perform(post("/meetings/{meetingId}/chat-messages", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(projectMember.getUserId()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(requestBody("회의 핵심 내용을 알려줘", null, UUID.randomUUID())))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.result.status").value("COMPLETED"));
+
+		mockMvc.perform(get("/meetings/{meetingId}/chat-messages/suggestions", meeting.getId())
+						.header(HttpHeaders.AUTHORIZATION, bearer(projectMember.getUserId())))
+				.andExpect(status().isOk());
 	}
 
 	@Test
@@ -232,6 +275,7 @@ class AiChatControllerTest extends PostgresTestContainer {
 		User firstUser = saveUser("JWT 사용자", "jwt-chat@synq.com");
 		User secondUser = saveUser("다른 사용자", "spoofed-chat@synq.com");
 		Meeting meeting = saveMeetingWithParticipant(firstUser.getUserId());
+		addProjectMember(meeting, secondUser.getUserId());
 		meetingParticipantRepository.save(
 				MeetingParticipant.of(meeting.getId(), secondUser.getUserId(), ParticipantRole.MEMBER)
 		);
@@ -295,7 +339,7 @@ class AiChatControllerTest extends PostgresTestContainer {
 	}
 
 	@Test
-	void 종료된_회의의_비참여자는_새_질문을_보낼_수_없다() throws Exception {
+	void 종료된_회의의_프로젝트_비멤버는_새_질문을_보낼_수_없다() throws Exception {
 		User participant = saveUser("종료 회의 참여자", "ended-participant-chat@synq.com");
 		User outsider = saveUser("종료 회의 비참여자", "ended-outsider-chat@synq.com");
 		Meeting meeting = saveMeetingWithParticipant(participant.getUserId());
@@ -418,7 +462,7 @@ class AiChatControllerTest extends PostgresTestContainer {
 	}
 
 	@Test
-	void 퇴장한_참여자는_새_질문을_보낼_수_없다() throws Exception {
+	void 진행_중인_회의에서도_프로젝트_멤버는_새_질문을_보낼_수_있다() throws Exception {
 		User user = saveUser("퇴장 사용자", "left-chat@synq.com");
 		Meeting meeting = saveMeetingWithParticipant(user.getUserId());
 		MeetingParticipant participant = meetingParticipantRepository
@@ -431,8 +475,7 @@ class AiChatControllerTest extends PostgresTestContainer {
 						.header(HttpHeaders.AUTHORIZATION, bearer(user.getUserId()))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(requestBody("퇴장 후 질문", null, UUID.randomUUID())))
-				.andExpect(status().isForbidden())
-				.andExpect(jsonPath("$.code").value("AI_CHAT403_1"));
+				.andExpect(status().isCreated());
 	}
 
 	@Test
@@ -495,12 +538,20 @@ class AiChatControllerTest extends PostgresTestContainer {
 	}
 
 	private Meeting saveMeetingWithParticipant(Long userId) {
-		// project_id는 IN_PROGRESS 상태에서 유니크해야 하므로(uq_meeting_project_active), 매번 새 값을 쓴다.
-		Meeting meeting = meetingRepository.save(Meeting.of(System.nanoTime(), "AI 채팅 테스트 회의"));
+		Project project = projectRepository.save(Project.of(userId, "AI 채팅 테스트 프로젝트", null));
+		projectMemberRepository.save(
+				ProjectMember.of(project.getId(), userId, ProjectMemberRole.OWNER)
+		);
+		Meeting meeting = meetingRepository.save(Meeting.of(project.getId(), "AI 채팅 테스트 회의"));
 		meetingParticipantRepository.save(
 				MeetingParticipant.of(meeting.getId(), userId, ParticipantRole.HOST)
 		);
 		return meeting;
+	}
+
+	private void addProjectMember(Meeting meeting, Long userId) {
+		projectMemberRepository.save(ProjectMember.of(
+				meeting.getProjectId(), userId, ProjectMemberRole.MEMBER));
 	}
 
 	private void send(Long meetingId, Long userId, String question) throws Exception {
