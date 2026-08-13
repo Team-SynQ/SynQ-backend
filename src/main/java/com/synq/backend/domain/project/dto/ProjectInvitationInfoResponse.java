@@ -11,13 +11,15 @@ public record ProjectInvitationInfoResponse(
 		Integer currentMemberCount,
 		Integer maxMemberCount,
 		Boolean alreadyJoined,
-		LocalDateTime expiresAt
+		LocalDateTime expiresAt,
+		ProjectInvitationOwnerResponse owner
 ) {
 	public static ProjectInvitationInfoResponse from(
 			Project project,
 			int currentMemberCount,
 			int maxMemberCount,
-			boolean alreadyJoined
+			boolean alreadyJoined,
+			ProjectInvitationOwnerResponse owner
 	) {
 		return new ProjectInvitationInfoResponse(
 				project.getId(),
@@ -26,7 +28,8 @@ public record ProjectInvitationInfoResponse(
 				currentMemberCount,
 				maxMemberCount,
 				alreadyJoined,
-				project.getInviteTokenExpiresAt()
+				project.getInviteTokenExpiresAt(),
+				owner
 		);
 	}
 }

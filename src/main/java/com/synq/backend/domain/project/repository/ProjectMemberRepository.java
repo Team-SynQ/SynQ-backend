@@ -1,6 +1,7 @@
 package com.synq.backend.domain.project.repository;
 
 import com.synq.backend.domain.project.entity.ProjectMember;
+import com.synq.backend.domain.project.entity.ProjectMemberRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,6 +12,8 @@ import java.util.Optional;
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Long> {
 
 	Optional<ProjectMember> findByIdAndProjectId(Long memberId, Long projectId);
+
+	Optional<ProjectMember> findByProjectIdAndRole(Long projectId, ProjectMemberRole role);
 
 	@Query("""
 			SELECT member
