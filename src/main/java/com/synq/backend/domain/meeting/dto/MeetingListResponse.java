@@ -10,7 +10,9 @@ public record MeetingListResponse(
 		LocalDateTime createdAt,
 		Long durationSeconds,
 		Host host,
-		List<String> keyTopics
+		List<String> keyTopics,
+		boolean paused,
+		long activeSeconds
 ) {
 	public record Host(
 			Long userId,

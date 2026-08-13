@@ -335,6 +335,27 @@ class MeetingServiceTest {
 		assertThat(response.keyTopics()).isNull();
 		assertThat(response.durationSeconds()).isNull();
 		assertThat(response.host()).isNull();
+		assertThat(response.paused()).isFalse();
+	}
+
+	@Test
+	void 일시정지된_회의는_목록_응답에도_paused와_activeSeconds가_반영된다() {
+		Meeting meeting = Meeting.of(1L, "회의");
+		meeting.pause();
+		ReflectionTestUtils.setField(meeting, "id", 300L);
+
+		when(projectMembershipChecker.isMember(1L, 10L)).thenReturn(true);
+		when(meetingRepository.findByProjectIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(meeting));
+		when(meetingParticipantRepository.findByMeetingIdInAndRole(List.of(300L), ParticipantRole.HOST))
+				.thenReturn(List.of());
+		when(userRepository.findAllById(any())).thenReturn(List.of());
+		when(meetingSummaryTopicsReader.findKeyTopicsByMeetingIds(List.of(300L)))
+				.thenReturn(Map.of());
+
+		MeetingListResponse response = meetingService.findAll(1L, 10L).get(0);
+
+		assertThat(response.paused()).isTrue();
+		assertThat(response.activeSeconds()).isEqualTo(meeting.activeSeconds());
 	}
 
 	@Test
