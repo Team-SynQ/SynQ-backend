@@ -8,10 +8,10 @@ import org.springframework.http.HttpStatus;
 @Getter
 @AllArgsConstructor
 public enum AiChatErrorCode implements BaseCode {
-	NOT_MEETING_PARTICIPANT(
+	NOT_PROJECT_MEMBER(
 			HttpStatus.FORBIDDEN,
 			"AI_CHAT403_1",
-			"회의 참여자만 AI 채팅을 이용할 수 있습니다."
+			"프로젝트 멤버만 AI 채팅을 이용할 수 있습니다."
 	),
 	CHAT_NOT_AVAILABLE(
 			HttpStatus.CONFLICT,

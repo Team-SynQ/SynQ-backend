@@ -10,9 +10,8 @@ import com.synq.backend.domain.ai.assistant.domain.AiChatStatus;
 import com.synq.backend.domain.ai.assistant.domain.AiChatWelcome;
 import com.synq.backend.domain.meeting.code.MeetingErrorCode;
 import com.synq.backend.domain.meeting.entity.Meeting;
-import com.synq.backend.domain.meeting.entity.MeetingStatus;
-import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
+import com.synq.backend.domain.project.repository.ProjectMemberRepository;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import java.util.Objects;
 import java.util.UUID;
@@ -24,20 +23,20 @@ import org.springframework.stereotype.Service;
 public class AiChatService {
 
 	private final MeetingRepository meetingRepository;
-	private final MeetingParticipantRepository meetingParticipantRepository;
+	private final ProjectMemberRepository projectMemberRepository;
 	private final AiChatClient aiChatClient;
 	private final AiChatStore aiChatStore;
 	private final AiChatContextBuilder contextBuilder;
 
 	public AiChatService(
 			MeetingRepository meetingRepository,
-			MeetingParticipantRepository meetingParticipantRepository,
+			ProjectMemberRepository projectMemberRepository,
 			AiChatClient aiChatClient,
 			AiChatStore aiChatStore,
 			AiChatContextBuilder contextBuilder
 	) {
 		this.meetingRepository = meetingRepository;
-		this.meetingParticipantRepository = meetingParticipantRepository;
+		this.projectMemberRepository = projectMemberRepository;
 		this.aiChatClient = aiChatClient;
 		this.aiChatStore = aiChatStore;
 		this.contextBuilder = contextBuilder;
@@ -135,18 +134,15 @@ public class AiChatService {
 
 	private void validateSendAccess(Long meetingId, Long userId, Long linkedSegmentId) {
 		Meeting meeting = findMeeting(meetingId);
-		if (meeting.getStatus() != MeetingStatus.IN_PROGRESS) {
-			throw new GeneralException(AiChatErrorCode.CHAT_NOT_AVAILABLE);
-		}
-		if (!meetingParticipantRepository.existsByMeetingIdAndUserIdAndLeftAtIsNull(meetingId, userId)) {
-			throw new GeneralException(AiChatErrorCode.NOT_MEETING_PARTICIPANT);
+		if (!projectMemberRepository.existsByProjectIdAndUserId(meeting.getProjectId(), userId)) {
+			throw new GeneralException(AiChatErrorCode.NOT_PROJECT_MEMBER);
 		}
 	}
 
 	private void validateHistoryAccess(Long meetingId, Long userId) {
-		findMeeting(meetingId);
-		if (!meetingParticipantRepository.existsByMeetingIdAndUserId(meetingId, userId)) {
-			throw new GeneralException(AiChatErrorCode.NOT_MEETING_PARTICIPANT);
+		Meeting meeting = findMeeting(meetingId);
+		if (!projectMemberRepository.existsByProjectIdAndUserId(meeting.getProjectId(), userId)) {
+			throw new GeneralException(AiChatErrorCode.NOT_PROJECT_MEMBER);
 		}
 	}
 
