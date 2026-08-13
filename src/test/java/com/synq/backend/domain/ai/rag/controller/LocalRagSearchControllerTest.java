@@ -2,6 +2,7 @@ package com.synq.backend.domain.ai.rag.controller;
 
 import com.synq.backend.domain.ai.rag.entity.DocumentChunk;
 import com.synq.backend.domain.ai.rag.repository.DocumentChunkRepository;
+import com.synq.backend.domain.auth.jwt.JwtProvider;
 import com.synq.backend.support.PostgresTestContainer;
 import com.synq.backend.support.ReferenceMaterialTestFixture;
 import org.junit.jupiter.api.AfterEach;
@@ -30,6 +31,9 @@ class LocalRagSearchControllerTest extends PostgresTestContainer {
 
 	@Autowired
 	private ReferenceMaterialTestFixture referenceMaterialTestFixture;
+
+	@Autowired
+	private JwtProvider jwtProvider;
 
 	private ReferenceMaterialTestFixture.Fixture referenceFixture;
 
@@ -70,6 +74,7 @@ class LocalRagSearchControllerTest extends PostgresTestContainer {
 		repository.flush();
 
 		mockMvc.perform(get("/local/rag/search")
+						.header("Authorization", bearer())
 						.param("projectId", referenceFixture.projectId().toString())
 						.param("q", "인증 방식"))
 				.andExpect(status().isOk())
@@ -93,6 +98,7 @@ class LocalRagSearchControllerTest extends PostgresTestContainer {
 		repository.flush();
 
 		mockMvc.perform(get("/local/rag/search")
+						.header("Authorization", bearer())
 						.param("projectId", otherReference.projectId().toString())
 						.param("q", "질의"))
 				.andExpect(status().isOk())
@@ -109,6 +115,7 @@ class LocalRagSearchControllerTest extends PostgresTestContainer {
 		repository.flush();
 
 		mockMvc.perform(get("/local/rag/search")
+						.header("Authorization", bearer())
 						.param("projectId", referenceFixture.projectId().toString())
 						.param("q", "질의")
 						.param("minSimilarity", "0.9"))
@@ -119,8 +126,21 @@ class LocalRagSearchControllerTest extends PostgresTestContainer {
 	@Test
 	void 빈_질의는_400_이다() throws Exception {
 		mockMvc.perform(get("/local/rag/search")
+						.header("Authorization", bearer())
 						.param("projectId", "1")
 						.param("q", "  "))
 				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void 로컬_RAG_검색도_인증_없이는_호출할_수_없다() throws Exception {
+		mockMvc.perform(get("/local/rag/search")
+						.param("projectId", "1")
+						.param("q", "질의"))
+				.andExpect(status().isUnauthorized());
+	}
+
+	private String bearer() {
+		return "Bearer " + jwtProvider.createAccessToken(1L);
 	}
 }

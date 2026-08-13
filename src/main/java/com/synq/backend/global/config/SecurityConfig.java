@@ -76,8 +76,8 @@ public class SecurityConfig {
 							.requestMatchers("/meetings/*/transcript-segments/**").authenticated()
 							.requestMatchers("/meetings/*/transcript-reindex",
 									"/reference-materials/*/reindex").authenticated()
-							// 각 도메인 컨트롤러 테스트에 인증 절차 추가 이후 anyRequest().authenticated()로 전환 필요
-							.anyRequest().permitAll())
+							// 공개 범위에 명시되지 않은 새 API가 인증 없이 노출되지 않도록 기본값을 인증 필요로 둔다.
+							.anyRequest().authenticated())
 				.exceptionHandling(exception -> exception.authenticationEntryPoint(entryPoint))
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 		return http.build();

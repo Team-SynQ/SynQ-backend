@@ -224,7 +224,7 @@ class AiChatControllerTest extends PostgresTestContainer {
 
 		mockMvc.perform(get("/meetings/{meetingId}/chat-messages", meeting.getId()))
 				.andExpect(status().isUnauthorized())
-				.andExpect(jsonPath("$.code").value("AUTH401_5"));
+				.andExpect(jsonPath("$.code").value("AUTH401_1"));
 	}
 
 	@Test
