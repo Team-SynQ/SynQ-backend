@@ -120,7 +120,9 @@ class MeetingControllerTest extends PostgresTestContainer {
 				.andExpect(jsonPath("$.result[0].host.name").value("호스트"))
 				.andExpect(jsonPath("$.result[0].status").value("IN_PROGRESS"))
 				.andExpect(jsonPath("$.result[0].durationSeconds").isEmpty())
-				.andExpect(jsonPath("$.result[0].keyTopics").isEmpty());
+				.andExpect(jsonPath("$.result[0].keyTopics").isEmpty())
+				.andExpect(jsonPath("$.result[0].paused").value(false))
+				.andExpect(jsonPath("$.result[0].activeSeconds").isNumber());
 	}
 
 	@Test

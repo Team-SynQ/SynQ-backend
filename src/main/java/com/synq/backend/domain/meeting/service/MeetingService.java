@@ -116,7 +116,9 @@ public class MeetingService {
 				meeting.getCreatedAt(),
 				durationSeconds(meeting),
 				host,
-				keyTopicsByMeetingId.get(meeting.getId())
+				keyTopicsByMeetingId.get(meeting.getId()),
+				meeting.isPaused(),
+				meeting.activeSeconds()
 		);
 	}
 
