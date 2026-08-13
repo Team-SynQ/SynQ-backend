@@ -94,7 +94,7 @@ class ProjectDeleteServiceTest extends PostgresTestContainer {
 	}
 
 	@Test
-	void 삭제된_프로젝트의_초대_정보와_참여를_차단한다() {
+	void 삭제된_프로젝트의_초대_정보를_차단한다() {
 		User owner = saveUser("delete-invitation-owner@synq.com");
 		User member = saveUser("delete-invitation-member@synq.com");
 		Project project = saveProject(owner);
@@ -104,10 +104,6 @@ class ProjectDeleteServiceTest extends PostgresTestContainer {
 		projectService.delete(project.getId(), owner.getUserId());
 
 		assertThatThrownBy(() -> projectService.findInvitationInfo("delete-invitation-token", member.getUserId()))
-				.isInstanceOfSatisfying(GeneralException.class,
-						exception -> assertThat(exception.getCode())
-								.isEqualTo(ProjectErrorCode.INVITATION_NOT_FOUND));
-		assertThatThrownBy(() -> projectService.join(member.getUserId(), "delete-invitation-token"))
 				.isInstanceOfSatisfying(GeneralException.class,
 						exception -> assertThat(exception.getCode())
 								.isEqualTo(ProjectErrorCode.INVITATION_NOT_FOUND));

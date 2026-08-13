@@ -12,8 +12,6 @@ import com.synq.backend.domain.project.dto.ProjectJoinRequestApproveResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestListResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestRejectResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestResultResponse;
-import com.synq.backend.domain.project.dto.ProjectJoinRequest;
-import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
 import com.synq.backend.domain.project.dto.ProjectMemberListResponse;
 import com.synq.backend.domain.project.dto.ProjectRolePerspectiveResponse;
@@ -188,24 +186,6 @@ public interface ProjectControllerDocs {
 	ResponseEntity<ApiResponse<ProjectCreateResponse>> create(
 			@AuthenticationPrincipal(expression = "userId") Long userId,
 			@Valid @RequestBody ProjectCreateRequest request
-	);
-
-	@Operation(summary = "프로젝트 참여", description = "저장된 초대 토큰을 통해 프로젝트에 참여한다.")
-	@SecurityRequirement(name = "bearerAuth")
-	@ApiResponses({
-			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "프로젝트 참여 성공"),
-			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "이미 참여 중인 프로젝트"),
-			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "초대 토큰 입력값 오류"),
-			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
-			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "사용자 또는 초대 정보를 찾을 수 없음"),
-			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409",
-					description = "프로젝트 최대 인원 또는 사용자별 프로젝트 참여 한도 초과"),
-			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "410", description = "초대 링크 만료")
-	})
-	@PostMapping("/join")
-	ResponseEntity<ApiResponse<ProjectJoinResponse>> join(
-			@AuthenticationPrincipal(expression = "userId") Long userId,
-			@Valid @RequestBody ProjectJoinRequest request
 	);
 
 	@Operation(summary = "프로젝트 참여 요청 생성", description = "초대 링크를 통해 프로젝트 참여 요청을 PENDING 상태로 생성한다.")

@@ -18,7 +18,6 @@ import com.synq.backend.domain.project.dto.ProjectJoinRequestListResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestRejectResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestResultResponse;
 import com.synq.backend.domain.project.dto.ProjectJoinRequestResponse;
-import com.synq.backend.domain.project.dto.ProjectJoinResponse;
 import com.synq.backend.domain.project.dto.ProjectListResponse;
 import com.synq.backend.domain.project.dto.ProjectMemberListResponse;
 import com.synq.backend.domain.project.dto.ProjectMemberResponse;
@@ -355,17 +354,6 @@ public class ProjectService {
 	}
 
 	@Transactional
-	public ProjectJoinResponse join(Long userId, String inviteToken) {
-		validateUser(userId);
-
-		Project project = findProjectByValidInviteToken(inviteToken);
-
-		return projectMemberRepository.findByProjectIdAndUserId(project.getId(), userId)
-				.map(member -> ProjectJoinResponse.from(project, member, false))
-				.orElseGet(() -> joinAsMember(project, userId));
-	}
-
-	@Transactional
 	public ProjectJoinRequestCreateResponse createJoinRequest(
 			Long projectId,
 			Long userId,
@@ -585,17 +573,6 @@ public class ProjectService {
 				alreadyJoined,
 				ownerResponse
 		);
-	}
-
-	private ProjectJoinResponse joinAsMember(Project project, Long userId) {
-		validateUserProjectLimit(userId);
-		if (projectMemberRepository.countByProjectId(project.getId()) >= MAX_PROJECT_MEMBERS) {
-			throw new GeneralException(ProjectErrorCode.PROJECT_MEMBER_LIMIT_EXCEEDED);
-		}
-
-		ProjectMember member = projectMemberRepository.save(
-				ProjectMember.of(project.getId(), userId, ProjectMemberRole.MEMBER));
-		return ProjectJoinResponse.from(project, member, true);
 	}
 
 	private void validateUser(Long userId) {
