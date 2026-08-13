@@ -52,8 +52,8 @@ class SummaryPersistenceStoreTest extends PostgresTestContainer {
 				ON CONFLICT (user_id) DO NOTHING
 				""", USER_ID);
 		jdbcTemplate.update("""
-				INSERT INTO meeting (id, project_id, title, status)
-				VALUES (?, 1, '요약 저장 테스트', 'SUMMARIZING')
+				INSERT INTO meeting (id, project_id, title, status, last_resumed_at)
+				VALUES (?, 1, '요약 저장 테스트', 'SUMMARIZING', now())
 				ON CONFLICT (id) DO NOTHING
 				""", MEETING_ID);
 	}
