@@ -57,10 +57,13 @@ public class NaverAuthService {
 		}
 	}
 
-
+    
 	private String resolveName(NaverUserResponse naverUser) {
 		String nickname = naverUser.response().nickname();
-		String name = StringUtils.hasText(nickname) ? nickname : DEFAULT_NAME;
+		String realName = naverUser.response().name();
+		String name = StringUtils.hasText(nickname) ? nickname
+				: StringUtils.hasText(realName) ? realName
+				: DEFAULT_NAME;
 		return name.length() > MAX_NAME_LENGTH ? name.substring(0, MAX_NAME_LENGTH) : name;
 	}
 
