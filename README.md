@@ -1,77 +1,86 @@
-# backend
-SynQ 백엔드 서버
-## 1. 반드시 지켜야 할 규칙
+# SynQ Backend
 
-- 커밋 메시지는 정해진 컨벤션에 따라 간결하고 직관적으로 작성합니다.
-- 이미 공유된 원격(Remote) 브랜치의 히스토리를 임의로 수정(`force push` 등)하지 않습니다.
-- PR를 `main` 브랜치에 머지하기 전, 최소 1명 이상의 팀원에게 반드시 검토 및 Approve을 받아야 합니다.
-- 리뷰가 완료된 PR은 작성자 본인이 직접 충돌을 해결하고 Merge합니다.
+SynQ 백엔드 서버입니다. 회의 음성을 실시간으로 전사(STT)하고, AI 요약·채팅·참고자료 기반 RAG 검색 등을 제공합니다.
 
-> **각 브랜치의 수명은 최대한 짧게 유지합니다.**
-> 
-> 
-> 브랜치의 수명이 길어질수록 `main` 브랜치와의 격차가 벌어져, Rebase 과정에서 Conflict가 발생할 확률이 높아집니다. 기능은 가능한 한 작게 쪼개어 빠르게 머지하세요.
-> 
+## 팀원
 
----
-
-## 2. 워크플로우
-
-모든 작업은 GitHub Issue 생성으로부터 시작하며, 아래의 순서에 따라 진행합니다.
-
-1. GitHub 이슈를 생성합니다.
-    - **형식:** `[FEATURE/FIX] 이슈 내용`
-    - *ex) `[FEATURE] 구글 소셜 로그인 구현`*
-    - ex) `*[FIX] 게시판 API 응답 형식 수정*`
-2. `main` 브랜치에서 분기하는 새 브랜치를 생성합니다. 이슈 번호를 브랜치명에 포함합니다.
-    - **형식:** `feature/#{이슈번호}-작업내용`
-    - *ex) `feature/#12-google-login`*
-    - *ex) `fix/#13-board-api-response-format`*
-3. 분기한 브랜치에서 작업을 진행합니다.
-4. 구현된 단위별로 커밋을 남깁니다. (커밋 컨벤션 준수)
-5. (선택) 히스토리를 깔끔하고 간결하게 유지하기 위해 필요한 경우 커밋을 Squash로 하나로 합칩니다.
-6. 최신 원격 코드를 가져옵니다. (`git fetch origin`)
-7. 최신 `main` 브랜치 위로 내 작업 브랜치를 **Rebase**하고, 발생하는 충돌을 해결합니다.
-8. Rebase가 완료된 브랜치를 원격 저장소에 푸시합니다. (`git push`)
-9. Pull Request를 생성합니다.
-10. 리뷰어의 피드백을 반영하고 최종 승인을 받습니다.
-11. 본인이 직접 머지한 후, 원격 및 로컬의 작업 브랜치를 삭제합니다. (Repo 설정에 따라 자동 삭제)
-
----
-
-## 3. 커밋 메시지 컨벤션
-
-기본적으로 **유다시티 컨벤션**을 따르되, 메시지의 핵심 내용은 **한글로 작성**합니다.
-
-### 커밋 메시지 구조
-
-```
-feat: 구글 소셜 로그인 api 구현
-
-이번 커밋에 대한 구체적인 설명을 작성하세요.
-무엇을, 왜, 어떻게 변경했는지를 간단히 정리하면 좋습니다.
-```
-
-### 타입(Type) 종류
-
-| **타입** | **설명** | **예시** |
+| 이름 | 닉네임 | GitHub |
 | --- | --- | --- |
-| `feat:` | 새로운 기능 추가 | `feat: 매칭 룸 생성 api 추가` |
-| `fix:` | 버그 수정 | `fix: 로그인 토큰 만료 에러 수정` |
-| `docs:` | 문서 수정 (Readme, wiki 등) | `docs: API 명세서 링크 업데이트` |
-| `refactor:` | 기능 변경이 없는 코드 리팩토링 | `refactor: 유저 서비스 로직 중복 제거` |
-| `test:` | 테스트 코드 추가 및 수정 | `test: 인증 로직 단위 테스트 추가` |
-| `chore:` | 빌드/패키지 매니저 설정 등 (Production code 무관) | `chore: build.gradle 의존성 추가` |
-| `comment:` | 주석 추가 및 변경 | `comment: 정렬 알고리즘 설명 주석 추가` |
-| `remove:` | 파일 또는 폴더 삭제 | `remove: 미사용 컴포넌트 파일 삭제` |
-| `rename:` | 파일 또는 폴더명 수정 / 이동 | `rename: DTO 클래스 위치 변경` |
+| 인석진 | 제이스 | [sjinssun](https://github.com/sjinssun) |
+| 이민규 | 도미닉 | [MinGyuLee2](https://github.com/MinGyuLee2) |
+| 이중희 | 조자 | [jungee123213](https://github.com/jungee123213) |
+| 박서은 | 써니 | [1PSE](https://github.com/1PSE) |
+| 한다경 | 데이 | [handagyeong](https://github.com/handagyeong) |
+| 문서찬 | 요한 | [dev-moonsc](https://github.com/dev-moonsc) |
 
-### 작성 규칙
+## 기술 스택
 
-- **제목 규칙:**
-    - 형식은 반드시 `<type>: <제목>`을 준수합니다. (`type` 뒤 콜론`:`과 한 칸 공백 필수)
-    - 제목은 **명령형**으로 간결하고 직관적으로 작성합니다.
-    - *ex) `feat: 채팅방 생성 api 추가`*
-- **본문 규칙 (선택):**
-    - 상세한 설명이 필요할 시, 제목 아래 한 줄을 띄우고 작성합니다.
-    - 변경 이유, 변경 내용, 영향을 받는 부분 등을 서술합니다.
+- **Language/Framework:** Java 17, Spring Boot 3.5
+- **DB/Storage:** PostgreSQL (pgvector), Redis, AWS S3
+- **Auth:** Spring Security, JWT, OAuth2 (Kakao/Google/Naver)
+- **Migration:** Flyway
+- **AI/STT:** OpenAI, Gemini, Soniox(WebSocket 실시간 STT)
+- **Docs:** springdoc-openapi(Swagger UI)
+
+## 프로젝트 구조
+
+```
+src/main/java/com/synq/backend
+├── domain
+│   ├── ai            # AI 채팅/요약/RAG
+│   ├── auth           # 인증/인가, OAuth
+│   ├── meeting        # 회의
+│   ├── project        # 프로젝트
+│   ├── record         # 녹음/전사 원본
+│   ├── reference       # 참고자료 (링크/파일)
+│   ├── transcript      # 실시간 전사
+│   └── user           # 사용자
+└── global            # 공통 설정, 예외 처리 등
+```
+
+## 로컬 개발 환경 설정
+
+### 요구사항
+
+- JDK 17 (`mise`로 관리)
+- Docker (OrbStack 등)
+
+### 1. 환경변수 설정
+
+```bash
+cp .env.example .env
+```
+
+`.env` 파일을 열어 필요한 값을 채워넣습니다. (JWT, OAuth 클라이언트, S3, AI API 키 등)
+
+### 2. 인프라 기동 (PostgreSQL, Redis)
+
+```bash
+docker compose up -d
+```
+
+### 3. 애플리케이션 실행
+
+```bash
+./gradlew bootRun
+```
+
+기본 프로파일은 `local`이며, 서버는 `http://localhost:8080`에서 기동됩니다.
+
+### API 문서
+
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI Spec: `http://localhost:8080/v3/api-docs`
+
+### 테스트
+
+```bash
+./gradlew test
+```
+
+## 기여
+
+작업 워크플로우 및 커밋 컨벤션은 [`docs/convention`](./docs/convention) 문서를 따릅니다.
+
+- [Git 워크플로우](./docs/convention/git-workflow.md)
+- [커밋 메시지 컨벤션](./docs/convention/commit-message.md)
