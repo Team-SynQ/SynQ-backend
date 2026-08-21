@@ -1,0 +1,17 @@
+# EC2 호스트의 /etc/logrotate.d/ 에 설치해서 사용한다.
+#   sudo cp infra/nginx/logrotate/synq-nginx /etc/logrotate.d/synq-nginx
+# Ubuntu는 기본적으로 /etc/cron.daily/logrotate 가 매일 로테이션을 수행하므로
+# 별도의 crontab 등록은 필요 없다.
+/home/ubuntu/synq/infra/nginx/log/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0644 root root
+    sharedscripts
+    postrotate
+        docker exec synq-nginx nginx -s reopen > /dev/null 2>&1 || true
+    endscript
+}
