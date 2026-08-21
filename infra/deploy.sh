@@ -20,7 +20,7 @@ set +a
 
 # 필수 환경 변수 검증
 required_vars=(
-    DOCKERHUB_USERNAME PROD_DB_NAME PROD_DB_USER PROD_DB_PASSWORD
+    GHCR_USERNAME GHCR_TOKEN PROD_DB_NAME PROD_DB_USER PROD_DB_PASSWORD
     PROD_REDIS_PASSWORD PROD_JWT_SECRET PROD_GEMINI_API_KEY PROD_OPENAI_API_KEY
     FRONTEND_BASE_URL
     S3_BUCKET AWS_REGION AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
@@ -72,6 +72,11 @@ fi
 
 echo "현재 컨테이너: $CURRENT_COLOR"
 echo "신규 컨테이너: $TARGET_COLOR"
+
+# GHCR 로그인 (private 패키지 pull 을 위해 필요)
+# GHCR_TOKEN 은 CI/CD 워크플로우가 매 실행마다 발급하는 GITHUB_TOKEN 이며
+# 이 워크플로우 실행이 끝나면 만료되는 임시 토큰이다. 서버 .env 에 영구 저장하지 않는다.
+echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
 # 신규 컨테이너 가동
 echo "=========================================="

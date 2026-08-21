@@ -26,8 +26,13 @@ RUN apk add --no-cache tzdata \
     && cp /usr/share/zoneinfo/Asia/Seoul /etc/localtime \
     && echo "Asia/Seoul" > /etc/timezone
 
+# non-root 유저 생성 (컨테이너 침해 시 피해 범위 최소화)
+RUN addgroup -S app && adduser -S app -G app
+
 # app.jar 복사
-COPY --from=build /home/gradle/project/app.jar app.jar
+COPY --from=build --chown=app:app /home/gradle/project/app.jar app.jar
+
+USER app
 
 # 포트 명시
 EXPOSE 8080

@@ -14,6 +14,11 @@ services:
     restart: unless-stopped
     networks:
       - synq-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # --- 2. Certbot ---
   certbot:
@@ -22,6 +27,11 @@ services:
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # --- 3. DB ---
   db:
@@ -49,6 +59,11 @@ services:
     restart: unless-stopped
     networks:
       - synq-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # --- 4. Redis ---
   redis:
@@ -66,10 +81,15 @@ services:
     restart: unless-stopped
     networks:
       - synq-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # --- 5-1. Spring Boot (Blue) ---
   springboot-blue:
-    image: ${DOCKERHUB_USERNAME}/synq-backend:latest
+    image: ghcr.io/team-synq/synq-backend:latest
     container_name: synq-backend-blue
     ports:
       - "127.0.0.1:8081:8080"
@@ -142,10 +162,15 @@ services:
     restart: unless-stopped
     networks:
       - synq-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # --- 5-2. Spring Boot (Green) ---
   springboot-green:
-    image: ${DOCKERHUB_USERNAME}/synq-backend:latest
+    image: ghcr.io/team-synq/synq-backend:latest
     container_name: synq-backend-green
     ports:
       - "127.0.0.1:8082:8080"
@@ -218,6 +243,11 @@ services:
     restart: unless-stopped
     networks:
       - synq-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   synq-postgres-data:
