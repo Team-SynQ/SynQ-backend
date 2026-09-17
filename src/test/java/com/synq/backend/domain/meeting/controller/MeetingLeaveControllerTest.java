@@ -2,6 +2,7 @@ package com.synq.backend.domain.meeting.controller;
 
 import com.synq.backend.domain.auth.jwt.AccessTokenBlacklistService;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
+import com.synq.backend.domain.auth.jwt.ActiveUserChecker;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
@@ -9,6 +10,7 @@ import com.synq.backend.domain.meeting.repository.MeetingParticipantRepository;
 import com.synq.backend.domain.meeting.repository.MeetingRepository;
 import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
@@ -19,6 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
 
 @AutoConfigureMockMvc
 class MeetingLeaveControllerTest extends PostgresTestContainer {
@@ -40,6 +44,14 @@ class MeetingLeaveControllerTest extends PostgresTestContainer {
 
 	@MockitoBean
 	private AccessTokenBlacklistService accessTokenBlacklistService;
+
+	@MockitoBean
+	private ActiveUserChecker activeUserChecker;
+
+	@BeforeEach
+	void allowActiveUsers() {
+		when(activeUserChecker.isActive(anyLong())).thenReturn(true);
+	}
 
 	private Long createInProgressMeetingWithHostAndMember() {
 		// project_id는 IN_PROGRESS 상태에서 유니크해야 하므로(uq_meeting_project_active), 매번 새 값을 쓴다.

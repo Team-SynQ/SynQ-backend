@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.synq.backend.domain.auth.jwt.AccessTokenBlacklistService;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
+import com.synq.backend.domain.auth.jwt.ActiveUserChecker;
 import com.synq.backend.domain.project.entity.Project;
 import com.synq.backend.domain.project.entity.ProjectMember;
 import com.synq.backend.domain.project.entity.ProjectMemberRole;
@@ -18,6 +19,7 @@ import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
 import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
@@ -38,6 +40,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
 
 @AutoConfigureMockMvc
 @Transactional
@@ -66,6 +70,14 @@ class ReferenceControllerTest extends PostgresTestContainer {
 
 	@MockitoBean
 	private AccessTokenBlacklistService accessTokenBlacklistService;
+
+	@MockitoBean
+	private ActiveUserChecker activeUserChecker;
+
+	@BeforeEach
+	void allowActiveUsers() {
+		when(activeUserChecker.isActive(anyLong())).thenReturn(true);
+	}
 
 	// 링크 등록이 실제 네트워크를 타지 않게 막는다.
 	// 이 클래스는 @Transactional 이라 커밋이 없어 AFTER_COMMIT 리스너는 실행되지 않는다.

@@ -3,6 +3,7 @@ package com.synq.backend.domain.ai.rag.controller;
 import com.synq.backend.domain.ai.rag.entity.DocumentChunk;
 import com.synq.backend.domain.ai.rag.repository.DocumentChunkRepository;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
+import com.synq.backend.domain.auth.jwt.ActiveUserChecker;
 import com.synq.backend.support.PostgresTestContainer;
 import com.synq.backend.support.ReferenceMaterialTestFixture;
 import org.junit.jupiter.api.AfterEach;
@@ -11,11 +12,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
 
 @AutoConfigureMockMvc
 @ActiveProfiles("local")
@@ -35,6 +39,9 @@ class LocalRagSearchControllerTest extends PostgresTestContainer {
 	@Autowired
 	private JwtProvider jwtProvider;
 
+	@MockitoBean
+	private ActiveUserChecker activeUserChecker;
+
 	private ReferenceMaterialTestFixture.Fixture referenceFixture;
 
 	/**
@@ -50,6 +57,7 @@ class LocalRagSearchControllerTest extends PostgresTestContainer {
 
 	@BeforeEach
 	void setUp() {
+		when(activeUserChecker.isActive(anyLong())).thenReturn(true);
 		repository.deleteAll();
 		referenceFixture = referenceMaterialTestFixture.create();
 	}
