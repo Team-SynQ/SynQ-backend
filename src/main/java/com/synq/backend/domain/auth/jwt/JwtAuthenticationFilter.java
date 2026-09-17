@@ -21,9 +21,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
 	private final JwtProvider jwtProvider;
+	private final ActiveUserChecker activeUserChecker;
 
-	public JwtAuthenticationFilter(JwtProvider jwtProvider) {
+	public JwtAuthenticationFilter(JwtProvider jwtProvider, ActiveUserChecker activeUserChecker) {
 		this.jwtProvider = jwtProvider;
+		this.activeUserChecker = activeUserChecker;
 	}
 
 	@Override
@@ -32,6 +34,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		BearerTokenExtractor.extract(request.getHeader("Authorization")).ifPresent(accessToken -> {
 			try {
 				Long userId = jwtProvider.parseUserId(accessToken);
+				if (!activeUserChecker.isActive(userId)) {
+					throw new JwtException("활성 사용자가 아닙니다.");
+				}
 				UserAuthDto principal = new UserAuthDto(userId);
 				Authentication authentication = new UsernamePasswordAuthenticationToken(principal, null, List.of());
 				((UsernamePasswordAuthenticationToken) authentication)

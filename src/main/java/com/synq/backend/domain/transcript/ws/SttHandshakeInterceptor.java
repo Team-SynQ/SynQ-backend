@@ -1,6 +1,7 @@
 package com.synq.backend.domain.transcript.ws;
 
 import com.synq.backend.domain.auth.jwt.JwtProvider;
+import com.synq.backend.domain.auth.jwt.ActiveUserChecker;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.MeetingStatus;
@@ -45,6 +46,7 @@ public class SttHandshakeInterceptor implements HandshakeInterceptor {
 	public static final String ATTRIBUTE_ROLE = "role";
 
 	private final JwtProvider jwtProvider;
+	private final ActiveUserChecker activeUserChecker;
 	private final MeetingRepository meetingRepository;
 	private final MeetingParticipantRepository meetingParticipantRepository;
 
@@ -118,7 +120,8 @@ public class SttHandshakeInterceptor implements HandshakeInterceptor {
 			return Optional.empty();
 		}
 		try {
-			return Optional.of(jwtProvider.parseUserId(token));
+			Long userId = jwtProvider.parseUserId(token);
+			return activeUserChecker.isActive(userId) ? Optional.of(userId) : Optional.empty();
 		} catch (RuntimeException e) {
 			log.debug("STT 핸드셰이크 토큰 검증 실패: {}", e.getMessage());
 			return Optional.empty();
