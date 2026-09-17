@@ -2,6 +2,7 @@ package com.synq.backend.domain.transcript.controller;
 
 import com.synq.backend.domain.auth.jwt.AccessTokenBlacklistService;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
+import com.synq.backend.domain.auth.jwt.ActiveUserChecker;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
@@ -12,6 +13,7 @@ import com.synq.backend.domain.transcript.repository.MeetingRecordingSegmentRepo
 import com.synq.backend.domain.transcript.storage.RecordingStorage;
 import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
@@ -26,6 +28,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.anyLong;
 
 @AutoConfigureMockMvc
 class MeetingRecordingControllerTest extends PostgresTestContainer {
@@ -50,6 +53,14 @@ class MeetingRecordingControllerTest extends PostgresTestContainer {
 
 	@MockitoBean
 	private AccessTokenBlacklistService accessTokenBlacklistService;
+
+	@MockitoBean
+	private ActiveUserChecker activeUserChecker;
+
+	@BeforeEach
+	void allowActiveUsers() {
+		when(activeUserChecker.isActive(anyLong())).thenReturn(true);
+	}
 
 	// 실제 S3 버킷 설정 없이도 presigned URL 발급 부분을 검증하기 위해 스토리지 자체를 목으로 대체한다.
 	@MockitoBean

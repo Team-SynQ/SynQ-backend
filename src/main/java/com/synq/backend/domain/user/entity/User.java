@@ -47,6 +47,9 @@ public class User {
 	@Column(name = "profile_image_key")
 	private String profileImageKey;
 
+	@Column(name = "deleted_at")
+	private OffsetDateTime deletedAt;
+
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private OffsetDateTime createdAt;
 
@@ -76,5 +79,14 @@ public class User {
 
 	public void updateProfileImageKey(String profileImageKey) {
 		this.profileImageKey = profileImageKey;
+	}
+
+	public void withdraw(String withdrawnProviderId) {
+		this.name = "탈퇴한 사용자";
+		this.email = null;
+		this.passwordHash = null;
+		this.providerId = provider == Provider.LOCAL ? null : withdrawnProviderId;
+		this.profileImageKey = null;
+		this.deletedAt = OffsetDateTime.now();
 	}
 }

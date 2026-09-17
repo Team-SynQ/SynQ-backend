@@ -4,6 +4,7 @@ import com.synq.backend.domain.auth.code.AuthErrorCode;
 import com.synq.backend.domain.auth.dto.TokenResponse;
 import com.synq.backend.domain.auth.jwt.JwtProperties;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
+import com.synq.backend.domain.auth.jwt.ActiveUserChecker;
 import com.synq.backend.domain.auth.repository.RefreshTokenRedisRepository;
 import com.synq.backend.domain.user.repository.RoleProfileRepository;
 import com.synq.backend.global.apipayload.exception.GeneralException;
@@ -28,13 +29,16 @@ public class AuthTokenService {
 	private final RefreshTokenRedisRepository refreshTokenRepository;
 	private final JwtProperties jwtProperties;
 	private final RoleProfileRepository roleProfileRepository;
+	private final ActiveUserChecker activeUserChecker;
 
 	public AuthTokenService(JwtProvider jwtProvider, RefreshTokenRedisRepository refreshTokenRepository,
-							JwtProperties jwtProperties, RoleProfileRepository roleProfileRepository) {
+							JwtProperties jwtProperties, RoleProfileRepository roleProfileRepository,
+							ActiveUserChecker activeUserChecker) {
 		this.jwtProvider = jwtProvider;
 		this.refreshTokenRepository = refreshTokenRepository;
 		this.jwtProperties = jwtProperties;
 		this.roleProfileRepository = roleProfileRepository;
+		this.activeUserChecker = activeUserChecker;
 	}
 
 	public TokenResponse issue(Long userId, boolean isNewUser) {
@@ -49,6 +53,9 @@ public class AuthTokenService {
 		String oldTokenHash = sha256Hex(rawRefreshToken);
 		Long userId = refreshTokenRepository.findUserIdByTokenHash(oldTokenHash)
 				.orElseThrow(() -> new GeneralException(AuthErrorCode.INVALID_REFRESH_TOKEN));
+		if (!activeUserChecker.isActive(userId)) {
+			throw new GeneralException(AuthErrorCode.INVALID_REFRESH_TOKEN);
+		}
 		boolean onboardingCompleted = isOnboardingCompleted(userId);
 
 		String newRefreshToken = UUID.randomUUID().toString();

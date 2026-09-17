@@ -2,6 +2,7 @@ package com.synq.backend.global.config;
 
 import com.synq.backend.domain.auth.jwt.JwtAuthenticationFilter;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
+import com.synq.backend.domain.auth.jwt.ActiveUserChecker;
 import com.synq.backend.global.apipayload.handler.RestAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -84,7 +85,7 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public JwtAuthenticationFilter jwtAuthenticationFilter(JwtProvider jwtProvider) {
-		return new JwtAuthenticationFilter(jwtProvider);
+	public JwtAuthenticationFilter jwtAuthenticationFilter(JwtProvider jwtProvider, ActiveUserChecker activeUserChecker) {
+		return new JwtAuthenticationFilter(jwtProvider, activeUserChecker);
 	}
 }

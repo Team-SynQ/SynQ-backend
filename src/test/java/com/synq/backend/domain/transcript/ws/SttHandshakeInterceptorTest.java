@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.synq.backend.domain.auth.jwt.JwtProvider;
+import com.synq.backend.domain.auth.jwt.ActiveUserChecker;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
@@ -25,10 +27,16 @@ import org.springframework.web.socket.WebSocketHandler;
 class SttHandshakeInterceptorTest {
 
 	private final JwtProvider jwtProvider = mock(JwtProvider.class);
+	private final ActiveUserChecker activeUserChecker = mock(ActiveUserChecker.class);
 	private final MeetingRepository meetingRepository = mock(MeetingRepository.class);
 	private final MeetingParticipantRepository meetingParticipantRepository = mock(MeetingParticipantRepository.class);
 	private final SttHandshakeInterceptor interceptor =
-			new SttHandshakeInterceptor(jwtProvider, meetingRepository, meetingParticipantRepository);
+			new SttHandshakeInterceptor(jwtProvider, activeUserChecker, meetingRepository, meetingParticipantRepository);
+
+	@BeforeEach
+	void allowActiveUsers() {
+		when(activeUserChecker.isActive(org.mockito.ArgumentMatchers.anyLong())).thenReturn(true);
+	}
 
 	@Test
 	void 호스트는_핸드셰이크를_통과하고_role_HOST가_저장된다() {
@@ -104,6 +112,18 @@ class SttHandshakeInterceptorTest {
 	void 토큰이_없으면_401로_거부한다() {
 		ServerHttpResponse response = response();
 		boolean result = interceptor.beforeHandshake(request(5L, null), response, handler(), new HashMap<>());
+
+		assertThat(result).isFalse();
+		verify(response).setStatusCode(HttpStatus.UNAUTHORIZED);
+	}
+
+	@Test
+	void 탈퇴한_사용자는_웹소켓_재연결을_401로_거부한다() {
+		when(jwtProvider.parseUserId("token")).thenReturn(10L);
+		when(activeUserChecker.isActive(10L)).thenReturn(false);
+		ServerHttpResponse response = response();
+
+		boolean result = interceptor.beforeHandshake(request(5L, "token"), response, handler(), new HashMap<>());
 
 		assertThat(result).isFalse();
 		verify(response).setStatusCode(HttpStatus.UNAUTHORIZED);

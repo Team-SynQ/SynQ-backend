@@ -3,6 +3,7 @@ package com.synq.backend.domain.meeting.controller;
 import com.jayway.jsonpath.JsonPath;
 import com.synq.backend.domain.auth.jwt.AccessTokenBlacklistService;
 import com.synq.backend.domain.auth.jwt.JwtProvider;
+import com.synq.backend.domain.auth.jwt.ActiveUserChecker;
 import com.synq.backend.domain.meeting.entity.Meeting;
 import com.synq.backend.domain.meeting.entity.MeetingParticipant;
 import com.synq.backend.domain.meeting.entity.ParticipantRole;
@@ -12,6 +13,7 @@ import com.synq.backend.domain.user.entity.User;
 import com.synq.backend.domain.user.repository.UserRepository;
 import com.synq.backend.support.PostgresTestContainer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
@@ -26,6 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
 
 @AutoConfigureMockMvc
 class MeetingParticipantControllerTest extends PostgresTestContainer {
@@ -47,6 +51,14 @@ class MeetingParticipantControllerTest extends PostgresTestContainer {
 
 	@MockitoBean
 	private AccessTokenBlacklistService accessTokenBlacklistService;
+
+	@MockitoBean
+	private ActiveUserChecker activeUserChecker;
+
+	@BeforeEach
+	void allowActiveUsers() {
+		when(activeUserChecker.isActive(anyLong())).thenReturn(true);
+	}
 
 	@Test
 	void 활성_참여자만_역할과_함께_반환하고_나간_사람은_빠진다() throws Exception {
