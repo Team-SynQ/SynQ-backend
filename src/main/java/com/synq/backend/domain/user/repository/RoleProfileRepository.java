@@ -19,6 +19,8 @@ public interface RoleProfileRepository extends JpaRepository<RoleProfile, Long> 
 	boolean existsByUserId(Long userId);
 
 	Optional<RoleProfile> findByUserIdAndIsDefaultTrue(Long userId);
+
+	void deleteAllByUserId(Long userId);
     
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("SELECT p FROM RoleProfile p WHERE p.id = :id AND p.userId = :userId")

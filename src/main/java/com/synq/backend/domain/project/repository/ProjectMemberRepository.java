@@ -69,4 +69,6 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
 			  AND project.deletedAt IS NULL
 			""")
 	long countByUserId(@Param("userId") Long userId);
+
+	void deleteAllByUserIdAndRole(Long userId, ProjectMemberRole role);
 }

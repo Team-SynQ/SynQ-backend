@@ -51,6 +51,8 @@ public interface ProjectParticipationRequestRepository extends JpaRepository<Pro
 
 	Optional<ProjectParticipationRequest> findByIdAndProjectId(Long requestId, Long projectId);
 
+	void deleteAllByUserId(Long userId);
+
 	interface ProcessedJoinRequestView {
 		Long getRequestId();
 

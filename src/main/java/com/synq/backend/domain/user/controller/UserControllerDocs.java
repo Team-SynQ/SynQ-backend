@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,4 +40,17 @@ public interface UserControllerDocs {
 	ResponseEntity<ApiResponse<UserMeResponse>> updateName(
 			@AuthenticationPrincipal(expression = "userId") Long userId,
 			@Valid @RequestBody UserNameUpdateRequest request);
+
+	@Operation(summary = "회원 탈퇴",
+			description = "로그인한 사용자를 소프트 삭제하고 개인정보와 인증 정보를 비식별화한다. "
+					+ "활성 프로젝트의 소유자는 탈퇴할 수 없다.")
+	@ApiResponses({
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "회원 탈퇴 성공"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 필요"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "활성 프로젝트 소유자는 탈퇴 불가")
+	})
+	ResponseEntity<ApiResponse<Void>> withdraw(
+			@AuthenticationPrincipal(expression = "userId") Long userId,
+			HttpServletRequest request);
 }

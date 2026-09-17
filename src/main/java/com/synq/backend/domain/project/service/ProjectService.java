@@ -85,7 +85,8 @@ public class ProjectService {
 
 	@Transactional
 	public ProjectCreateResponse create(Long userId, ProjectCreateRequest request) {
-		validateUser(userId);
+		userRepository.findActiveByIdForUpdate(userId)
+				.orElseThrow(() -> new GeneralException(ProjectErrorCode.USER_NOT_FOUND));
 		validateUserProjectLimit(userId);
 
 		Project project = projectRepository.save(Project.of(userId, request.title(), request.description()));

@@ -1,5 +1,7 @@
 package com.synq.backend.domain.user.controller;
 
+import com.synq.backend.domain.auth.code.AuthErrorCode;
+import com.synq.backend.domain.auth.jwt.BearerTokenExtractor;
 import com.synq.backend.domain.user.dto.UserMeResponse;
 import com.synq.backend.domain.user.dto.UserNameUpdateRequest;
 import com.synq.backend.domain.user.entity.User;
@@ -10,6 +12,8 @@ import com.synq.backend.global.apipayload.ApiResponse;
 import com.synq.backend.global.apipayload.code.GeneralErrorCode;
 import com.synq.backend.global.apipayload.code.GeneralSuccessCode;
 import com.synq.backend.global.apipayload.exception.GeneralException;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -46,5 +50,15 @@ public class UserController implements UserControllerDocs {
 		UserMeResponse response = userService.updateName(userId, request.name());
 		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
 				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, response));
+	}
+
+	@Override
+	@DeleteMapping("/me")
+	public ResponseEntity<ApiResponse<Void>> withdraw(Long userId, HttpServletRequest request) {
+		String accessToken = BearerTokenExtractor.extract(request.getHeader("Authorization"))
+				.orElseThrow(() -> new GeneralException(AuthErrorCode.INVALID_ACCESS_TOKEN));
+		userService.withdraw(userId, accessToken);
+		return ResponseEntity.status(GeneralSuccessCode.REQUEST_OK.getStatus())
+				.body(ApiResponse.onSuccess(GeneralSuccessCode.REQUEST_OK, null));
 	}
 }
