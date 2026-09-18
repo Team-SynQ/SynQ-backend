@@ -67,6 +67,7 @@ public class RoleProfileService {
 		RoleProfile profile = getOwnedProfile(userId, profileId);
 		profile.update(request.role(), request.detailRole());
 		perspectiveRepository.deleteAllByRoleProfileId(profileId);
+		perspectiveRepository.flush();
 		List<Perspective> perspectives = savePerspectives(profileId, request.perspectives());
 		return toResponse(profile, perspectives);
 	}

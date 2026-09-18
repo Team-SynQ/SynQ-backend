@@ -17,8 +17,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -92,6 +94,67 @@ class RoleProfileControllerTest extends PostgresTestContainer {
 				.andExpect(jsonPath("$.result[0].isDefault").value(true))
 				.andExpect(jsonPath("$.result[1].role").value("DATA_RESEARCH"))
 				.andExpect(jsonPath("$.result[1].isDefault").value(false));
+	}
+
+	@Test
+	void 동일한_관점을_유지하며_프로필을_수정하면_200과_수정된_정보를_반환한다() throws Exception {
+		User user = saveUser("update@synq.com");
+		RoleProfile profile = roleProfileRepository.save(
+				RoleProfile.of(user.getUserId(), Role.DEV_TECH, null, true));
+		RoleProfilePerspective previous = perspectiveRepository.saveAndFlush(
+				RoleProfilePerspective.of(profile.getId(), Perspective.SCOPE));
+
+		mockMvc.perform(patch("/users/me/role-profiles/{profileId}", profile.getId())
+						.header("Authorization", bearerToken(user))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"role":"STRATEGY_MANAGEMENT","detailRole":null,"perspectives":["SCOPE"]}
+								"""))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.result.id").value(profile.getId()))
+				.andExpect(jsonPath("$.result.role").value("STRATEGY_MANAGEMENT"))
+				.andExpect(jsonPath("$.result.perspectives[0]").value("SCOPE"));
+		perspectiveRepository.flush();
+
+		assertThat(roleProfileRepository.findById(profile.getId()).orElseThrow().getRole())
+				.isEqualTo(Role.STRATEGY_MANAGEMENT);
+		assertThat(perspectiveRepository.findAllByRoleProfileId(profile.getId()))
+				.singleElement()
+				.satisfies(saved -> {
+					assertThat(saved.getId()).isNotEqualTo(previous.getId());
+					assertThat(saved.getPerspective()).isEqualTo(Perspective.SCOPE);
+				});
+	}
+
+	@Test
+	void 다른_유저의_프로필을_수정하려하면_404를_반환한다() throws Exception {
+		User owner = saveUser("update-owner@synq.com");
+		User other = saveUser("update-intruder@synq.com");
+		RoleProfile profile = saveProfile(owner, Role.DEV_TECH, true);
+
+		mockMvc.perform(patch("/users/me/role-profiles/{profileId}", profile.getId())
+						.header("Authorization", bearerToken(other))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"role":"STRATEGY_MANAGEMENT","perspectives":["SCOPE"]}
+								"""))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.code").value("USER404_1"));
+	}
+
+	@Test
+	void 프로필_수정_요청값이_올바르지_않으면_400을_반환한다() throws Exception {
+		User user = saveUser("update-invalid@synq.com");
+		RoleProfile profile = saveProfile(user, Role.DEV_TECH, true);
+
+		mockMvc.perform(patch("/users/me/role-profiles/{profileId}", profile.getId())
+						.header("Authorization", bearerToken(user))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{"role":"ETC","perspectives":[]}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.code").value("USER400_1"));
 	}
 
 	@Test
