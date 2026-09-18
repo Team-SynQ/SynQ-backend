@@ -5,7 +5,9 @@ import com.synq.backend.domain.user.dto.RoleProfileRequest;
 import com.synq.backend.domain.user.dto.RoleProfileResponse;
 import com.synq.backend.domain.user.entity.Perspective;
 import com.synq.backend.domain.user.entity.Role;
+import com.synq.backend.domain.user.entity.RoleProfilePerspective;
 import com.synq.backend.domain.user.entity.User;
+import com.synq.backend.domain.user.repository.RoleProfilePerspectiveRepository;
 import com.synq.backend.domain.user.repository.UserRepository;
 import com.synq.backend.global.apipayload.exception.GeneralException;
 import com.synq.backend.support.PostgresTestContainer;
@@ -26,6 +28,9 @@ class RoleProfileServiceTest extends PostgresTestContainer {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	@Autowired
+	private RoleProfilePerspectiveRepository perspectiveRepository;
 
 	@Test
 	void 첫_프로필은_자동으로_기본이_된다() {
@@ -69,6 +74,60 @@ class RoleProfileServiceTest extends PostgresTestContainer {
 						List.of(Perspective.SCHEDULE, Perspective.SCOPE, Perspective.DECISION, Perspective.UX))))
 				.isInstanceOfSatisfying(GeneralException.class,
 						exception -> assertThat(exception.getCode()).isEqualTo(UserErrorCode.TOO_MANY_PERSPECTIVES));
+	}
+
+	@Test
+	void 동일한_관점을_유지하면서_역할을_수정할_수_있다() {
+		User user = saveUser("update-same-perspective@synq.com");
+		RoleProfileResponse profile = createProfile(user, List.of(Perspective.SCOPE));
+
+		RoleProfileResponse response = roleProfileService.update(user.getUserId(), profile.id(),
+				new RoleProfileRequest(Role.STRATEGY_MANAGEMENT, null, List.of(Perspective.SCOPE)));
+		perspectiveRepository.flush();
+
+		assertThat(response.role()).isEqualTo(Role.STRATEGY_MANAGEMENT);
+		assertThat(response.perspectives()).containsExactly(Perspective.SCOPE);
+		assertStoredPerspectives(profile.id(), Perspective.SCOPE);
+	}
+
+	@Test
+	void 일부_관점을_유지하면서_나머지_관점을_교체할_수_있다() {
+		User user = saveUser("update-partial-perspectives@synq.com");
+		RoleProfileResponse profile = createProfile(user, List.of(Perspective.SCOPE, Perspective.UX));
+
+		RoleProfileResponse response = roleProfileService.update(user.getUserId(), profile.id(),
+				new RoleProfileRequest(Role.STRATEGY_MANAGEMENT, null,
+						List.of(Perspective.SCOPE, Perspective.DECISION)));
+		perspectiveRepository.flush();
+
+		assertThat(response.perspectives()).containsExactly(Perspective.SCOPE, Perspective.DECISION);
+		assertStoredPerspectives(profile.id(), Perspective.SCOPE, Perspective.DECISION);
+	}
+
+	@Test
+	void 기존_관점을_전부_다른_관점으로_교체할_수_있다() {
+		User user = saveUser("update-all-perspectives@synq.com");
+		RoleProfileResponse profile = createProfile(user, List.of(Perspective.SCOPE));
+
+		RoleProfileResponse response = roleProfileService.update(user.getUserId(), profile.id(),
+				new RoleProfileRequest(Role.STRATEGY_MANAGEMENT, null, List.of(Perspective.DECISION)));
+		perspectiveRepository.flush();
+
+		assertThat(response.perspectives()).containsExactly(Perspective.DECISION);
+		assertStoredPerspectives(profile.id(), Perspective.DECISION);
+	}
+
+	@Test
+	void 기존_관점을_빈_배열로_교체할_수_있다() {
+		User user = saveUser("update-empty-perspectives@synq.com");
+		RoleProfileResponse profile = createProfile(user, List.of(Perspective.SCOPE));
+
+		RoleProfileResponse response = roleProfileService.update(user.getUserId(), profile.id(),
+				new RoleProfileRequest(Role.STRATEGY_MANAGEMENT, null, List.of()));
+		perspectiveRepository.flush();
+
+		assertThat(response.perspectives()).isEmpty();
+		assertStoredPerspectives(profile.id());
 	}
 
 	@Test
@@ -131,6 +190,17 @@ class RoleProfileServiceTest extends PostgresTestContainer {
 		assertThatThrownBy(() -> roleProfileService.setDefault(user.getUserId(), 999_999L))
 				.isInstanceOfSatisfying(GeneralException.class,
 						exception -> assertThat(exception.getCode()).isEqualTo(UserErrorCode.ROLE_PROFILE_NOT_FOUND));
+	}
+
+	private RoleProfileResponse createProfile(User user, List<Perspective> perspectives) {
+		return roleProfileService.create(user.getUserId(),
+				new RoleProfileRequest(Role.DEV_TECH, null, perspectives));
+	}
+
+	private void assertStoredPerspectives(Long profileId, Perspective... perspectives) {
+		assertThat(perspectiveRepository.findAllByRoleProfileId(profileId))
+				.extracting(RoleProfilePerspective::getPerspective)
+				.containsExactlyInAnyOrder(perspectives);
 	}
 
 	private User saveUser(String email) {
