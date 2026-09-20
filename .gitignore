@@ -51,6 +51,7 @@ application-local.yml
 CLAUDE.md
 AGENTS.md
 docs/superpowers/
+docs/local/
 
 ### 로컬 생성 산출물 ###
 .DS_Store

@@ -14,6 +14,22 @@ class HintPromptFactoryTest {
 	private final HintPromptFactory factory = new HintPromptFactory();
 
 	@Test
+	void 세_힌트에_모두_분량_제약을_붙인다() {
+		String prompt = factory.create(input("DEV_TECH", "", List.of()));
+
+		assertThat(fieldLine(prompt, "meaning")).contains("1~2문장");
+		assertThat(fieldLine(prompt, "myImpact")).contains("1~2문장");
+		assertThat(fieldLine(prompt, "teamQuestion")).contains("1문장");
+	}
+
+	@Test
+	void teamQuestion_은_질문을_하나만_담게_한다() {
+		String prompt = factory.create(input("DEV_TECH", "", List.of()));
+
+		assertThat(fieldLine(prompt, "teamQuestion")).contains("질문 하나만");
+	}
+
+	@Test
 	void 역할과_관점을_한글_라벨로_바꾼다() {
 		String prompt = factory.create(input("DEV_TECH", "백엔드", List.of("TECH_RISK", "SCHEDULE")));
 
@@ -106,6 +122,13 @@ class HintPromptFactoryTest {
 		assertThat(prompt).contains("클릭한 발화");
 		assertThat(prompt).contains("앞1 앞2");
 		assertThat(prompt).contains("뒤1");
+	}
+
+	private String fieldLine(String prompt, String field) {
+		return prompt.lines()
+				.filter(line -> line.strip().startsWith("- " + field + ":"))
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("프롬프트에 %s 지시문이 없습니다.".formatted(field)));
 	}
 
 	private HintInput input(String role, String detailRole, List<String> perspectives) {
